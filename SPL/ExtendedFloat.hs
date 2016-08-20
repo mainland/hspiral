@@ -19,6 +19,10 @@ class Num a => ExtendedFloat a where
     -- | $e^{2 \pi i \frac{k}{n}$
     rootOfUnity :: Rational -> a
 
+    -- | Normalize a root of unity
+    normRootOfUnity :: a -> a
+    normRootOfUnity x = x
+
 instance RealFloat a => ExtendedFloat (Complex a) where
     rootOfUnity r = exp (2*pi*i*fromRational r)
       where

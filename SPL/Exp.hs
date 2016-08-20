@@ -89,6 +89,13 @@ instance Pretty (Exp a) where
 instance ExtendedFloat (Exp (Complex Double)) where
     rootOfUnity = RouC
 
+    normRootOfUnity (RouC x) = RouC ((n `rem` d) % d)
+      where
+        n = numerator x
+        d = denominator x
+
+    normRootOfUnity x = x
+
 -- | Convert a 'Complex Double' to a 'Constant'
 fromComplex :: Complex Double -> Exp (Complex Double)
 fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
@@ -182,15 +189,7 @@ instance LiftNum Exp where
                        | isOne y    = x
                        | isNegOne y = liftNum Neg negate x
 
-    liftNum2 Mul _ (RouC x) (RouC y) =
-        RouC (norm (x + y))
-      where
-        norm :: Rational -> Rational
-        norm x = (n `rem` d) % d
-          where
-            n = numerator x
-            d = denominator x
-
+    liftNum2 Mul _ (RouC x) (RouC y)            = normRootOfUnity $ RouC (x + y)
     liftNum2 Mul f (RouC x) (ComplexC 1      0) = liftNum2 Mul f (RouC x) (RouC 0)
     liftNum2 Mul f (RouC x) (ComplexC (-1)   0) = liftNum2 Mul f (RouC x) (RouC (1 % 2))
     liftNum2 Mul f (RouC x) (ComplexC 0      1) = liftNum2 Mul f (RouC x) (RouC (1 % 4))
