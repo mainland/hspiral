@@ -161,13 +161,27 @@ instance LiftNum Exp where
                        | isOne y    = x
                        | isNegOne y = liftNum Neg negate x
 
+    liftNum2 Mul _ (RouC x) (RouC y) =
+        RouC (norm (x + y))
+      where
+        norm :: Rational -> Rational
+        norm x = (n `rem` d) % d
+          where
+            n = numerator x
+            d = denominator x
+
+    liftNum2 Mul f (RouC x) (ComplexC 1      0) = liftNum2 Mul f (RouC x) (RouC 0)
+    liftNum2 Mul f (RouC x) (ComplexC (-1)   0) = liftNum2 Mul f (RouC x) (RouC (1 % 2))
+    liftNum2 Mul f (RouC x) (ComplexC 0      1) = liftNum2 Mul f (RouC x) (RouC (1 % 4))
+    liftNum2 Mul f (RouC x) (ComplexC 0   (-1)) = liftNum2 Mul f (RouC x) (RouC (3 % 4))
+    liftNum2 Mul f x        y@RouC{}            = liftNum2 Mul f y x
+
     liftNum2 _   f (IntC x)      (IntC y)      = IntC (f x y)
     liftNum2 _   f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
     liftNum2 _   f (RationalC x) (RationalC y) = RationalC (f x y)
     liftNum2 _   f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (unComplex x) (unComplex y)
     liftNum2 _   f x@ComplexC{}  y@RouC{}      = fromComplex $ f (unComplex x) (unComplex y)
     liftNum2 _   f x@RouC{}      y@ComplexC{}  = fromComplex $ f (unComplex x) (unComplex y)
-    liftNum2 Mul _ (RouC x)      (RouC y)      = RouC (x + y)
     liftNum2 op  f x@RouC{}      y@RouC{}      = liftNum2 op f (toComplex x) (toComplex y)
 
 instance Num (Exp Integer) where
