@@ -3,7 +3,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- Module      :  SPL.Exp
@@ -39,9 +38,9 @@ deriving instance Eq (Exp a)
 deriving instance Show (Exp a)
 
 -- Orphan instance...
-instance (Eq a, Num a, Pretty a) => Pretty (Complex a) where
-    ppr (r :+ 0) = ppr r
-    ppr (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
+pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
+pprComplex (r :+ 0) = ppr r
+pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
 
 instance Pretty (Exp a) where
     ppr (IntC x)      = ppr x
@@ -54,7 +53,7 @@ instance Pretty (Exp a) where
       | r == 0 && i == (-1) = text "-i"
       | r == 0              = ppr i <> char 'i'
       | i == 0              = ppr r
-      | otherwise           = ppr (unComplex x)
+      | otherwise           = pprComplex (unComplex x)
 
     ppr (RouC r)
         | denominator r <= 4 = ppr (toComplex (RouC r))
