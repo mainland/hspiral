@@ -22,6 +22,7 @@ GHCFLAGS += \
 	-package test-framework-hunit \
 	-package test-framework-quickcheck2 \
 	-package transformers \
+	-package vector \
 	-package HUnit \
 	-package QuickCheck
 

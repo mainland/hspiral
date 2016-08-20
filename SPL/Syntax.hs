@@ -16,6 +16,9 @@ module SPL.Syntax (
     toMatrix,
 
     matrix,
+    (!),
+    row,
+    col,
 
     (⊗),
     (×),
@@ -26,6 +29,7 @@ module SPL.Syntax (
     pprMatrix
   ) where
 
+import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 
 import SPL.Pretty
@@ -35,7 +39,7 @@ type Ix = (Int, Int)
 
 -- | Abstract syntax for SPL
 data SPL e -- | A matrix whose entries are manifest
-           = M Ix [e]
+           = M Ix (V.Vector e)
            -- | A "delayed" matrix, i.e., functional representation
            | D Ix (Ix -> e)
 
@@ -80,10 +84,10 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
 -- | Specify a matrix as a list of lists.
 matrix :: [[e]] -> SPL e
 matrix [] =
-    M (0, 0) []
+    M (0, 0) V.empty
 
 matrix (r:rs) | all ((== n) . length) rs =
-    M (m, n) (concat (r:rs))
+    M (m, n) (V.fromList (concat (r:rs)))
   where
     m = 1 + length rs
     n = length r
@@ -129,7 +133,7 @@ extent (BinopM op a b) = go op
 toDelayed :: forall e . Num e => SPL e -> SPL e
 toDelayed (M sh@(_m, n) xs) = D sh f
   where
-    f (i, j) = xs !! (i*n + j)
+    f (i, j) = xs V.! (i*n + j)
 
 toDelayed e@D{} = e
 
@@ -169,18 +173,84 @@ toDelayed (BinopM ProductOp a b) = D (m, p) h
 
     h (i, j) = sum [f (i, k) * g (k, j) | k <- [0..n-1]]
 
+-- | Extract a single element from a matrix
+(!) :: Num e => SPL e -> Ix -> e
+M (_m, n) xs ! (i, j) = xs V.! (i*n + j)
+e            ! ix     = toMatrix e ! ix
+
+-- | Extract a row of a matrix
+row :: Num e => SPL e -> Int -> V.Vector e
+row e i = V.slice (i*n) n xs
+  where
+    M (_m, n) xs = toMatrix e
+
+-- | Extract a column of a matrix
+col :: forall e . Num e => SPL e -> Int -> V.Vector e
+col e j = V.generate n f
+  where
+    M (_m, n) xs = toMatrix e
+
+    f :: Int -> e
+    f i = xs V.! (i*n + j)
+
 -- | Convert an SPL expression to a manifest matrix.
 toMatrix :: forall e . Num e => SPL e -> SPL e
-toMatrix e@M{} = e
-toMatrix e     = M (m, n) [f (i, j) | i <- [0..m-1], j <- [0..n-1]]
+toMatrix e@M{} =
+    e
+
+toMatrix (D (m, n) f) =
+    M (m, n) $ V.fromList [f (i, j) | i <- [0..m-1], j <- [0..n-1]]
+
+toMatrix (I n) = M (n, n) $ V.generate (n*n) f
   where
-    D (m, n) f = toDelayed e
+    f :: Int -> e
+    f k | j == i    = 1
+        | otherwise = 0
+      where
+        (i, j) = k `quotRem` n
+
+toMatrix (L rs s) = M (rs, rs) $ V.generate (rs*rs) f
+  where
+    f :: Int -> e
+    f k | j == i*s `mod` rs + i*s `div` rs = 1
+        | otherwise                        = 0
+      where
+        (i, j) = k `quotRem` rs
+
+toMatrix (BinopM KroneckerOp a b) = M (m*p, n*q) $ V.generate (m*p*n*q) h
+  where
+    as@(M (m, n) _) = toMatrix a
+    bs@(M (p, q) _) = toMatrix b
+
+    h k = as ! (i `quot` p, j `quot` q) * bs ! (i `rem` p, j `rem` q)
+      where
+        (i, j) = k `quotRem` (n*q)
+
+toMatrix (BinopM DSumOp a b) = M (m+p, n+q) $ V.generate ((m+p)*(n+q)) h
+  where
+    as@(M (m, n) _) = toMatrix a
+    bs@(M (p, q) _) = toMatrix b
+
+    h k | i < m  && j < n  = as ! (i, j)
+        | i >= m && j >= n = bs ! (i-m, j-n)
+        | otherwise      = 0
+      where
+        (i, j) = k `quotRem` (n+q)
+
+toMatrix (BinopM ProductOp a b) = M (m, p) $ V.generate (m*p) h
+  where
+    as@(M (m,   _n1) _) = toMatrix a
+    bs@(M (_n2,   p) _) = toMatrix b
+
+    h k = V.sum $ V.zipWith (*) (row as i) (col bs j)
+      where
+        (i, j) = k `quotRem` p
 
 -- | Convert an SPL expression to a matrix in the form of a list of lists
 matrixOf :: Num e => SPL e -> [[e]]
-matrixOf e = [[f (i, j) | i <- [0..m-1]] | j <- [0..n-1]]
+matrixOf e = [[a ! (i, j) | i <- [0..m-1]] | j <- [0..n-1]]
   where
-    D (m, n) f = toDelayed e
+    a@(M (m, n) _) = toMatrix e
 
 -- | Pretty-print an 'SPL e' expression as a manifest matrix
 pprMatrix :: (Num e, Pretty e) => SPL e -> Doc
