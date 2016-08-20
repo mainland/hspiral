@@ -34,6 +34,8 @@ t mn m = I m ⊕ go (n-1)
 
 -- | DFT matrix $F_n$, for $n$ even
 f :: ExtendedFloat e => Int -> SPL e
+f 1 = matrix [[1]]
+
 f 2 = matrix [[1,  1],
               [1, -1]]
 

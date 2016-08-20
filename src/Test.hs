@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -13,34 +14,51 @@ import Data.Complex
 
 import Test.Framework
 import Test.Framework.Providers.HUnit
-import Test.HUnit ((@?=),
-                   Assertion)
+import Test.Framework.Providers.QuickCheck2
+import Test.HUnit ((@?=))
+import Test.QuickCheck
 
 import SPL.Exp
 import SPL.ExtendedFloat
 import qualified SPL.FFT as FFT
 import SPL.Syntax
 
-infix 1 `matrixEq`
-matrixEq :: (Eq e, Show e, Num e) => SPL e -> SPL e -> Assertion
-matrixEq a b = matrixOf a @?= matrixOf b
+-- | A small number
+newtype SmallPowerOfTwo = SmallPowerOfTwo Int
+    deriving (Eq, Ord, Show, Num, Integral, Real, Enum)
 
-infix 1 `expMatrixEq`
-expMatrixEq :: (e ~ Exp (Complex Double)) => SPL e -> SPL e -> Assertion
-expMatrixEq a b = co a @?= co b
-  where
-    co = map (map toComplex) . matrixOf
+instance Arbitrary SmallPowerOfTwo where
+    arbitrary = SmallPowerOfTwo <$> (choose (1, 7) :: Gen Int)
+
+    shrink (SmallPowerOfTwo 0) = []
+    shrink (SmallPowerOfTwo n) = [SmallPowerOfTwo (n-1)]
+
+-- | An 'Exp (Complex Double)' that is guaranteed to be a root of unity. Useful
+-- for property testing.
+newtype RootOfUnity = RootOfUnity (Exp (Complex Double))
+
+instance Arbitrary RootOfUnity where
+    arbitrary = (RootOfUnity . RouC) <$> arbitrary
+
+    shrink (RootOfUnity (RouC r)) = [RootOfUnity (RouC r') | r' <- shrink r]
+    shrink _                      = []
+
+complexMatrixOf :: (ToComplex f, Num (f (Complex Double)))
+                => SPL (f (Complex Double))
+                -> [[f (Complex Double)]]
+complexMatrixOf = map (map toComplex) . matrixOf
 
 main :: IO ()
 main = defaultMain tests
 
 tests :: [Test]
-tests = [strideTest, kroneckerTest, directSumTest, f2Test, f4Test, f8Test]
+tests = [strideTest, kroneckerTest, directSumTest, dftTests]
 
 -- See:
 --   https://en.wikipedia.org/wiki/Kronecker_product
 strideTest :: Test
-strideTest = testCase "Stride matrix L^8_4" $ L 8 4 `matrixEq` a
+strideTest = testCase "Stride matrix L^8_4" $
+    matrixOf (L 8 4) @?= matrixOf a
   where
     a :: SPL Int
     a = matrix [[1, 0, 0, 0, 0, 0, 0, 0],
@@ -54,7 +72,8 @@ strideTest = testCase "Stride matrix L^8_4" $ L 8 4 `matrixEq` a
 -- See:
 --   https://en.wikipedia.org/wiki/Kronecker_product
 kroneckerTest :: Test
-kroneckerTest = testCase "Kronecker product (⊗)" $ a ⊗ b `matrixEq` c
+kroneckerTest = testCase "Kronecker product (⊗)" $
+    matrixOf (a ⊗ b) @?= matrixOf c
   where
     a, b, c :: SPL Int
     a = matrix [[1, 2],
@@ -69,7 +88,8 @@ kroneckerTest = testCase "Kronecker product (⊗)" $ a ⊗ b `matrixEq` c
 -- See:
 --   https://en.wikipedia.org/wiki/Matrix_addition#Direct_sum
 directSumTest :: Test
-directSumTest = testCase "Direct sum (⊕)" $ a ⊕ b `matrixEq` c
+directSumTest = testCase "Direct sum (⊕)" $
+    matrixOf (a ⊕ b) @?= matrixOf c
   where
     a, b, c :: SPL Int
     a = matrix [[1, 3, 2],
@@ -80,9 +100,26 @@ directSumTest = testCase "Direct sum (⊕)" $ a ⊕ b `matrixEq` c
                 [2, 3, 1, 0, 0],
                 [0, 0, 0, 1, 6],
                 [0, 0, 0, 0, 1]]
+
+dftTests :: Test
+dftTests = testGroup "DFT tests"
+    [f2Test, f4Test, f8Test, testProperty "DFT" prop_DFT]
+
+prop_DFT :: SmallPowerOfTwo -> Property
+prop_DFT (SmallPowerOfTwo n) =
+    complexMatrixOf (directDFT (2^n)) === complexMatrixOf (FFT.f (2^n))
+  where
+    -- | Direct calculation of the DFT matrix.
+    directDFT :: Int -> SPL (Exp (Complex Double))
+    directDFT n = D (n, n) f
+      where
+        f (i, j) = w^(i*j)
+
+        w = omega n
+
 -- $F_2$
 f2Test :: Test
-f2Test = testCase "F_2" $ FFT.f 2 `expMatrixEq` f2
+f2Test = testCase "F_2" $ complexMatrixOf (FFT.f 2) @?= complexMatrixOf f2
   where
     f2 :: SPL (Exp (Complex Double))
     f2 = matrix [[1,  1],
@@ -90,7 +127,7 @@ f2Test = testCase "F_2" $ FFT.f 2 `expMatrixEq` f2
 
 -- $F_4$ calculated per "SPL: A Language and Compiler for DSP Algorithms"
 f4Test :: Test
-f4Test = testCase "F_4" $ FFT.f 4 `expMatrixEq` f4
+f4Test = testCase "F_4" $ complexMatrixOf (FFT.f 4) @?= complexMatrixOf f4
   where
     f4 :: SPL (Exp (Complex Double))
     f4 = matrix [[1,  1,  1,  1],
@@ -104,7 +141,7 @@ f4Test = testCase "F_4" $ FFT.f 4 `expMatrixEq` f4
 -- See also:
 --   https://en.wikipedia.org/wiki/DFT_matrix
 f8Test :: Test
-f8Test = testCase "F_8" $ FFT.f 8 `expMatrixEq` f8
+f8Test = testCase "F_8" $ complexMatrixOf (FFT.f 8) @?= complexMatrixOf f8
   where
     f8 :: SPL (Exp (Complex Double))
     f8 = matrix [[1,  1,  1,  1, 1, 1, 1, 1],

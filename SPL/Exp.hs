@@ -13,13 +13,14 @@
 module SPL.Exp (
     Exp(..),
 
-    toComplex
+    ToComplex(..)
   ) where
 
 import Data.Complex
 import Data.Ratio ((%),
                    denominator,
                    numerator)
+import Test.QuickCheck
 import Text.PrettyPrint.Mainland
 
 import SPL.ExtendedFloat
@@ -36,6 +37,18 @@ data Exp a where
 
 deriving instance Eq (Exp a)
 deriving instance Show (Exp a)
+
+instance Arbitrary (Exp Integer) where
+    arbitrary = IntC <$> arbitrary
+
+instance Arbitrary (Exp Double) where
+    arbitrary = DoubleC <$> arbitrary
+
+instance Arbitrary (Exp Rational) where
+    arbitrary = RationalC <$> arbitrary
+
+instance Arbitrary (Exp (Complex Double)) where
+    arbitrary = ComplexC <$> arbitrary <*> arbitrary
 
 -- Orphan instance...
 pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
