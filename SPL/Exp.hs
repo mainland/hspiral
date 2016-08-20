@@ -38,6 +38,15 @@ data Exp a where
 deriving instance Eq (Exp a)
 deriving instance Show (Exp a)
 
+instance Ord (Exp a) where
+    compare (IntC x)         (IntC y)         = compare x y
+    compare (DoubleC x)      (DoubleC y)      = compare x y
+    compare (RationalC x)    (RationalC y)    = compare x y
+    compare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
+    compare (RouC x)         (RouC y)         = compare x y
+    compare ComplexC{}       RouC{}           = LT
+    compare RouC{}           ComplexC{}       = GT
+
 instance Arbitrary (Exp Integer) where
     arbitrary = IntC <$> arbitrary
 
