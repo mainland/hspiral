@@ -38,6 +38,7 @@ endif
 SRC = \
 	SPL/Exp.hs \
 	SPL/ExtendedFloat.hs \
+	SPL/FFT.hs \
 	SPL/Pretty.hs \
 	SPL/Syntax.hs
 

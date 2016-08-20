@@ -23,6 +23,7 @@ library
   exposed-modules:
     SPL.Exp
     SPL.ExtendedFloat
+    SPL.FFT
     SPL.Syntax
 
   other-modules:
