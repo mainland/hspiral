@@ -34,6 +34,7 @@ library
     Spiral.ExtendedFloat
     Spiral.FFT
     Spiral.SPL
+    Spiral.Trace
 
   other-modules:
     Spiral.Driver.Opts

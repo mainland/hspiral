@@ -68,6 +68,7 @@ import Spiral.Cg.Monad (CVec(..),
 import Spiral.Config
 import Spiral.Exp
 import Spiral.SPL
+import Spiral.Trace
 import Spiral.Util.Lift
 import Spiral.Util.Uniq
 
@@ -94,6 +95,7 @@ newtype Cg m a = Cg { unCg :: StateT CgState m a }
               MonadException,
               MonadState CgState,
               MonadUnique,
+              MonadTrace,
               MonadConfig)
 
 instance MonadTrans Cg where
@@ -232,7 +234,9 @@ cacheMatrix mat ce =
 cvar :: MonadUnique m => String -> Cg m C.Id
 cvar = gensym
 
-cgMatrix :: forall m . (MonadConfig m, MonadUnique m) => Matrix -> Cg m CExp
+cgMatrix :: forall m . (MonadConfig m, MonadTrace m, MonadUnique m)
+         => Matrix
+         -> Cg m CExp
 cgMatrix mat@(Matrix (m, n) ess) = do
     maybe_ce <- lookupMatrix mat
     case maybe_ce of
@@ -253,7 +257,7 @@ cgMatrix mat@(Matrix (m, n) ess) = do
       appendTopDecl [cdecl|static const double _Complex $id:cmat[$int:m][$int:n] = { $inits:(map toInitializer crows) };|]
       return $ CExp [cexp|$id:cmat|]
 
-instance (MonadConfig m, MonadUnique m) => Cg.MonadCg (Cg m) where
+instance (MonadConfig m, MonadTrace m, MonadUnique m) => Cg.MonadCg (Cg m) where
      type CExp (Cg m) = CExp
 
      cgTransform name (m,n) k = do

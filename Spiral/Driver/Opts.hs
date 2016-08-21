@@ -26,6 +26,7 @@ options =
     , Option ['c']      []          (NoArg (setModeM Compile))           "Compile"
     , Option ['o']      ["output"]  (ReqArg outOpt "FILE")               "Output to FILE"
     , Option ['f']      []          (ReqArg parseFFlags "")              "Specify compiler options"
+    , Option ['d']      []          (ReqArg parseDFlags "")              "Specify debug flags"
     ]
   where
     setModeM :: ModeFlag -> Config -> m Config
@@ -51,6 +52,14 @@ options =
       where
         opts :: [FlagOpt]
         opts = mkFlagOpts "" fFlags setDynFlag (Just unsetDynFlag)
+
+    parseDFlags :: Monad m => String -> Config -> m Config
+    parseDFlags = parseFlagOpts "-d" opts dOpts
+      where
+        opts :: [FlagOpt]
+        opts =
+            mkFlagOpts ""       dFlags      setDynFlag   (Just unsetDynFlag) ++
+            mkFlagOpts "trace-" dTraceFlags setTraceFlag Nothing
 
 splitOn :: Eq a => a -> [a] -> ([a], [a])
 splitOn x s = case break (== x) s of
@@ -141,6 +150,15 @@ fOpts =
       case reads s of
         [(n, "")]  -> return fs { maxUnroll = n }
         _          -> fail "argument to -fmax-unroll must be an integer"
+
+dFlags :: [(DynFlag, String, String)]
+dFlags = []
+
+dTraceFlags :: [(TraceFlag, String, String)]
+dTraceFlags = [(TraceCg, "cg", "trace code generation")]
+
+dOpts :: forall m . Monad m => [FlagOptDescr (Config -> m Config)]
+dOpts = []
 
 parseOpts :: [String] -> IO (Config, [String])
 parseOpts argv =

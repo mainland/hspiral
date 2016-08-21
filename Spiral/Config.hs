@@ -10,6 +10,7 @@
 module Spiral.Config (
     ModeFlag(..),
     DynFlag(..),
+    TraceFlag(..),
 
     Config(..),
     defaultConfig,
@@ -20,6 +21,10 @@ module Spiral.Config (
     setDynFlag,
     setDynFlags,
     unsetDynFlag,
+
+    testTraceFlag,
+    setTraceFlag,
+    setTraceFlags,
 
     MonadConfig(..),
     asksConfig
@@ -49,6 +54,53 @@ data DynFlag = Quiet
              | LinePragmas
   deriving (Eq, Ord, Enum, Bounded, Show)
 
+data TraceFlag = TraceCg
+  deriving (Eq, Ord, Enum, Bounded, Show)
+
+data Config = Config
+    { -- | Compiler mode
+      mode :: !ModeFlag
+
+    , -- | Dynamic flags
+      dynFlags :: !(FlagSet DynFlag)
+
+      -- | Flags for tracing
+    , traceFlags  :: !(FlagSet TraceFlag)
+
+    , -- | Verbosity level
+      verbLevel :: !Int
+
+    , -- | Maximum iterations of for loop to automatically unroll.
+      maxUnroll :: !Int
+
+    , -- | Output path
+      output :: Maybe FilePath
+    }
+  deriving (Eq, Ord, Show)
+
+instance Monoid Config where
+    mempty = Config
+        { mode       = Compile
+        , dynFlags   = mempty
+        , traceFlags = mempty
+        , verbLevel  = 0
+        , maxUnroll  = 0
+        , output     = Nothing
+        }
+
+    mappend x y = Config
+        { mode       = mode y
+        , dynFlags   = dynFlags x <> dynFlags y
+        , traceFlags = traceFlags x <> traceFlags y
+        , verbLevel  = verbLevel x + verbLevel y
+        , maxUnroll  = max (maxUnroll x) (maxUnroll y)
+        , output     = output x <> output y
+        }
+
+defaultConfig :: Config
+defaultConfig = mempty
+
+-- | A set of flags.
 newtype FlagSet a = FlagSet Word32
   deriving (Eq, Ord)
 
@@ -69,59 +121,6 @@ instance Monoid (FlagSet a) where
 instance (Enum a, Bounded a, Show a) => Show (FlagSet a) where
     show (FlagSet n) = show [f | f <- [minBound..maxBound::a],
                                  n `testBit` fromEnum f]
-
-setMode :: ModeFlag -> Config -> Config
-setMode f flags = flags { mode = f }
-
-testDynFlag :: DynFlag -> Config -> Bool
-testDynFlag f flags = dynFlags flags `testFlag` f
-
-setDynFlag :: DynFlag -> Config -> Config
-setDynFlag f flags = flags { dynFlags = setFlag (dynFlags flags) f }
-
-setDynFlags :: [DynFlag] -> Config -> Config
-setDynFlags fs flags = foldl' (flip setDynFlag) flags fs
-
-unsetDynFlag :: DynFlag -> Config -> Config
-unsetDynFlag f flags = flags { dynFlags = unsetFlag (dynFlags flags) f }
-
-data Config = Config
-    { -- | Compiler mode
-      mode :: !ModeFlag
-
-    , -- | Dynamic flags
-      dynFlags :: !(FlagSet DynFlag)
-
-    , -- | Verbosity level
-      verbLevel :: !Int
-
-    , -- | Maximum iterations of for loop to automatically unroll.
-      maxUnroll :: !Int
-
-    , -- | Output path
-      output :: Maybe FilePath
-    }
-  deriving (Eq, Ord, Show)
-
-instance Monoid Config where
-    mempty = Config
-        { mode      = Compile
-        , dynFlags  = mempty
-        , verbLevel = 0
-        , maxUnroll = 0
-        , output    = Nothing
-        }
-
-    mappend x y = Config
-        { mode      = mode y
-        , dynFlags  = dynFlags x <> dynFlags y
-        , verbLevel = verbLevel x + verbLevel y
-        , maxUnroll = max (maxUnroll x) (maxUnroll y)
-        , output    = output x <> output y
-        }
-
-defaultConfig :: Config
-defaultConfig = mempty
 
 class Monad m => MonadConfig m where
     askConfig   :: m Config
@@ -171,3 +170,27 @@ instance (Monoid w, MonadConfig m) => MonadConfig (WriterT w m) where
 instance (Monoid w, MonadConfig m) => MonadConfig (S.WriterT w m) where
     askConfig       = lift askConfig
     localConfig f m = S.WriterT $ localConfig f (S.runWriterT m)
+
+setMode :: ModeFlag -> Config -> Config
+setMode f flags = flags { mode = f }
+
+testDynFlag :: DynFlag -> Config -> Bool
+testDynFlag f flags = dynFlags flags `testFlag` f
+
+setDynFlag :: DynFlag -> Config -> Config
+setDynFlag f flags = flags { dynFlags = setFlag (dynFlags flags) f }
+
+setDynFlags :: [DynFlag] -> Config -> Config
+setDynFlags fs flags = foldl' (flip setDynFlag) flags fs
+
+unsetDynFlag :: DynFlag -> Config -> Config
+unsetDynFlag f flags = flags { dynFlags = unsetFlag (dynFlags flags) f }
+
+testTraceFlag :: TraceFlag -> Config -> Bool
+testTraceFlag f flags = traceFlags flags `testFlag` f
+
+setTraceFlag :: TraceFlag -> Config -> Config
+setTraceFlag f flags = flags { traceFlags = setFlag (traceFlags flags) f }
+
+setTraceFlags :: [TraceFlag] -> Config -> Config
+setTraceFlags fs flags = foldl' (flip setTraceFlag) flags fs

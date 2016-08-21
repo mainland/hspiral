@@ -16,6 +16,7 @@ import Data.Complex
 import Spiral.Config
 import Spiral.Exp
 import Spiral.SPL
+import Spiral.Trace
 import Spiral.Util.Uniq
 
 -- | Codegen's representation of a vector with stride and offset.
@@ -27,7 +28,7 @@ data CVec m = CVec
 
 -- | Monad for SPL code generation. This allows us to abstract over the concrete
 -- code generator.
-class (MonadConfig m, MonadUnique m) => MonadCg m where
+class (MonadConfig m, MonadTrace m, MonadUnique m) => MonadCg m where
     -- | Codegen's representation of a scalar expression.
     type CExp m
 

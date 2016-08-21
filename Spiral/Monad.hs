@@ -22,17 +22,19 @@ import Control.Monad.Reader (MonadReader(..),
 import Data.IORef (IORef)
 
 import Spiral.Config
+import Spiral.Trace
 import Spiral.Util.Uniq
 
 data SpiralEnv = SpiralEnv
-    { uniq   :: IORef Int
-    , config :: Config
+    { uniq       :: IORef Int
+    , config     :: Config
+    , tracedepth :: !Int
     }
 
 defaultSpiralEnv :: MonadRef IORef m => m SpiralEnv
 defaultSpiralEnv = do
     r <- newRef 0
-    return SpiralEnv { uniq = r, config = mempty }
+    return SpiralEnv { uniq = r, config = mempty, tracedepth = 0 }
 
 newtype Spiral a = Spiral { unSpiral :: ReaderT SpiralEnv IO a }
     deriving (Functor, Applicative, Monad, MonadIO,
@@ -46,6 +48,10 @@ runSpiral m = defaultSpiralEnv >>= runReaderT (unSpiral m)
 instance MonadConfig Spiral where
     askConfig     = asks config
     localConfig f = local (\env -> env { config = f (config env) })
+
+instance MonadTrace Spiral where
+    askTraceDepth     = asks tracedepth
+    localTraceDepth f = local $ \env -> env { tracedepth = f (tracedepth env) }
 
 instance MonadUnique Spiral where
     newUnique = do

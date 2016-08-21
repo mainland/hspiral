@@ -54,6 +54,7 @@ SRC = \
 	Spiral/FFT.hs \
 	Spiral/Monad.hs \
 	Spiral/SPL.hs \
+	Spiral/Trace.hs \
 	Spiral/Util/Lift.hs \
 	Spiral/Util/Pretty.hs \
 	Spiral/Util/Uniq.hs
