@@ -271,8 +271,8 @@ void $id:name(restrict double _Complex $id:cout[static $int:m],
 }|]
 
      cgExp (IntC x)      = return $ CInt x
-     cgExp (DoubleC x)   = return $ CExp [cexp|$double:(toRational x)|]
-     cgExp (RationalC x) = return $ CExp [cexp|$double:x|]
+     cgExp (DoubleC x)   = return $ CDouble (toRational x)
+     cgExp (RationalC x) = return $ CDouble x
 
      cgExp (ComplexC e1 e2) = do
          ce1 <- cgExp e1
