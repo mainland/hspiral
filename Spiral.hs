@@ -8,9 +8,9 @@ module Spiral (
     Spiral,
     runSpiral,
 
-    cgSPL
+    codegen
   ) where
 
 import Spiral.Monad (Spiral,
                      runSpiral)
-import Spiral.Cg (cgSPL)
+import Spiral.Cg (codegen)

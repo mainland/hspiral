@@ -12,7 +12,7 @@ module Spiral.Cg (
     CVec(..),
     MonadCg(..),
 
-    cgSPL
+    codegen
   ) where
 
 import Data.Complex
@@ -21,11 +21,13 @@ import Spiral.Cg.Monad
 import Spiral.Exp
 import Spiral.SPL
 
-cgSPL :: forall m . (Num (CExp m), MonadCg m)
-      => String
-      -> SPL (Exp (Complex Double))
-      -> m ()
-cgSPL name e = cgTransform name (m, n) $ \vin vout -> go vin vout e
+codegen :: forall m . (Num (CExp m), MonadCg m)
+        => String
+        -> SPL (Exp (Complex Double))
+        -> m ()
+codegen name e =
+    cgTransform name (m, n) $ \vin vout ->
+      go vin vout e
   where
     (m, n) = extent e
 

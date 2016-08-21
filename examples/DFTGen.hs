@@ -11,5 +11,5 @@ import Spiral.FFT
 
 main :: IO ()
 main = do
-    defs <- runSpiral $ evalCg $ cgSPL "dft_4" (f 4)
+    defs <- runSpiral $ evalCg $ codegen "dft_4" (f 4)
     putDocLn $ ppr $ toList defs
