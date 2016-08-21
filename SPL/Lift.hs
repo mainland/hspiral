@@ -58,7 +58,9 @@ class LiftNum b where
     liftNum2 Sub _ x y | isZero x = liftNum Neg negate y
                        | isZero y = x
 
-    liftNum2 Mul _ x y | isOne x    = y
+    liftNum2 Mul _ x y | isZero x   = x
+                       | isZero y   = y
+                       | isOne x    = y
                        | isNegOne x = liftNum Neg negate y
                        | isOne y    = x
                        | isNegOne y = liftNum Neg negate x

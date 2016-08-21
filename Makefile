@@ -10,7 +10,6 @@ include mk/common.mk
 #
 GHCFLAGS += \
 	-hide-all-packages \
-	-package array \
 	-package base \
 	-package containers \
 	-package exception-mtl \
@@ -18,6 +17,8 @@ GHCFLAGS += \
 	-package language-c-quote \
 	-package mainland-pretty \
 	-package mtl \
+	-package ref-fd \
+	-package srcloc \
 	-package test-framework \
 	-package test-framework-hunit \
 	-package test-framework-quickcheck2 \
@@ -36,12 +37,20 @@ endif
 # Source locations
 #
 SRC = \
+	SPL/Backend/C.hs \
+	SPL/Backend/C/CExp.hs \
+	SPL/Backend/C/Code.hs \
+	SPL/Backend/C/Util.hs \
+	SPL/Cg.hs \
+	SPL/Cg/Monad.hs \
 	SPL/Exp.hs \
 	SPL/ExtendedFloat.hs \
 	SPL/FFT.hs \
 	SPL/Lift.hs \
+	SPL/Monad.hs \
 	SPL/Pretty.hs \
-	SPL/Syntax.hs
+	SPL/Syntax.hs \
+	SPL/Uniq.hs
 
 #
 # all, clean, and distclean targets

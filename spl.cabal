@@ -21,17 +21,24 @@ library
   default-language: Haskell2010
 
   exposed-modules:
+    SPL.Backend.C
+    SPL.Backend.C.CExp
+    SPL.Backend.C.Code
+    SPL.Backend.C.Util
+    SPL.Cg
+    SPL.Cg.Monad
     SPL.Exp
     SPL.ExtendedFloat
     SPL.FFT
     SPL.Lift
+    SPL.Monad
     SPL.Syntax
+    SPL.Uniq
 
   other-modules:
     SPL.Pretty
 
   build-depends:
-    array                  >= 0.2      && < 0.6,
     base                   >= 4        && < 5,
     containers             >= 0.5      && < 0.6,
     exception-mtl          >= 0.3      && < 0.5,
@@ -39,6 +46,8 @@ library
     language-c-quote       >= 0.11.6   && < 0.12,
     mainland-pretty        >= 0.4.1.2  && < 0.5,
     mtl                    >= 2.0      && < 3,
+    ref-fd                 >= 0.3      && < 0.5,
+    srcloc                 >= 0.5      && < 0.6,
     transformers           >= 0.2      && < 0.5,
     vector                 >= 0.11     && < 0.12,
     QuickCheck             >= 2.8      && < 2.9

@@ -1,17 +1,16 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main where
+module Main (main) where
 
-import Data.Complex
+import Data.Foldable (toList)
 import Text.PrettyPrint.Mainland
 
-import SPL.Exp
+import SPL.Backend.C (evalCg)
+import SPL.Cg (cgSPL)
 import SPL.FFT
-import SPL.Syntax
+import SPL.Monad
 
 main :: IO ()
 main = do
-    putDocLn (pprMatrix (w 2 2 :: SPL (Exp (Complex Double))))
-    putDocLn (pprMatrix (t 4 2 :: SPL (Exp (Complex Double))))
-    putDocLn (ppr (f 4 :: SPL (Exp (Complex Double))))
-    putDocLn (pprMatrix (f 4 :: SPL (Exp (Complex Double))))
+    defs <- runSPLM $ evalCg $ cgSPL "dft_4" (f 4)
+    putDocLn $ ppr $ toList defs
