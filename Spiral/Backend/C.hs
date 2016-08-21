@@ -68,6 +68,7 @@ import Spiral.Cg.Monad (CVec(..),
 import Spiral.Config
 import Spiral.Exp
 import Spiral.SPL
+import Spiral.Util.Lift
 import Spiral.Util.Uniq
 
 -- | A cached matrix
@@ -276,7 +277,15 @@ void $id:name(restrict double _Complex $id:cout[static $int:m],
      cgExp (ComplexC e1 e2) = do
          ce1 <- cgExp e1
          ce2 <- cgExp e2
-         return $ CExp [cexp|$ce1 + $ce2 * I|]
+         go ce1 ce2
+       where
+         go :: CExp -> CExp -> Cg m CExp
+         go ce1 ce2
+           | isZero e1 && isOne e2    = return $ CExp [cexp|I|]
+           | isZero e1 && isNegOne e2 = return $ CExp [cexp|-I|]
+           | isZero e1                = return $ CExp [cexp|$ce2 * I|]
+           | isZero e2                = return ce1
+           | otherwise                = return $ CExp [cexp|$ce1 + $ce2 * I|]
 
      cgExp e@RouC{} = cgExp (toComplex e)
 
