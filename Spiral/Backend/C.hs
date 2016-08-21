@@ -265,8 +265,8 @@ instance (MonadConfig m, MonadTrace m, MonadUnique m) => Cg.MonadCg (Cg m) where
         cin   <- cvar "in"
         cout  <- cvar "out"
         items <- inNewBlock_ $
-                 k (CVec (CExp [cexp|$id:cin|])  1 0)
-                   (CVec (CExp [cexp|$id:cout|]) 1 0)
+                 k (CVec (CExp [cexp|$id:cin|])  0 1 n)
+                   (CVec (CExp [cexp|$id:cout|]) 0 1 m)
         appendTopFunDef [cedecl|
 void $id:name(restrict double _Complex $id:cout[static $int:m],
               restrict const double _Complex $id:cin[static $int:n])
@@ -302,8 +302,8 @@ void $id:name(restrict double _Complex $id:cout[static $int:m],
          cmat <- cgMatrix $ Matrix (extent e) (matrixOf e)
          return $ CExp [cexp|$cmat[$ci][$cj]|]
 
-     cgVIdx (CVec cv cstride coff) ci =
-         return $ CExp [cexp|$cv[$(coff + ci*cstride)]|]
+     cgVIdx (CVec cv off stride _end) ci =
+         return $ CExp [cexp|$cv[$(fromIntegral off + ci*fromIntegral stride)]|]
 
      cgAssign ce1 ce2 =
          appendStm [cstm|$ce1 = $ce2;|]

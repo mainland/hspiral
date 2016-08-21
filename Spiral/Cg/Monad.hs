@@ -22,8 +22,9 @@ import Spiral.Util.Uniq
 -- | Codegen's representation of a vector with stride and offset.
 data CVec m = CVec
     { cvec    :: CExp m
-    , cstride :: CExp m
-    , coff    :: CExp m
+    , coff    :: Int
+    , cstride :: Int
+    , cend    :: Int
     }
 
 -- | Monad for SPL code generation. This allows us to abstract over the concrete
