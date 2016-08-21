@@ -65,6 +65,7 @@ import Spiral.Backend.C.Util
 import qualified Spiral.Cg.Monad as Cg
 import Spiral.Cg.Monad (CVec(..),
                         cgExp)
+import Spiral.Config
 import Spiral.Exp
 import Spiral.SPL
 import Spiral.Util.Uniq
@@ -91,7 +92,8 @@ newtype Cg m a = Cg { unCg :: StateT CgState m a }
     deriving (Functor, Applicative, Monad, MonadIO,
               MonadException,
               MonadState CgState,
-              MonadUnique)
+              MonadUnique,
+              MonadConfig)
 
 instance MonadTrans Cg where
     lift = Cg . lift
@@ -229,7 +231,7 @@ cacheMatrix mat ce =
 cvar :: MonadUnique m => String -> Cg m C.Id
 cvar = gensym
 
-cgMatrix :: forall m . MonadUnique m => Matrix -> Cg m CExp
+cgMatrix :: forall m . (MonadConfig m, MonadUnique m) => Matrix -> Cg m CExp
 cgMatrix mat@(Matrix (m, n) ess) = do
     maybe_ce <- lookupMatrix mat
     case maybe_ce of
@@ -250,7 +252,7 @@ cgMatrix mat@(Matrix (m, n) ess) = do
       appendTopDecl [cdecl|static const double _Complex $id:cmat[$int:m][$int:n] = { $inits:(map toInitializer crows) };|]
       return $ CExp [cexp|$id:cmat|]
 
-instance MonadUnique m => Cg.MonadCg (Cg m) where
+instance (MonadConfig m, MonadUnique m) => Cg.MonadCg (Cg m) where
      type CExp (Cg m) = CExp
 
      cgTransform name (m,n) k = do
@@ -291,6 +293,10 @@ void $id:name(restrict double _Complex $id:cout[static $int:m],
          appendStm [cstm|$ce1 = $ce2;|]
 
      cgFor lo hi k = do
-         ci    <- cvar "i"
-         items <- inNewBlock_ $ k (CExp [cexp|$id:ci|])
-         appendStm [cstm|for (int $id:ci = $int:lo; $id:ci < $int:hi; ++$id:ci) $stm:(toStm items)|]
+         maxun <- asksConfig maxUnroll
+         if hi - lo <= maxun
+           then mapM_ k [CInt (fromIntegral i) | i <- [lo..hi-1::Int]]
+           else do
+             ci    <- cvar "i"
+             items <- inNewBlock_ $ k (CExp [cexp|$id:ci|])
+             appendStm [cstm|for (int $id:ci = $int:lo; $id:ci < $int:hi; ++$id:ci) $stm:(toStm items)|]
