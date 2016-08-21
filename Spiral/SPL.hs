@@ -1,12 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
--- Module      :  SPL.Syntax
+-- Module      :  Spiral.SPL
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.Syntax (
+module Spiral.SPL (
     Ix,
     SPL(..),
 
@@ -32,7 +32,7 @@ module SPL.Syntax (
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 
-import SPL.Pretty
+import Spiral.Util.Pretty
 
 -- | A matrix index
 type Ix = (Int, Int)

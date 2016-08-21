@@ -1,19 +1,19 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
--- Module      :  SPL.FFT
+-- Module      :  Spiral.FFT
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.FFT (
+module Spiral.FFT (
     w,
     t,
     f
   ) where
 
-import SPL.ExtendedFloat
-import SPL.Syntax
+import Spiral.ExtendedFloat
+import Spiral.SPL
 
 -- | The $W_m(\omega_n)$ matrix
 w :: forall e . ExtendedFloat e => Int -> Int -> SPL e

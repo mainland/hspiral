@@ -1,12 +1,12 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 -- |
--- Module      :  SPL.Backend.C.Util
+-- Module      :  Spiral.Backend.C.Util
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.Backend.C.Util (
+module Spiral.Backend.C.Util (
     ToInitializer(..),
     ToStm(..),
     ToBlockItems(..)

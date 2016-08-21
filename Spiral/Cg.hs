@@ -3,12 +3,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
--- Module      :  SPL.Cg
+-- Module      :  Spiral.Cg
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.Cg (
+module Spiral.Cg (
     CVec(..),
     MonadCg(..),
 
@@ -17,9 +17,9 @@ module SPL.Cg (
 
 import Data.Complex
 
-import SPL.Cg.Monad
-import SPL.Exp
-import SPL.Syntax
+import Spiral.Cg.Monad
+import Spiral.Exp
+import Spiral.SPL
 
 cgSPL :: forall m . (Num (CExp m), MonadCg m)
       => String

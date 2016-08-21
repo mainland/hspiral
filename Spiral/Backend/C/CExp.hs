@@ -1,12 +1,12 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 -- |
--- Module      :  SPL.Backend.C.CExp
+-- Module      :  Spiral.Backend.C.CExp
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.Backend.C.CExp (
+module Spiral.Backend.C.CExp (
     CExp(..)
   ) where
 
@@ -14,8 +14,8 @@ import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 import Text.PrettyPrint.Mainland
 
-import SPL.Lift
-import SPL.Backend.C.Util
+import Spiral.Backend.C.Util
+import Spiral.Util.Lift
 
 data CExp -- | A known integer constant
           = CInt Integer

@@ -4,12 +4,12 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Module      :  SPL.Backend.C
+-- Module      :  Spiral.Backend.C
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.Backend.C (
+module Spiral.Backend.C (
     Cg,
     evalCg,
 
@@ -59,15 +59,15 @@ import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 
-import SPL.Backend.C.CExp
-import SPL.Backend.C.Code
-import SPL.Backend.C.Util
-import SPL.Exp
-import qualified SPL.Cg.Monad as Cg
-import SPL.Cg.Monad (CVec(..),
-                     cgExp)
-import SPL.Syntax
-import SPL.Uniq
+import Spiral.Backend.C.CExp
+import Spiral.Backend.C.Code
+import Spiral.Backend.C.Util
+import qualified Spiral.Cg.Monad as Cg
+import Spiral.Cg.Monad (CVec(..),
+                        cgExp)
+import Spiral.Exp
+import Spiral.SPL
+import Spiral.Util.Uniq
 
 -- | A cached matrix
 data Matrix = Matrix Ix [[Exp (Complex Double)]]

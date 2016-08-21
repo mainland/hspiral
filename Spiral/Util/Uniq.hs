@@ -3,12 +3,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 -- |
--- Module      :  SPL.Uniq
+-- Module      :  Spiral.Util.Uniq
 -- Copyright   :  (c) 2014-2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@cs.drexel.edu
 
-module SPL.Uniq (
+module Spiral.Util.Uniq (
     Uniq(..),
     MonadUnique(..),
 

@@ -1,10 +1,10 @@
 -- |
--- Module      :  SPL.Pretty
+-- Module      :  Spiral.Util.Pretty
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.Pretty (
+module Spiral.Util.Pretty (
     Fixity(..),
     Assoc(..),
     HasFixity(..),

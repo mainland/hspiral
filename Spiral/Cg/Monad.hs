@@ -1,20 +1,20 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Module      :  SPL.Cg.Monad
+-- Module      :  Spiral.Cg.Monad
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.Cg.Monad (
+module Spiral.Cg.Monad (
     CVec(..),
     MonadCg(..)
   ) where
 
 import Data.Complex
 
-import SPL.Exp
-import SPL.Syntax
+import Spiral.Exp
+import Spiral.SPL
 
 -- | Codegen's representation of a vector with stride and offset.
 data CVec m = CVec

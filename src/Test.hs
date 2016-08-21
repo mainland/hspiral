@@ -18,10 +18,10 @@ import Test.Framework.Providers.QuickCheck2
 import Test.HUnit ((@?=))
 import Test.QuickCheck
 
-import SPL.Exp
-import SPL.ExtendedFloat
-import qualified SPL.FFT as FFT
-import SPL.Syntax
+import Spiral.Exp
+import Spiral.ExtendedFloat
+import qualified Spiral.FFT as FFT
+import Spiral.SPL
 
 -- | A small number
 newtype SmallPowerOfTwo = SmallPowerOfTwo Int

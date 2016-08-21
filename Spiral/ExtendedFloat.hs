@@ -1,10 +1,10 @@
 -- |
--- Module      :  SPL.ExtendedFloat
+-- Module      :  Spiral.ExtendedFloat
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.ExtendedFloat (
+module Spiral.ExtendedFloat (
     ExtendedFloat(..),
 
     omega

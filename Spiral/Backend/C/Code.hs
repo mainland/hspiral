@@ -1,10 +1,10 @@
 -- |
--- Module      :  SPL.Backend.C.Code
+-- Module      :  Spiral.Backend.C.Code
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.Backend.C.Code (
+module Spiral.Backend.C.Code (
     Code(..)
   ) where
 

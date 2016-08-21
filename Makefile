@@ -1,7 +1,7 @@
 TOP=.
 
 .PHONY : all
-all : test fft
+all : test dftgen
 
 include mk/common.mk
 
@@ -37,20 +37,21 @@ endif
 # Source locations
 #
 SRC = \
-	SPL/Backend/C.hs \
-	SPL/Backend/C/CExp.hs \
-	SPL/Backend/C/Code.hs \
-	SPL/Backend/C/Util.hs \
-	SPL/Cg.hs \
-	SPL/Cg/Monad.hs \
-	SPL/Exp.hs \
-	SPL/ExtendedFloat.hs \
-	SPL/FFT.hs \
-	SPL/Lift.hs \
-	SPL/Monad.hs \
-	SPL/Pretty.hs \
-	SPL/Syntax.hs \
-	SPL/Uniq.hs
+	Spiral.hs \
+	Spiral/Backend/C.hs \
+	Spiral/Backend/C/CExp.hs \
+	Spiral/Backend/C/Code.hs \
+	Spiral/Backend/C/Util.hs \
+	Spiral/Cg.hs \
+	Spiral/Cg/Monad.hs \
+	Spiral/Exp.hs \
+	Spiral/ExtendedFloat.hs \
+	Spiral/FFT.hs \
+	Spiral/Monad.hs \
+	Spiral/SPL.hs \
+	Spiral/Util/Lift.hs \
+	Spiral/Util/Pretty.hs \
+	Spiral/Util/Uniq.hs
 
 #
 # all, clean, and distclean targets
@@ -68,7 +69,7 @@ test : src/Test.hs $(SRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $^ -odir obj -hidir obj -o $@
 
-fft : examples/FFT.hs $(SRC) dist/build/autogen/cabal_macros.h
+dftgen : examples/DFTGen.hs $(SRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $^ -odir obj -hidir obj -o $@
 

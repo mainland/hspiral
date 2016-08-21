@@ -1,4 +1,4 @@
-Building SPL requires GHC 7.10.3 (GHC 8 has not been tested).
+Building hspiral requires GHC 7.10.3 (GHC 8 has not been tested).
 
 Suggested method for building once the Haskell Platform has been installed:
 
@@ -11,4 +11,4 @@ Suggested method for building once the Haskell Platform has been installed:
 ```
 
 Once you have created the cabal sandbox and installed SPL's dependencies, you
-can also type `make` to build the `test` and `fft` executables explicitly.
+can also type `make` to build the `test` and `dftgen` executables explicitly.

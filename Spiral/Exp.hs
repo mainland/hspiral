@@ -5,12 +5,12 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 
 -- |
--- Module      :  SPL.Exp
+-- Module      :  Spiral.Exp
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.Exp (
+module Spiral.Exp (
     Exp(..),
 
     ToComplex(..)
@@ -23,8 +23,8 @@ import Data.Ratio ((%),
 import Test.QuickCheck
 import Text.PrettyPrint.Mainland
 
-import SPL.ExtendedFloat
-import SPL.Lift
+import Spiral.ExtendedFloat
+import Spiral.Util.Lift
 
 -- | Representation of scalar constants.
 data Exp a where

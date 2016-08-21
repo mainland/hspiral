@@ -2,14 +2,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- |
--- Module      :  SPL.Monad
+-- Module      :  Spiral.Monad
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module SPL.Monad (
-    SPLM,
-    runSPLM
+module Spiral.Monad (
+    Spiral,
+    runSpiral
   ) where
 
 import Control.Monad.Exception (MonadException(..))
@@ -21,25 +21,25 @@ import Control.Monad.State (MonadState(..),
                             gets)
 import Data.IORef (IORef)
 
-import SPL.Uniq
+import Spiral.Util.Uniq
 
-data SPLState = SPLState { uniq :: IORef Int }
+data SpiralState = SpiralState { uniq :: IORef Int }
 
-defaultSPLState :: MonadRef IORef m => m SPLState
-defaultSPLState = do
+defaultSpiralState :: MonadRef IORef m => m SpiralState
+defaultSpiralState = do
     r <- newRef 0
-    return SPLState { uniq = r }
+    return SpiralState { uniq = r }
 
-newtype SPLM a = SPLM { unSPLM :: StateT SPLState IO a }
+newtype Spiral a = Spiral { unSpiral :: StateT SpiralState IO a }
     deriving (Functor, Applicative, Monad, MonadIO,
               MonadException,
-              MonadState SPLState,
+              MonadState SpiralState,
               MonadRef IORef)
 
-runSPLM :: SPLM a -> IO a
-runSPLM m = defaultSPLState >>= evalStateT (unSPLM m)
+runSpiral :: Spiral a -> IO a
+runSpiral m = defaultSpiralState >>= evalStateT (unSpiral m)
 
-instance MonadUnique SPLM where
+instance MonadUnique Spiral where
     newUnique = do
         r <- gets uniq
         u <- readRef r
