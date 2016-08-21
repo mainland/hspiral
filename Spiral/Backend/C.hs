@@ -276,11 +276,14 @@ void $id:name(restrict double _Complex $id:cout[static $int:m],
      cgExp (ComplexC e1 e2) = do
          ce1 <- cgExp e1
          ce2 <- cgExp e2
-         return $ CInit [cinit|$ce1 + $ce2 * I|]
+         return $ CExp [cexp|$ce1 + $ce2 * I|]
 
      cgExp e@RouC{} = cgExp (toComplex e)
 
      cgTemp = fail "cgTemp: Can't generate temp"
+
+     cgIdx e (CInt i, CInt j) =
+         cgExp $ e ! (fromInteger i, fromInteger j)
 
      cgIdx e (ci, cj) = do
          cmat <- cgMatrix $ Matrix (extent e) (matrixOf e)
