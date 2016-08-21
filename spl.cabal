@@ -24,6 +24,7 @@ library
     SPL.Exp
     SPL.ExtendedFloat
     SPL.FFT
+    SPL.Lift
     SPL.Syntax
 
   other-modules:

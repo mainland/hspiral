@@ -24,6 +24,7 @@ import Test.QuickCheck
 import Text.PrettyPrint.Mainland
 
 import SPL.ExtendedFloat
+import SPL.Lift
 
 -- | Representation of scalar constants.
 data Exp a where
@@ -110,30 +111,6 @@ unComplex (RouC x) =
   where
     i = 0 :+ 1
 
--- | Test for equality with Integral
-isIntegral :: Integral a => a -> Exp b -> Bool
-isIntegral x = go
-  where
-    go :: Exp b -> Bool
-    go (IntC y)       = y == fromIntegral x
-    go (DoubleC y)    = y == fromIntegral x
-    go (RationalC y)  = y == fromIntegral x
-    go (ComplexC y i) = y == fromIntegral x && isZero i
-    go (RouC 1)       = x == 1
-    go _              = False
-
--- | Test for 0
-isZero :: Exp a -> Bool
-isZero = isIntegral (0 :: Int)
-
--- | Test for 1
-isOne :: Exp a -> Bool
-isOne = isIntegral (1 :: Int)
-
--- | Test for -1
-isNegOne :: Exp a -> Bool
-isNegOne = isIntegral (-1 :: Int)
-
 class ToComplex f where
     toComplex :: f a -> f (Complex Double)
 
@@ -151,58 +128,38 @@ instance ToComplex Exp where
         | r == 3 % 4 = ComplexC 0 (-1)
         | otherwise  = fromComplex (unComplex (RouC r))
 
--- | Unary operators
-data Unop = Neg
-          | Abs
-          | Signum
-  deriving (Eq, Ord, Show, Enum)
+instance LiftNum (Exp a) where
+    isIntegral x (IntC y)       = y == fromInteger x
+    isIntegral x (DoubleC y)    = y == fromInteger x
+    isIntegral x (RationalC y)  = y == fromInteger x
+    isIntegral x (ComplexC y i) = y == fromInteger x && isZero i
+    isIntegral x (RouC y)
+      | y == 1                  = fromInteger x == (1 :: Integer)
+      | y == 1 % 2              = fromInteger x == (-1 :: Integer)
+    isIntegral _ _              = False
 
--- | Binary operators
-data Binop = Add
-           | Sub
-           | Mul
-           | Div
-  deriving (Eq, Ord, Show, Enum)
+    liftNum_ Neg _ (RouC r) = RouC (r + 1 % 2)
 
--- | Class to lift 'Num' operators to a functor
-class LiftNum f where
-    liftNum  :: Num a => Unop -> (a -> a) -> f a -> f a
-    liftNum2 :: Num a => Binop -> (a -> a -> a) -> f a -> f a -> f a
+    liftNum_ _  f (IntC x)      = IntC (f x)
+    liftNum_ _  f (DoubleC x)   = DoubleC (f x)
+    liftNum_ _  f (RationalC x) = RationalC (f x)
+    liftNum_ _  f x@ComplexC{}  = fromComplex (f (unComplex x))
+    liftNum_ op f c@RouC{}      = liftNum op f (toComplex c)
 
-instance LiftNum Exp where
-    liftNum Neg _ (RouC r) = RouC (r + 1 % 2)
+    liftNum2_ Mul _ (RouC x) (RouC y)            = normRootOfUnity $ RouC (x + y)
+    liftNum2_ Mul f (RouC x) (ComplexC 1      0) = liftNum2 Mul f (RouC x) (RouC 0)
+    liftNum2_ Mul f (RouC x) (ComplexC (-1)   0) = liftNum2 Mul f (RouC x) (RouC (1 % 2))
+    liftNum2_ Mul f (RouC x) (ComplexC 0      1) = liftNum2 Mul f (RouC x) (RouC (1 % 4))
+    liftNum2_ Mul f (RouC x) (ComplexC 0   (-1)) = liftNum2 Mul f (RouC x) (RouC (3 % 4))
+    liftNum2_ Mul f x        y@RouC{}            = liftNum2 Mul f y x
 
-    liftNum _  f (IntC x)      = IntC (f x)
-    liftNum _  f (DoubleC x)   = DoubleC (f x)
-    liftNum _  f (RationalC x) = RationalC (f x)
-    liftNum _  f x@ComplexC{}  = fromComplex (f (unComplex x))
-    liftNum op f c@RouC{}      = liftNum op f (toComplex c)
-
-    liftNum2 Add _ x y | isZero x = y
-                       | isZero y = x
-
-    liftNum2 Sub _ x y | isZero x = liftNum Neg negate y
-                       | isZero y = x
-
-    liftNum2 Mul _ x y | isOne x    = y
-                       | isNegOne x = liftNum Neg negate y
-                       | isOne y    = x
-                       | isNegOne y = liftNum Neg negate x
-
-    liftNum2 Mul _ (RouC x) (RouC y)            = normRootOfUnity $ RouC (x + y)
-    liftNum2 Mul f (RouC x) (ComplexC 1      0) = liftNum2 Mul f (RouC x) (RouC 0)
-    liftNum2 Mul f (RouC x) (ComplexC (-1)   0) = liftNum2 Mul f (RouC x) (RouC (1 % 2))
-    liftNum2 Mul f (RouC x) (ComplexC 0      1) = liftNum2 Mul f (RouC x) (RouC (1 % 4))
-    liftNum2 Mul f (RouC x) (ComplexC 0   (-1)) = liftNum2 Mul f (RouC x) (RouC (3 % 4))
-    liftNum2 Mul f x        y@RouC{}            = liftNum2 Mul f y x
-
-    liftNum2 _   f (IntC x)      (IntC y)      = IntC (f x y)
-    liftNum2 _   f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
-    liftNum2 _   f (RationalC x) (RationalC y) = RationalC (f x y)
-    liftNum2 _   f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (unComplex x) (unComplex y)
-    liftNum2 _   f x@ComplexC{}  y@RouC{}      = fromComplex $ f (unComplex x) (unComplex y)
-    liftNum2 _   f x@RouC{}      y@ComplexC{}  = fromComplex $ f (unComplex x) (unComplex y)
-    liftNum2 op  f x@RouC{}      y@RouC{}      = liftNum2 op f (toComplex x) (toComplex y)
+    liftNum2_ _  f (IntC x)      (IntC y)      = IntC (f x y)
+    liftNum2_ _  f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
+    liftNum2_ _  f (RationalC x) (RationalC y) = RationalC (f x y)
+    liftNum2_ _  f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (unComplex x) (unComplex y)
+    liftNum2_ _  f x@ComplexC{}  y@RouC{}      = fromComplex $ f (unComplex x) (unComplex y)
+    liftNum2_ _  f x@RouC{}      y@ComplexC{}  = fromComplex $ f (unComplex x) (unComplex y)
+    liftNum2_ op f x@RouC{}      y@RouC{}      = liftNum2 op f (toComplex x) (toComplex y)
 
 instance Num (Exp Integer) where
     (+) = liftNum2 Add (+)

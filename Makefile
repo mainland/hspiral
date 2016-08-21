@@ -39,6 +39,7 @@ SRC = \
 	SPL/Exp.hs \
 	SPL/ExtendedFloat.hs \
 	SPL/FFT.hs \
+	SPL/Lift.hs \
 	SPL/Pretty.hs \
 	SPL/Syntax.hs
 
