@@ -15,33 +15,41 @@ module Spiral.Monad (
 import Control.Monad.Exception (MonadException(..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Ref (MonadRef(..))
-import Control.Monad.State (MonadState(..),
-                            StateT,
-                            evalStateT,
-                            gets)
+import Control.Monad.Reader (MonadReader(..),
+                             ReaderT,
+                             asks,
+                             runReaderT)
 import Data.IORef (IORef)
 
+import Spiral.Config
 import Spiral.Util.Uniq
 
-data SpiralState = SpiralState { uniq :: IORef Int }
+data SpiralEnv = SpiralEnv
+    { uniq   :: IORef Int
+    , config :: Config
+    }
 
-defaultSpiralState :: MonadRef IORef m => m SpiralState
-defaultSpiralState = do
+defaultSpiralEnv :: MonadRef IORef m => m SpiralEnv
+defaultSpiralEnv = do
     r <- newRef 0
-    return SpiralState { uniq = r }
+    return SpiralEnv { uniq = r, config = mempty }
 
-newtype Spiral a = Spiral { unSpiral :: StateT SpiralState IO a }
+newtype Spiral a = Spiral { unSpiral :: ReaderT SpiralEnv IO a }
     deriving (Functor, Applicative, Monad, MonadIO,
               MonadException,
-              MonadState SpiralState,
+              MonadReader SpiralEnv,
               MonadRef IORef)
 
 runSpiral :: Spiral a -> IO a
-runSpiral m = defaultSpiralState >>= evalStateT (unSpiral m)
+runSpiral m = defaultSpiralEnv >>= runReaderT (unSpiral m)
+
+instance MonadConfig Spiral where
+    askConfig     = asks config
+    localConfig f = local (\env -> env { config = f (config env) })
 
 instance MonadUnique Spiral where
     newUnique = do
-        r <- gets uniq
+        r <- asks uniq
         u <- readRef r
         let u' = u + 1
         u' `seq` writeRef r u'

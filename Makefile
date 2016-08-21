@@ -11,6 +11,7 @@ include mk/common.mk
 GHCFLAGS += \
 	-hide-all-packages \
 	-package base \
+	-package bytestring \
 	-package containers \
 	-package exception-mtl \
 	-package exception-transformers \
@@ -22,6 +23,7 @@ GHCFLAGS += \
 	-package test-framework \
 	-package test-framework-hunit \
 	-package test-framework-quickcheck2 \
+	-package text \
 	-package transformers \
 	-package vector \
 	-package HUnit \
@@ -44,6 +46,9 @@ SRC = \
 	Spiral/Backend/C/Util.hs \
 	Spiral/Cg.hs \
 	Spiral/Cg/Monad.hs \
+	Spiral/Config.hs \
+	Spiral/Driver.hs \
+	Spiral/Driver/Opts.hs \
 	Spiral/Exp.hs \
 	Spiral/ExtendedFloat.hs \
 	Spiral/FFT.hs \
