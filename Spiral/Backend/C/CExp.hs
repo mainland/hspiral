@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 -- |
@@ -17,14 +18,18 @@ import Text.PrettyPrint.Mainland
 import Spiral.Backend.C.Util
 import Spiral.Util.Lift
 
-data CExp -- | A known integer constant
-          = CInt Integer
-          -- | A known double constant
-          | CDouble Rational
-          -- | C expression
-          | CExp C.Exp
-          -- | C initializer
-          | CInit C.Initializer
+data CExp where
+    -- | A known integer constant
+    CInt :: Integer -> CExp
+
+    -- | A known double constant
+    CDouble :: Rational -> CExp
+
+    -- | C expression
+    CExp :: C.Exp -> CExp
+
+    -- | C initializer
+    CInit :: C.Initializer -> CExp
   deriving (Eq, Ord, Show)
 
 instance Pretty CExp where
@@ -59,7 +64,7 @@ instance LiftNum CExp where
     liftNum2_ _ f (CDouble x) (CDouble y) = CDouble (f x y)
 
     liftNum2_ Add _ ce1 (CExp [cexp|-$ce2|]) = CExp [cexp|$ce1 - $ce2|]
-    
+
     liftNum2_ Sub _ ce1 (CExp [cexp|-$ce2|]) = CExp [cexp|$ce1 + $ce2|]
 
     liftNum2_ Add _ ce1 ce2 = CExp [cexp|$ce1 + $ce2|]
