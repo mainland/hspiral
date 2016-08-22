@@ -69,7 +69,7 @@ cgTransform name (Z :. m :. n) k = do
               (CVec (CExp [cexp|$id:cout|]) 0 1 m)
    appendTopFunDef [cedecl|
 void $id:name(restrict double _Complex $id:cout[static $int:m],
-         restrict const double _Complex $id:cin[static $int:n])
+              restrict const double _Complex $id:cin[static $int:n])
 {
 $items:items
 }|]
