@@ -25,7 +25,6 @@ import Spiral.Config
 import Spiral.Exp
 import Spiral.Monad (MonadCg)
 import Spiral.SPL
-import Spiral.Util.Lift
 import Spiral.Util.Uniq
 
 -- | Codegen's representation of a vector with begin, stride, and end.
@@ -94,24 +93,11 @@ cgVIdx (CVec cv off stride _end) ci =
 
 -- | Compile an 'Exp a'
 cgExp :: forall a m . MonadCg m => Exp a -> Cg m CExp
-cgExp (IntC x)      = return $ CInt x
-cgExp (DoubleC x)   = return $ CDouble (toRational x)
-cgExp (RationalC x) = return $ CDouble x
-
-cgExp (ComplexC e1 e2) = do
-    ce1 <- cgExp e1
-    ce2 <- cgExp e2
-    go ce1 ce2
-  where
-    go :: CExp -> CExp -> Cg m CExp
-    go ce1 ce2
-      | isZero e1 && isOne e2    = return $ CExp [cexp|I|]
-      | isZero e1 && isNegOne e2 = return $ CExp [cexp|-I|]
-      | isZero e1                = return $ CExp [cexp|$ce2 * I|]
-      | isZero e2                = return ce1
-      | otherwise                = return $ CExp [cexp|$ce1 + $ce2 * I|]
-
-cgExp e@RouC{} = cgExp (toComplex e)
+cgExp (IntC x)         = return $ CInt x
+cgExp (DoubleC x)      = return $ CDouble (toRational x)
+cgExp (RationalC x)    = return $ CDouble x
+cgExp (ComplexC e1 e2) = CComplex <$> cgExp e1 <*> cgExp e2
+cgExp e@RouC{}         = cgExp (toComplex e)
 
 -- | Compile an assignment.
 cgAssign :: MonadCg m => CExp -> CExp -> Cg m ()

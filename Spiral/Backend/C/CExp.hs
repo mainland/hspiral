@@ -25,6 +25,8 @@ data CExp where
     -- | A known double constant
     CDouble :: Rational -> CExp
 
+    CComplex :: CExp -> CExp -> CExp
+
     -- | C expression
     CExp :: C.Exp -> CExp
 
@@ -35,6 +37,7 @@ data CExp where
 instance Pretty CExp where
     ppr (CInt x)      = ppr x
     ppr (CDouble x)   = ppr x
+    ppr ce@CComplex{} = ppr [cexp|$ce|]
     ppr (CExp ce)     = ppr ce
     ppr (CInit cinit) = ppr cinit
 
@@ -44,14 +47,23 @@ instance ToExp CExp where
     toExp (CExp ce)   = const ce
     toExp (CInit _)   = error "ToExp CExp: cannot convert CInit to a C expression"
 
+    toExp (CComplex ce1 ce2)
+      | isZero ce1 && isZero ce2   = const [cexp|0|]
+      | isZero ce1 && isOne ce2    = const [cexp|I|]
+      | isZero ce1 && isNegOne ce2 = const [cexp|-I|]
+      | isZero ce1                 = const [cexp|$ce2 * I|]
+      | isZero ce2                 = toExp ce1
+      | otherwise                  = const [cexp|$ce1 + $ce2 * I|]
+
 instance ToInitializer CExp where
     toInitializer (CInit cinit) = cinit
     toInitializer ce            = [cinit|$ce|]
 
 instance LiftNum CExp where
-    isIntegral x (CInt y)   = y == fromInteger x
-    isIntegral x (CDouble y) = y == fromInteger x
-    isIntegral _ _           = False
+    isIntegral x (CInt y)       = y == fromInteger x
+    isIntegral x (CDouble y)    = y == fromInteger x
+    isIntegral x (CComplex r i) = isIntegral x r && isZero i
+    isIntegral _ _              = False
 
     liftNum_ _ f (CInt x)    = CInt (f x)
     liftNum_ _ f (CDouble x) = CDouble (f x)
