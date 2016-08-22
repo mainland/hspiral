@@ -72,15 +72,11 @@ import Spiral.Trace
 import Spiral.Util.Lift
 import Spiral.Util.Uniq
 
--- | A cached matrix
-data Matrix = Matrix DIM2 [[Exp (Complex Double)]]
-  deriving (Eq, Ord, Show)
-
 data CgState = CgState
     { -- | Generated code
       code :: Code
     , -- | Cached matrices
-      matrixCache :: Map Matrix CExp
+      matrixCache :: Map (Array M DIM2 (Exp (Complex Double))) CExp
     }
 
 defaultCgState :: CgState
@@ -224,10 +220,10 @@ appendBlock citems
     isBlockStm C.BlockStm{} = True
     isBlockStm _            = False
 
-lookupMatrix :: Monad m => Matrix -> Cg m (Maybe CExp)
+lookupMatrix :: Monad m => Array M DIM2 (Exp (Complex Double)) -> Cg m (Maybe CExp)
 lookupMatrix m = gets (Map.lookup m . matrixCache)
 
-cacheMatrix :: Monad m => Matrix -> CExp -> Cg m ()
+cacheMatrix :: Monad m => Array M DIM2 (Exp (Complex Double)) -> CExp -> Cg m ()
 cacheMatrix mat ce =
     modify $ \s -> s { matrixCache = Map.insert mat ce (matrixCache s) }
 
@@ -235,9 +231,9 @@ cvar :: MonadUnique m => String -> Cg m C.Id
 cvar = gensym
 
 cgMatrix :: forall m . (MonadConfig m, MonadTrace m, MonadUnique m)
-         => Matrix
+         => Array M DIM2 (Exp (Complex Double))
          -> Cg m CExp
-cgMatrix mat@(Matrix (Z :. m :. n) ess) = do
+cgMatrix mat = do
     maybe_ce <- lookupMatrix mat
     case maybe_ce of
       Just ce -> return ce
@@ -245,6 +241,9 @@ cgMatrix mat@(Matrix (Z :. m :. n) ess) = do
                     cacheMatrix mat ce
                     return ce
   where
+    Z :. m :. n = extent mat
+    ess = toLists mat
+
     cgRow :: [Exp (Complex Double)] -> Cg m CExp
     cgRow es = do
         ces <- mapM cgExp es
@@ -299,7 +298,7 @@ void $id:name(restrict double _Complex $id:cout[static $int:m],
          cgExp $ e ! ix2 (fromInteger i) (fromInteger j)
 
      cgIdx e (ci, cj) = do
-         cmat <- cgMatrix $ Matrix (extent e) (toLists e)
+         cmat <- cgMatrix $ manifest e
          return $ CExp [cexp|$cmat[$ci][$cj]|]
 
      cgVIdx (CVec cv off stride _end) ci =
