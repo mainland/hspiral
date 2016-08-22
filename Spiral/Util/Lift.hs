@@ -47,7 +47,9 @@ class LiftNum b where
     isIntegral :: (forall a . Integral a => a) -> b -> Bool
 
     liftNum :: Unop -> (forall a . Num a => a -> a) -> b -> b
-    liftNum = liftNum_
+    liftNum Neg _ x | isZero x = x
+
+    liftNum op f x = liftNum_ op f x
 
     liftNum_ :: Unop -> (forall a . Num a => a -> a) -> b -> b
 
