@@ -74,7 +74,7 @@ data CgState = CgState
     { -- | Generated code
       code :: Code
     , -- | Cached matrices
-      matrixCache :: Map (Matrix M (Exp (Complex Double))) CExp
+      matrixCache :: Map (Matrix M (Exp (Complex Double))) (CExp (Matrix M (Complex Double)))
     }
 
 defaultCgState :: CgState
@@ -218,9 +218,14 @@ appendBlock citems
     isBlockStm C.BlockStm{} = True
     isBlockStm _            = False
 
-lookupMatrix :: Monad m => Matrix M (Exp (Complex Double)) -> Cg m (Maybe CExp)
+lookupMatrix :: Monad m
+             => Matrix M (Exp (Complex Double))
+             -> Cg m (Maybe (CExp (Matrix M (Complex Double))))
 lookupMatrix m = gets (Map.lookup m . matrixCache)
 
-cacheMatrix :: Monad m => Matrix M (Exp (Complex Double)) -> CExp -> Cg m ()
+cacheMatrix :: Monad m
+            => Matrix M (Exp (Complex Double))
+            -> CExp (Matrix M (Complex Double))
+            -> Cg m ()
 cacheMatrix mat ce =
     modify $ \s -> s { matrixCache = Map.insert mat ce (matrixCache s) }
