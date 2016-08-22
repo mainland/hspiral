@@ -1,7 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Module      :  Spiral.Backend.C.CExp
@@ -10,7 +12,10 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Backend.C.CExp (
-    CExp(..)
+    CExp(..),
+
+    C,
+    Array(..)
   ) where
 
 import Data.Complex
@@ -18,7 +23,9 @@ import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 import Text.PrettyPrint.Mainland
 
+import Spiral.Array
 import Spiral.Backend.C.Util
+import Spiral.Shape
 import Spiral.Util.Lift
 
 data CExp a where
@@ -128,3 +135,24 @@ instance Num (CExp (Complex Double)) where
     signum  = liftNum Signum signum
 
     fromInteger x = CComplex (CDouble (fromInteger x)) 0
+
+-- Type tag for a compiled arrays
+data C
+
+instance IsArray C DIM1 (CExp e) where
+    -- | A compiled vector with begin, stride, and end.
+    data Array C DIM1 (CExp e) = CVec DIM1 (CExp e)
+      deriving (Eq, Show)
+
+    extent (CVec sh _) = sh
+
+    index (CVec _ ce) (Z :. i) = CExp [cexp|$ce[$int:i]|]
+
+instance IsArray C DIM2 (CExp e) where
+    -- | A compiled vector with begin, stride, and end.
+    data Array C DIM2 (CExp e) = CMat DIM2 (CExp e)
+      deriving (Eq, Show)
+
+    extent (CMat sh _) = sh
+
+    index (CMat _ ce) (Z :. i :. j) = CExp [cexp|$ce[$int:i][$int:j]|]

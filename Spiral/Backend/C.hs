@@ -1,3 +1,7 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -13,6 +17,7 @@ module Spiral.Backend.C (
     codegen
   ) where
 
+import Control.Monad (when)
 import Data.Complex
 import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
@@ -27,80 +32,67 @@ import Spiral.Monad (MonadCg)
 import Spiral.SPL
 import Spiral.Util.Uniq
 
--- | Codegen's representation of a vector with begin, stride, and end.
-data CVec a = CVec (CExp a) Int Int Int
-
-codegen :: forall m . MonadCg m
+codegen :: forall a m .
+           ( Num (Exp a)
+           , Num (CExp a)
+           , ToCExp (Exp a) a
+           , ToCType a
+           , MonadCg m
+           )
         => String
-        -> Matrix SPL (Exp (Complex Double))
+        -> Matrix SPL (Exp a)
         -> Cg m ()
-codegen name e =
-    cgTransform name (extent e) $ \vin vout ->
-      go vin vout e
-  where
-    (Z :. m :. n) = extent e
-
-    go :: CVec (Complex Double)
-       -> CVec (Complex Double)
-       -> Matrix SPL (Exp (Complex Double))
-       -> Cg m ()
-    go vin vout mat =
-        cgFor 0 m $ \ci -> do
-          cout <- cgVIdx vout ci
-          cgAssign cout 0
-          cgFor 0 n $ \cj -> do
-            cin <- cgVIdx vin cj
-            cij <- cgIdx mat (ci, cj)
-            cgAssign cout (cout + cin * cij)
+codegen name a = cgTransform name (extent a) $ \x y -> cgMVProd y a x
 
 -- | Set up code generator to compile a transform. The continuation is
 -- called with the input vector and output vector.
-cgTransform :: MonadCg m
-            => String                        -- ^ The name of the transform
-            -> DIM2                          -- ^ The dimensions of the transform
-            -> (CVec a -> CVec a -> Cg m ()) -- ^ The body of the transform
+cgTransform :: forall a m .
+               ( MonadCg m
+               , ToCType a
+               )
+            -- | The name of the transform
+            => String
+            -- | The dimensions of the transform
+            -> DIM2
+            -- | The body of the transform
+            -> (Vector C (CExp a) -> Vector C (CExp a) -> Cg m ())
             -> Cg m ()
 cgTransform name (Z :. m :. n) k = do
    appendTopDef [cedecl|$esc:("#include <complex.h>")|]
    cin   <- cvar "in"
    cout  <- cvar "out"
    items <- inNewBlock_ $
-            k (CVec (CExp [cexp|$id:cin|])  0 1 n)
-              (CVec (CExp [cexp|$id:cout|]) 0 1 m)
+            k (CVec (ix1 n) (CExp [cexp|$id:cin|]))
+              (CVec (ix1 m) (CExp [cexp|$id:cout|]))
    appendTopFunDef [cedecl|
-void $id:name(restrict double _Complex $id:cout[static $int:m],
-              restrict const double _Complex $id:cin[static $int:n])
+void $id:name(restrict $ty:ctau $id:cout[static $int:m],
+              restrict $ty:ctau $id:cin[static $int:n])
 {
 $items:items
 }|]
+  where
+    ctau :: C.Type
+    ctau = toCType (undefined :: a)
 
 -- | Generate code to index into a matrix.
-cgIdx :: MonadCg m
-      => Matrix SPL (Exp (Complex Double)) -- ^ Matrix
-      -> (CExp Integer, CExp Integer)      -- ^ Index
-      -> Cg m (CExp (Complex Double))
-cgIdx e (CInt i, CInt j) =
-   cgExp $ e ! ix2 (fromInteger i) (fromInteger j)
+cgIdx :: (Num (Exp a), ToCExp (Exp a) a, ToCType a, MonadCg m)
+      => Matrix M (Exp a)  -- ^ Matrix
+      -> (CExp Integer, CExp Integer)     -- ^ Index
+      -> Cg m (CExp a)
+cgIdx a (CInt i, CInt j) =
+   return $ toCExp $ a ! ix2 (fromInteger i) (fromInteger j)
 
-cgIdx e (ci, cj) = do
-   cmat <- cgMatrix $ manifest e
+cgIdx a (ci, cj) = do
+   CMat _ cmat <- cgMatrix a
    return $ CExp [cexp|$cmat[$ci][$cj]|]
 
 -- | Generate code to index into a 'CVec m'.
 cgVIdx :: MonadCg m
-       => CVec a       -- ^ Vector
-       -> CExp Integer -- ^ Index
+       => Vector C (CExp a) -- ^ Vector
+       -> CExp Integer      -- ^ Index
        -> Cg m (CExp a)
-cgVIdx (CVec cv off stride _end) ci =
-    return $ CExp [cexp|$cv[$(fromIntegral off + ci*fromIntegral stride)]|]
-
--- | Compile an 'Exp a'
-cgExp :: forall a m . MonadCg m => Exp a -> Cg m (CExp a)
-cgExp (IntC x)         = return $ CInt x
-cgExp (DoubleC x)      = return $ CDouble (toRational x)
-cgExp RationalC{}      = fail "Cannot compile rational constant to C"
-cgExp (ComplexC e1 e2) = CComplex <$> cgExp e1 <*> cgExp e2
-cgExp e@RouC{}         = cgExp (toComplex e)
+cgVIdx (CVec _ cv) ci =
+    return $ CExp [cexp|$cv[$ci]|]
 
 -- | Compile an assignment.
 cgAssign :: MonadCg m => CExp a -> CExp a -> Cg m ()
@@ -124,28 +116,98 @@ cgFor lo hi k = do
 cvar :: MonadUnique m => String -> Cg m C.Id
 cvar = gensym
 
-cgMatrix :: forall m . MonadCg m
-         => Matrix M (Exp (Complex Double))
-         -> Cg m (CExp (Matrix M (Complex Double)))
+cgMatrix :: forall a m . (Num (Exp a), ToCExp (Exp a) a, ToCType a, MonadCg m)
+         => Matrix M (Exp a)
+         -> Cg m (Matrix C (CExp a))
 cgMatrix mat = do
-    maybe_ce <- lookupMatrix mat
-    case maybe_ce of
-      Just ce -> return ce
-      Nothing -> do ce <- cgMat
-                    cacheMatrix mat ce
-                    return ce
+    maybe_ce <- lookupConst matInit
+    ce       <- case maybe_ce of
+                  Just ce -> return ce
+                  Nothing -> do cmat <- cvar "mat"
+                                appendTopDecl [cdecl|static const $ty:ctau $id:cmat[$int:m][$int:n] = $init:matInit;|]
+                                cacheConst matInit [cexp|$id:cmat|]
+                                return [cexp|$id:cmat|]
+    return $ CMat (extent mat) (CExp ce)
   where
     Z :. m :. n = extent mat
     ess = toLists mat
 
-    cgRow :: [Exp (Complex Double)] -> Cg m (CExp (Vector M (Complex Double)))
-    cgRow es = do
-        ces <- mapM cgExp es
-        return $ CInit [cinit|{ $inits:(map toInitializer ces) }|]
+    cgRow :: [Exp a] -> C.Initializer
+    cgRow es = [cinit|{ $inits:(map (toInitializer . toCExp) es) }|]
 
-    cgMat :: Cg m (CExp (Matrix M (Complex Double)))
-    cgMat = do
-      cmat  <- cvar "mat"
-      crows <- mapM cgRow ess
-      appendTopDecl [cdecl|static const double _Complex $id:cmat[$int:m][$int:n] = { $inits:(map toInitializer crows) };|]
-      return $ CExp [cexp|$id:cmat|]
+    matInit :: C.Initializer
+    matInit = [cinit|{ $inits:(map cgRow ess) }|]
+
+    ctau :: C.Type
+    ctau = toCType (undefined :: a)
+
+-- | Compiled a matrix-vector product
+cgMVProd :: forall r a m .
+            ( Num (Exp a)
+            , Num (CExp a)
+            , ToCExp (Exp a) a
+            , ToCType a
+            , IsArray r DIM2 (Exp a)
+            , MonadCg m
+            )
+         => Vector C (CExp a)
+         -> Matrix r (Exp a)
+         -> Vector C (CExp a)
+         -> Cg m ()
+cgMVProd y a x = do
+    when (m' /= m || n' /= n) $
+        fail "cgMVProd: mismatched dimensions"
+    cgFor 0 m $ \i -> do
+      yi <- cgVIdx y i
+      cgAssign yi 0
+      cgFor 0 n $ \j -> do
+        xj  <- cgVIdx x j
+        aij <- cgIdx a' (i, j)
+        cgAssign yi (yi + xj * aij)
+  where
+    (Z :. m')     = extent y
+    (Z :. n')     = extent x
+    (Z :. m :. n) = extent a
+
+    a' :: Matrix M (Exp a)
+    a' = manifest a
+
+-- | Compile a value to a C expression.
+class ToCExp a b | a -> b where
+    toCExp :: a -> CExp b
+
+instance ToCExp (CExp a) a where
+    toCExp ce = ce
+
+instance ToCExp (Exp Integer) Integer where
+    toCExp (IntC x) = CInt x
+
+instance ToCExp (Exp Double) Double where
+    toCExp (DoubleC x) = CDouble (toRational x)
+
+instance ToCExp (Exp (Complex Double)) (Complex Double) where
+    toCExp (ComplexC e1 e2) = CComplex (toCExp e1) (toCExp e2)
+    toCExp e@RouC{}         = toCExp (toComplex e)
+
+-- | Compile a value to a C type.
+class ToCType a where
+    toCType :: a -> C.Type
+
+instance ToCType Integer where
+    toCType _ = [cty|int|]
+
+instance ToCType Double where
+    toCType _ = [cty|double|]
+
+instance ToCType (Complex Double) where
+    toCType _ = [cty|double _Complex|]
+
+instance (ToCType a, IsArray r DIM1 a) => ToCType (Array r DIM1 a) where
+    toCType a = [cty|$ty:(toCType (undefined :: a))[static $int:n]|]
+      where
+        Z :. n = extent a
+
+instance (ToCType a, IsArray r DIM2 a) => ToCType (Array r DIM2 a) where
+    toCType a = [cty|$ty:(toCType (undefined :: a))[static $int:m][static $int:n]|]
+      where
+        Z :. m :. n = extent a

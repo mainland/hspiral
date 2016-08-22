@@ -38,8 +38,8 @@ module Spiral.Backend.C.Monad (
     appendStms,
     appendBlock,
 
-    lookupMatrix,
-    cacheMatrix
+    lookupConst,
+    cacheConst
   ) where
 
 import Control.Monad.Exception (MonadException(..))
@@ -50,7 +50,6 @@ import Control.Monad.State (MonadState(..),
                             execStateT,
                             gets,
                             modify)
-import Data.Complex
 import Data.Foldable (toList)
 import Data.Loc (noLoc)
 import Data.Map (Map)
@@ -62,25 +61,22 @@ import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 
-import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
 import Spiral.Config
-import Spiral.Exp
-import Spiral.SPL
 import Spiral.Trace
 import Spiral.Util.Uniq
 
 data CgState = CgState
     { -- | Generated code
       code :: Code
-    , -- | Cached matrices
-      matrixCache :: Map (Matrix M (Exp (Complex Double))) (CExp (Matrix M (Complex Double)))
+    , -- | Cached constants
+      constCache :: Map C.Initializer C.Exp
     }
 
 defaultCgState :: CgState
 defaultCgState = CgState
-    { code        = mempty
-    , matrixCache = mempty
+    { code       = mempty
+    , constCache = mempty
     }
 
 -- | The 'Cg' monad transformer.
@@ -218,14 +214,14 @@ appendBlock citems
     isBlockStm C.BlockStm{} = True
     isBlockStm _            = False
 
-lookupMatrix :: Monad m
-             => Matrix M (Exp (Complex Double))
-             -> Cg m (Maybe (CExp (Matrix M (Complex Double))))
-lookupMatrix m = gets (Map.lookup m . matrixCache)
+lookupConst :: Monad m
+            => C.Initializer
+            -> Cg m (Maybe C.Exp)
+lookupConst m = gets (Map.lookup m . constCache)
 
-cacheMatrix :: Monad m
-            => Matrix M (Exp (Complex Double))
-            -> CExp (Matrix M (Complex Double))
-            -> Cg m ()
-cacheMatrix mat ce =
-    modify $ \s -> s { matrixCache = Map.insert mat ce (matrixCache s) }
+cacheConst :: Monad m
+           => C.Initializer
+           -> C.Exp
+           -> Cg m ()
+cacheConst cinits ce =
+    modify $ \s -> s { constCache = Map.insert cinits ce (constCache s) }
