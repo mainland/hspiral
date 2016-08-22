@@ -50,14 +50,14 @@ instance Num e => IsArray SPL sh e where
           -> Array SPL sh e
 
         -- | The $n \times n$ identity matrix.
-        I :: Int -> Array SPL DIM2 e
+        I :: Int -> Matrix SPL e
 
         -- | The $L^{rs}_s$ $rs \times rs$ stride permutation matrix with stride
         -- $s$.
-        L :: Int -> Int -> Array SPL DIM2 e
+        L :: Int -> Int -> Matrix SPL e
 
         -- | Binary operation on 2-d matrices
-        B :: MatrixBinop -> Array SPL DIM2 e -> Array SPL DIM2 e -> Array SPL DIM2 e
+        B :: MatrixBinop -> Matrix SPL e -> Matrix SPL e -> Matrix SPL e
 
     extent (E a)     = extent a
     extent (I n)     = ix2 n n
@@ -143,7 +143,7 @@ instance Num e => IsArray SPL sh e where
         sh :: sh
         sh = extent a
 
-instance (Num e, Pretty e) => Pretty (Array SPL DIM2 e) where
+instance (Num e, Pretty e) => Pretty (Matrix SPL e) where
     pprPrec p (E a)      = pprPrec p a
     pprPrec _ (I n)      = text "I_" <> ppr n
     pprPrec _ (L rs s)   = text "L^" <> ppr rs <> char '_' <> ppr s
@@ -165,13 +165,13 @@ instance Pretty MatrixBinop where
     ppr P  = char '×'
 
 -- | Extract a row of a matrix
-row :: Num e => Array M DIM2 e -> Int -> V.Vector e
+row :: Num e => Matrix M e -> Int -> V.Vector e
 row e i = V.slice (i*n) n xs
   where
     M (Z :. _m :. n) xs = manifest e
 
 -- | Extract a column of a matrix
-col :: forall e . Num e => Array M DIM2 e -> Int -> V.Vector e
+col :: forall e . Num e => Matrix M e -> Int -> V.Vector e
 col e j = V.generate n f
   where
     M (Z :. _m :. n) xs = manifest e
@@ -181,15 +181,15 @@ col e j = V.generate n f
 
 -- | Alias for Kronecker product.
 infixl 7 ⊗
-(⊗) :: Array SPL DIM2 e -> Array SPL DIM2 e -> Array SPL DIM2 e
+(⊗) :: Matrix SPL e -> Matrix SPL e -> Matrix SPL e
 (⊗) = B K
 
 -- | Alias for matrix direct sum.
 infixl 6 ⊕
-(⊕) :: Array SPL DIM2 e -> Array SPL DIM2 e -> Array SPL DIM2 e
+(⊕) :: Matrix SPL e -> Matrix SPL e -> Matrix SPL e
 (⊕) = B DS
 
 -- | Alias for matrix product.
 infixl 7 ×
-(×) :: Array SPL DIM2 e -> Array SPL DIM2 e -> Array SPL DIM2 e
+(×) :: Matrix SPL e -> Matrix SPL e -> Matrix SPL e
 (×) = B P

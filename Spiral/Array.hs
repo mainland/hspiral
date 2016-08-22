@@ -13,6 +13,9 @@
 module Spiral.Array (
     IsArray(..),
     Array(..),
+    Vector,
+    Matrix,
+
     (!),
 
     M,
@@ -30,6 +33,12 @@ import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 
 import Spiral.Shape
+
+-- | A 1-d array, i.e., a vector.
+type Vector r e = Array r DIM1 e
+
+-- | A 2-d array, i.e., a matrix.
+type Matrix r e = Array r DIM2 e
 
 -- | An array with an extent and a method for accessing values by index.
 class IsArray r sh e where
@@ -72,7 +81,7 @@ instance IsArray M sh e where
 instance Functor (Array M sh) where
     fmap f (M sh es) = M sh (fmap f es)
 
-instance (Num e, Pretty e) => Pretty (Array M DIM2 e) where
+instance (Num e, Pretty e) => Pretty (Matrix M e) where
       ppr a =
           brackets $ align $
           folddoc (\d1 d2 -> d1 <> comma </> d2) $
@@ -80,7 +89,7 @@ instance (Num e, Pretty e) => Pretty (Array M DIM2 e) where
           toLists a
 
 -- | Create a matrix from a list of lists of values.
-fromLists :: [[e]] -> Array M DIM2 e
+fromLists :: [[e]] -> Matrix M e
 fromLists [] =
     M (ix2 0 0) V.empty
 
@@ -93,12 +102,12 @@ fromLists (r:rs) | all ((== n) . length) rs =
 fromLists _ = error "matrix: rows have differing lengths"
 
 -- | Alias for fromLists.
-matrix :: [[e]] -> Array M DIM2 e
+matrix :: [[e]] -> Matrix M e
 matrix = fromLists
 
 -- | Convert a matrix to a list of lists of elements.
 toLists :: (Num e, IsArray r DIM2 e)
-        => Array r DIM2 e
+        => Matrix r e
         -> [[e]]
 toLists e = [[a ! ix2 i j | i <- [0..m-1]] | j <- [0..n-1]]
   where
@@ -128,7 +137,7 @@ instance (Shape sh, Ord sh, Ord e) => Ord (Array D sh e) where
 instance (Shape sh, Show sh, Show e) => Show (Array D sh e) where
     show a = show (manifest a)
 
-instance (Num e, Pretty e) => Pretty (Array D DIM2 e) where
+instance (Num e, Pretty e) => Pretty (Matrix D e) where
     ppr = ppr . manifest
 
 -- | Create a delayed array from a function mapping indices to elements.

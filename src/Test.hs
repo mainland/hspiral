@@ -45,8 +45,8 @@ instance Arbitrary RootOfUnity where
     shrink _                      = []
 
 manifestComplex :: (ToComplex f, IsArray r DIM2 (f (Complex Double)))
-                => Array r DIM2 (f (Complex Double))
-                -> Array M DIM2 (f (Complex Double))
+                => Matrix r (f (Complex Double))
+                -> Matrix M (f (Complex Double))
 manifestComplex = fmap toComplex . manifest
 
 main :: IO ()
@@ -61,7 +61,7 @@ strideTest :: Test
 strideTest = testCase "Stride matrix L^8_4" $
     manifest (L 8 4) @?= a
   where
-    a :: Array M DIM2 Int
+    a :: Matrix M Int
     a = matrix [[1, 0, 0, 0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 1, 0, 0, 0],
                 [0, 1, 0, 0, 0, 0, 0, 0],
@@ -76,7 +76,7 @@ kroneckerTest :: Test
 kroneckerTest = testCase "Kronecker product (⊗)" $
     manifest (spl a ⊗ spl b) @?= c
   where
-    a, b, c :: Array M DIM2 Int
+    a, b, c :: Matrix M Int
     a = matrix [[1, 2],
                 [3, 4]]
     b = matrix [[0, 5],
@@ -92,7 +92,7 @@ directSumTest :: Test
 directSumTest = testCase "Direct sum (⊕)" $
     manifest (spl a ⊕ spl b) @?= c
   where
-    a, b, c :: Array M DIM2 Int
+    a, b, c :: Matrix M Int
     a = matrix [[1, 3, 2],
                 [2, 3, 1]]
     b = matrix [[1, 6],
@@ -111,7 +111,7 @@ prop_DFT (SmallPowerOfTwo n) =
     manifestComplex (directDFT (2^n)) === manifestComplex (FFT.f (2^n))
   where
     -- | Direct calculation of the DFT matrix.
-    directDFT :: Int -> Array D DIM2 (Exp (Complex Double))
+    directDFT :: Int -> Matrix D (Exp (Complex Double))
     directDFT n = fromFunction (ix2 n n) f
       where
         f (Z :. i :. j) = w^(i*j)
@@ -122,7 +122,7 @@ prop_DFT (SmallPowerOfTwo n) =
 f2Test :: Test
 f2Test = testCase "F_2" $ manifestComplex (FFT.f 2) @?= manifestComplex f2
   where
-    f2 :: Array M DIM2 (Exp (Complex Double))
+    f2 :: Matrix M (Exp (Complex Double))
     f2 = matrix [[1,  1],
                  [1, -1]]
 
@@ -130,7 +130,7 @@ f2Test = testCase "F_2" $ manifestComplex (FFT.f 2) @?= manifestComplex f2
 f4Test :: Test
 f4Test = testCase "F_4" $ manifestComplex (FFT.f 4) @?= manifestComplex f4
   where
-    f4 :: Array M DIM2 (Exp (Complex Double))
+    f4 :: Matrix M (Exp (Complex Double))
     f4 = matrix [[1,  1,  1,  1],
                  [1, -i, -1,  i],
                  [1, -1,  1, -1],
@@ -144,7 +144,7 @@ f4Test = testCase "F_4" $ manifestComplex (FFT.f 4) @?= manifestComplex f4
 f8Test :: Test
 f8Test = testCase "F_8" $ manifestComplex (FFT.f 8) @?= manifestComplex f8
   where
-    f8 :: Array M DIM2 (Exp (Complex Double))
+    f8 :: Matrix M (Exp (Complex Double))
     f8 = matrix [[1,  1,  1,  1, 1, 1, 1, 1],
                  [1,  w, -i,  -i*w, -1, -w, i, i*w],
                  [1, -i, -1, i, 1, -i, -1, i],

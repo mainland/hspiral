@@ -44,8 +44,8 @@ class (MonadConfig m, MonadTrace m, MonadUnique m) => MonadCg m where
     cgTemp :: m (CExp m)
 
     -- | Generate code to index into a matrix.
-    cgIdx :: Array SPL DIM2 (Exp (Complex Double)) -- ^ Matrix
-          -> (CExp m, CExp m)                      -- ^ Index
+    cgIdx :: Matrix SPL (Exp (Complex Double)) -- ^ Matrix
+          -> (CExp m, CExp m)                  -- ^ Index
           -> m (CExp m)
 
     -- | Generate code to index into a 'CVec m'.
