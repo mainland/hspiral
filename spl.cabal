@@ -22,6 +22,7 @@ library
 
   exposed-modules:
     Spiral
+    Spiral.Array
     Spiral.Backend.C
     Spiral.Backend.C.CExp
     Spiral.Backend.C.Code
@@ -34,6 +35,7 @@ library
     Spiral.ExtendedFloat
     Spiral.FFT
     Spiral.SPL
+    Spiral.Shape
     Spiral.Trace
 
   other-modules:

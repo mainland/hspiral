@@ -51,7 +51,7 @@ defaultMainWith config m = do
     printFailure e = hPrint stderr e >> exitFailure
 
 codegenC :: String
-         -> SPL (Exp (Complex Double))
+         -> Array SPL DIM2 (Exp (Complex Double))
          -> Spiral ()
 codegenC name e = do
     defs <- evalCg $ codegen name e

@@ -36,7 +36,7 @@ class (MonadConfig m, MonadTrace m, MonadUnique m) => MonadCg m where
     -- | Set up code generator to compile a transform. The continuation is
     -- called with the input vector and output vector.
     cgTransform :: String                     -- ^ The name of the transform
-                -> Ix                         -- ^ The dimensions of the transform
+                -> DIM2                       -- ^ The dimensions of the transform
                 -> (CVec m -> CVec m -> m ()) -- ^ The body of the transform
                 -> m ()
 
@@ -44,8 +44,8 @@ class (MonadConfig m, MonadTrace m, MonadUnique m) => MonadCg m where
     cgTemp :: m (CExp m)
 
     -- | Generate code to index into a matrix.
-    cgIdx :: SPL (Exp (Complex Double)) -- ^ Matrix
-          -> (CExp m, CExp m)           -- ^ Index
+    cgIdx :: Array SPL DIM2 (Exp (Complex Double)) -- ^ Matrix
+          -> (CExp m, CExp m)                      -- ^ Index
           -> m (CExp m)
 
     -- | Generate code to index into a 'CVec m'.

@@ -40,6 +40,7 @@ endif
 #
 SRC = \
 	Spiral.hs \
+	Spiral/Array.hs \
 	Spiral/Backend/C.hs \
 	Spiral/Backend/C/CExp.hs \
 	Spiral/Backend/C/Code.hs \
@@ -54,6 +55,7 @@ SRC = \
 	Spiral/FFT.hs \
 	Spiral/Monad.hs \
 	Spiral/SPL.hs \
+	Spiral/Shape.hs \
 	Spiral/Trace.hs \
 	Spiral/Util/Lift.hs \
 	Spiral/Util/Pretty.hs \

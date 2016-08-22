@@ -73,7 +73,7 @@ import Spiral.Util.Lift
 import Spiral.Util.Uniq
 
 -- | A cached matrix
-data Matrix = Matrix Ix [[Exp (Complex Double)]]
+data Matrix = Matrix DIM2 [[Exp (Complex Double)]]
   deriving (Eq, Ord, Show)
 
 data CgState = CgState
@@ -237,7 +237,7 @@ cvar = gensym
 cgMatrix :: forall m . (MonadConfig m, MonadTrace m, MonadUnique m)
          => Matrix
          -> Cg m CExp
-cgMatrix mat@(Matrix (m, n) ess) = do
+cgMatrix mat@(Matrix (Z :. m :. n) ess) = do
     maybe_ce <- lookupMatrix mat
     case maybe_ce of
       Just ce -> return ce
@@ -260,7 +260,7 @@ cgMatrix mat@(Matrix (m, n) ess) = do
 instance (MonadConfig m, MonadTrace m, MonadUnique m) => Cg.MonadCg (Cg m) where
      type CExp (Cg m) = CExp
 
-     cgTransform name (m,n) k = do
+     cgTransform name (Z :. m :. n) k = do
         appendTopDef [cedecl|$esc:("#include <complex.h>")|]
         cin   <- cvar "in"
         cout  <- cvar "out"
@@ -296,10 +296,10 @@ void $id:name(restrict double _Complex $id:cout[static $int:m],
      cgTemp = fail "cgTemp: Can't generate temp"
 
      cgIdx e (CInt i, CInt j) =
-         cgExp $ e ! (fromInteger i, fromInteger j)
+         cgExp $ e ! ix2 (fromInteger i) (fromInteger j)
 
      cgIdx e (ci, cj) = do
-         cmat <- cgMatrix $ Matrix (extent e) (matrixOf e)
+         cmat <- cgMatrix $ Matrix (extent e) (toLists e)
          return $ CExp [cexp|$cmat[$ci][$cj]|]
 
      cgVIdx (CVec cv off stride _end) ci =

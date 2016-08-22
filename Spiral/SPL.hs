@@ -1,4 +1,9 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Module      :  Spiral.SPL
@@ -7,255 +12,184 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.SPL (
-    Ix,
-    SPL(..),
+    module Spiral.Array,
+    module Spiral.Shape,
 
-    extent,
+    Array(..),
 
-    toDelayed,
-    toMatrix,
-
-    matrix,
-    (!),
-    row,
-    col,
+    SPL,
+    spl,
 
     (⊗),
     (×),
     (⊕),
-
-    matrixOf,
-
-    pprMatrix
   ) where
 
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 
+import Spiral.Array
+import Spiral.Shape
 import Spiral.Util.Pretty
 
--- | A matrix index
-type Ix = (Int, Int)
+-- | Type tag for an SPL matrix.
+data SPL
 
--- | Abstract syntax for SPL
-data SPL e -- | A matrix whose entries are manifest
-           = M Ix (V.Vector e)
-           -- | A "delayed" matrix, i.e., functional representation
-           | D Ix (Ix -> e)
+-- | Embed any 'Array' as an SPL term.
+spl :: (IsArray r sh e, Pretty (Array r sh e))
+    => Array r sh e
+    -> Array SPL sh e
+spl = E
 
-           -- | The $n \times n$ identity matrix,
-           | I Int
+instance Num e => IsArray SPL sh e where
+    -- | A "delayed" matrix, i.e., functional representation.
+    data Array SPL sh e where
+        -- | An "embedded" array with an unknown representation.
+        E :: (IsArray r sh e, Pretty (Array r sh e))
+          => Array r sh e
+          -> Array SPL sh e
 
-           -- | The $L^{rs}_s$ $rs \times rs$ stride permutation matrix with
-           -- stride $s$.
-           | L Int Int
+        -- | The $n \times n$ identity matrix.
+        I :: Int -> Array SPL DIM2 e
 
-           -- Binary matrix operation
-           | BinopM Binop (SPL e) (SPL e)
+        -- | The $L^{rs}_s$ $rs \times rs$ stride permutation matrix with stride
+        -- $s$.
+        L :: Int -> Int -> Array SPL DIM2 e
 
--- | Binary operators
-data Binop = KroneckerOp
-           | DSumOp
-           | ProductOp
+        -- | Binary operation on 2-d matrices
+        B :: MatrixBinop -> Array SPL DIM2 e -> Array SPL DIM2 e -> Array SPL DIM2 e
 
-instance Pretty Binop where
-    ppr KroneckerOp = char '⊗'
-    ppr DSumOp      = char '⊕'
-    ppr ProductOp   = char '×'
+    extent (E a)     = extent a
+    extent (I n)     = ix2 n n
+    extent (L rs _s) = ix2 rs rs
 
-instance HasFixity Binop where
-    fixity KroneckerOp = infixl_ 7
-    fixity DSumOp      = infixl_ 6
-    fixity ProductOp   = infixl_ 7
+    extent (B op a b) = go op
+      where
+        Z :. m :. n = extent a
+        Z :. p :. q = extent b
 
-instance (Num e, Pretty e) => Pretty (SPL e) where
-    pprPrec _ e@M{} = pprMatrix e
-    pprPrec _ e@D{} = pprMatrix e
+        go :: MatrixBinop -> sh
+        go K  = ix2 (m*p) (n*q)
+        go DS = ix2 (m+p) (n+q)
+        go P  = ix2 m q
 
-    pprPrec _ (I n) =
-        text "I_" <> ppr n
+    index (E a) i = index a i
+    index (I _sh) i =
+        case listOfShape i of
+          i:js | all (== i) js -> 1
+          _ -> 0
 
-    pprPrec _ (L rs s) =
-        text "L^" <> ppr rs <> char '_' <> ppr s
+    index (L rs s) (Z :. i :. j)
+        | j == i*s `mod` rs + i*s `div` rs = 1
+        | otherwise                        = 0
 
-    pprPrec p (BinopM op e1 e2) =
-        infixop p op e1 e2
+    index (B op a b) ix =
+        go op ix
+      where
+        Z :. m :. n = extent a
+        Z :. p :. q = extent b
 
--- | Specify a matrix as a list of lists.
-matrix :: [[e]] -> SPL e
-matrix [] =
-    M (0, 0) V.empty
+        go :: MatrixBinop -> sh -> e
+        go K (Z :. i :. j) =
+            a ! ix2 (i `quot` p) (j `quot` q) *
+            b ! ix2 (i `rem` p) (j `rem` q)
 
-matrix (r:rs) | all ((== n) . length) rs =
-    M (m, n) (V.fromList (concat (r:rs)))
-  where
-    m = 1 + length rs
-    n = length r
+        go DS (Z :. i :. j)
+            | i < m  && j < n  = a ! ix2 i j
+            | i >= m && j >= n = b ! ix2 (i-m) (j-n)
+            | otherwise        = 0
 
-matrix _ = error "matrix: rows have differing lengths"
+        go P (Z :. i :. j) =
+            sum [a ! ix2 i k * b ! ix2 k j | k <- [0..n-1]]
 
-infixl 7 ⊗
--- | Kronecker product
-(⊗) :: SPL e -> SPL e -> SPL e
-(⊗) = BinopM KroneckerOp
+    manifest (E a) = manifest a
 
-infixl 7 ×
--- | Matrix product
-(×) :: SPL e -> SPL e -> SPL e
-(×) = BinopM ProductOp
+    manifest (B op a b) =
+        go op
+      where
+        a' = manifest a
+        b' = manifest b
 
-infixl 6 ⊕
--- | Matrix direct sum
-(⊕) :: SPL e -> SPL e -> SPL e
-(⊕) = BinopM DSumOp
+        (Z :. m :. n) = extent a
+        (Z :. p :. q) = extent b
 
--- | Calculate the extent (shape) of the matrix represented by an SPL
--- expression.
-extent :: SPL e -> Ix
-extent (M sh _) = sh
-extent (D sh _) = sh
-extent (I n)    = (n, n)
-extent (L rs _) = (rs, rs)
+        go :: MatrixBinop -> Array M sh e
+        go K = M (ix2 (m*p) (n*q)) $ V.generate (m*p*n*q) f
+          where
+            f :: Int -> e
+            f k = a' ! ix2 (i `quot` p) (j `quot` q) *
+                  b' ! ix2 (i `rem` p) (j `rem` q)
+              where
+                (i, j) = k `quotRem` (n*q)
 
-extent (BinopM op a b) = go op
-  where
-    (m, n) = extent a
-    (p, q) = extent b
+        go DS = M (ix2 (m+p) (n+q)) $ V.generate ((m+p)*(n+q)) f
+          where
+            f :: Int -> e
+            f k | i < m  && j < n  = a' ! ix2 i j
+                | i >= m && j >= n = b' ! ix2 (i-m) (j-n)
+                | otherwise        = 0
+              where
+                (i, j) = k `quotRem` (n+q)
 
-    go :: Binop -> Ix
-    go KroneckerOp = (m*p, n*q)
-    go DSumOp      = (m+p, n+q)
-    go ProductOp
-      | n == p     = (m, q)
-      | otherwise  = error "(×): mismatched matrix dimensions"
+        go P = M (ix2 m p) $ V.generate (m*p) f
+          where
+            f :: Int -> e
+            f k = V.sum $ V.zipWith (*) (row a' i) (col b' j)
+              where
+                (i, j) = k `quotRem` p
 
--- | Convert an SPL expression to a delayed matrix
-toDelayed :: forall e . Num e => SPL e -> SPL e
-toDelayed (M sh@(_m, n) xs) = D sh f
-  where
-    f (i, j) = xs V.! (i*n + j)
+    manifest a = M sh $ V.fromList [a ! fromIndex sh i | i <- [0..size sh-1]]
+      where
+        sh :: sh
+        sh = extent a
 
-toDelayed e@D{} = e
+instance (Num e, Pretty e) => Pretty (Array SPL DIM2 e) where
+    pprPrec p (E a)      = pprPrec p a
+    pprPrec _ (I n)      = text "I_" <> ppr n
+    pprPrec _ (L rs s)   = text "L^" <> ppr rs <> char '_' <> ppr s
+    pprPrec p (B op a b) = infixop p op a b
 
-toDelayed (I n) = D (n, n) f
-  where
-    f :: Ix -> e
-    f (i, j) | j == i    = 1
-             | otherwise = 0
+data MatrixBinop = K
+                 | DS
+                 | P
+  deriving (Eq, Ord, Show)
 
-toDelayed (L rs s) = D (rs, rs) f
-  where
-    f :: Ix -> e
-    f (i, j) | j == i*s `mod` rs + i*s `div` rs = 1
-             | otherwise                        = 0
+instance HasFixity MatrixBinop where
+    fixity K  = infixl_ 7
+    fixity DS = infixl_ 6
+    fixity P  = infixl_ 7
 
-toDelayed (BinopM KroneckerOp a b) = D (m*p, n*q) h
-  where
-    D (m, n) f = toDelayed a
-    D (p, q) g = toDelayed b
-
-    h (i, j) = f (i `quot` p, j `quot` q) * g (i `rem` p, j `rem` q)
-
-toDelayed (BinopM DSumOp a b) = D (m+p, n+q) h
-  where
-    D (m, n) f = toDelayed a
-    D (p, q) g = toDelayed b
-
-    h (i, j)
-      | i < m  && j < n  = f (i, j)
-      | i >= m && j >= n = g (i-m, j-n)
-      | otherwise      = 0
-
-toDelayed (BinopM ProductOp a b) = D (m, p) h
-  where
-    D (m, _n) f = toDelayed a
-    D (n, p)  g = toDelayed b
-
-    h (i, j) = sum [f (i, k) * g (k, j) | k <- [0..n-1]]
-
--- | Extract a single element from a matrix
-(!) :: Num e => SPL e -> Ix -> e
-M (_m, n) xs ! (i, j) = xs V.! (i*n + j)
-e            ! ix     = toMatrix e ! ix
+instance Pretty MatrixBinop where
+    ppr K  = char '⊗'
+    ppr DS = char '⊕'
+    ppr P  = char '×'
 
 -- | Extract a row of a matrix
-row :: Num e => SPL e -> Int -> V.Vector e
+row :: Num e => Array M DIM2 e -> Int -> V.Vector e
 row e i = V.slice (i*n) n xs
   where
-    M (_m, n) xs = toMatrix e
+    M (Z :. _m :. n) xs = manifest e
 
 -- | Extract a column of a matrix
-col :: forall e . Num e => SPL e -> Int -> V.Vector e
+col :: forall e . Num e => Array M DIM2 e -> Int -> V.Vector e
 col e j = V.generate n f
   where
-    M (_m, n) xs = toMatrix e
+    M (Z :. _m :. n) xs = manifest e
 
     f :: Int -> e
     f i = xs V.! (i*n + j)
 
--- | Convert an SPL expression to a manifest matrix.
-toMatrix :: forall e . Num e => SPL e -> SPL e
-toMatrix e@M{} =
-    e
+-- | Alias for Kronecker product.
+infixl 7 ⊗
+(⊗) :: Array SPL DIM2 e -> Array SPL DIM2 e -> Array SPL DIM2 e
+(⊗) = B K
 
-toMatrix (D (m, n) f) =
-    M (m, n) $ V.fromList [f (i, j) | i <- [0..m-1], j <- [0..n-1]]
+-- | Alias for matrix direct sum.
+infixl 6 ⊕
+(⊕) :: Array SPL DIM2 e -> Array SPL DIM2 e -> Array SPL DIM2 e
+(⊕) = B DS
 
-toMatrix (I n) = M (n, n) $ V.generate (n*n) f
-  where
-    f :: Int -> e
-    f k | j == i    = 1
-        | otherwise = 0
-      where
-        (i, j) = k `quotRem` n
-
-toMatrix (L rs s) = M (rs, rs) $ V.generate (rs*rs) f
-  where
-    f :: Int -> e
-    f k | j == i*s `mod` rs + i*s `div` rs = 1
-        | otherwise                        = 0
-      where
-        (i, j) = k `quotRem` rs
-
-toMatrix (BinopM KroneckerOp a b) = M (m*p, n*q) $ V.generate (m*p*n*q) h
-  where
-    as@(M (m, n) _) = toMatrix a
-    bs@(M (p, q) _) = toMatrix b
-
-    h k = as ! (i `quot` p, j `quot` q) * bs ! (i `rem` p, j `rem` q)
-      where
-        (i, j) = k `quotRem` (n*q)
-
-toMatrix (BinopM DSumOp a b) = M (m+p, n+q) $ V.generate ((m+p)*(n+q)) h
-  where
-    as@(M (m, n) _) = toMatrix a
-    bs@(M (p, q) _) = toMatrix b
-
-    h k | i < m  && j < n  = as ! (i, j)
-        | i >= m && j >= n = bs ! (i-m, j-n)
-        | otherwise      = 0
-      where
-        (i, j) = k `quotRem` (n+q)
-
-toMatrix (BinopM ProductOp a b) = M (m, p) $ V.generate (m*p) h
-  where
-    as@(M (m,   _n1) _) = toMatrix a
-    bs@(M (_n2,   p) _) = toMatrix b
-
-    h k = V.sum $ V.zipWith (*) (row as i) (col bs j)
-      where
-        (i, j) = k `quotRem` p
-
--- | Convert an SPL expression to a matrix in the form of a list of lists
-matrixOf :: Num e => SPL e -> [[e]]
-matrixOf e = [[a ! (i, j) | i <- [0..m-1]] | j <- [0..n-1]]
-  where
-    a@(M (m, n) _) = toMatrix e
-
--- | Pretty-print an 'SPL e' expression as a manifest matrix
-pprMatrix :: (Num e, Pretty e) => SPL e -> Doc
-pprMatrix e =
-    brackets $ align $
-    folddoc (\d1 d2 -> d1 <> comma </> d2) $
-    map ppr $
-    matrixOf e
+-- | Alias for matrix product.
+infixl 7 ×
+(×) :: Array SPL DIM2 e -> Array SPL DIM2 e -> Array SPL DIM2 e
+(×) = B P

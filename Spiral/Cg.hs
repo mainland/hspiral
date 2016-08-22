@@ -23,15 +23,15 @@ import Spiral.SPL
 
 codegen :: forall m . (Num (CExp m), MonadCg m)
         => String
-        -> SPL (Exp (Complex Double))
+        -> Array SPL DIM2 (Exp (Complex Double))
         -> m ()
 codegen name e =
-    cgTransform name (m, n) $ \vin vout ->
+    cgTransform name (extent e) $ \vin vout ->
       go vin vout e
   where
-    (m, n) = extent e
+    (Z :. m :. n) = extent e
 
-    go :: CVec m -> CVec m -> SPL (Exp (Complex Double)) -> m ()
+    go :: CVec m -> CVec m -> Array SPL DIM2 (Exp (Complex Double)) -> m ()
     go vin vout mat =
         cgFor 0 m $ \ci -> do
           cout <- cgVIdx vout ci
