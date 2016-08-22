@@ -13,4 +13,4 @@ module Spiral (
 
 import Spiral.Monad (Spiral,
                      runSpiral)
-import Spiral.Cg (codegen)
+import Spiral.Backend.C (codegen)

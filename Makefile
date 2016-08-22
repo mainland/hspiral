@@ -46,8 +46,6 @@ SRC = \
 	Spiral/Backend/C/Code.hs \
 	Spiral/Backend/C/Monad.hs \
 	Spiral/Backend/C/Util.hs \
-	Spiral/Cg.hs \
-	Spiral/Cg/Monad.hs \
 	Spiral/Config.hs \
 	Spiral/Driver.hs \
 	Spiral/Driver/Opts.hs \

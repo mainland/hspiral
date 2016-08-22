@@ -9,7 +9,9 @@
 
 module Spiral.Monad (
     Spiral,
-    runSpiral
+    runSpiral,
+
+    MonadCg
   ) where
 
 import Control.Monad.Exception (MonadException(..))
@@ -60,3 +62,7 @@ instance MonadUnique Spiral where
         let u' = u + 1
         u' `seq` writeRef r u'
         return $ Uniq u
+
+class (MonadConfig m, MonadUnique m, MonadTrace m) => MonadCg m where
+
+instance MonadCg Spiral where
