@@ -60,6 +60,9 @@ library
     vector                 >= 0.11     && < 0.12,
     QuickCheck             >= 2.8      && < 2.9
 
+  ghc-options:
+    -Wall -fno-warn-name-shadowing
+
 executable dftgen
   main-is: DFTGen.hs
   default-language: Haskell2010
