@@ -30,7 +30,7 @@ import Spiral.Util.Lift
 
 data CExp a where
     -- | A known integer constant
-    CInt :: Integer -> CExp Integer
+    CInt :: Int -> CExp Int
 
     -- | A known double constant
     CDouble :: Rational -> CExp Double
@@ -97,7 +97,7 @@ instance LiftNum (CExp a) where
     liftNum2_ Mul _ ce1 ce2 = CExp [cexp|$ce1 * $ce2|]
     liftNum2_ Div _ ce1 ce2 = CExp [cexp|$ce1 / $ce2|]
 
-instance Num (CExp Integer) where
+instance Num (CExp Int) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
     (*) = liftNum2 Mul (*)
@@ -108,7 +108,7 @@ instance Num (CExp Integer) where
 
     signum  = liftNum Signum signum
 
-    fromInteger = CInt
+    fromInteger = CInt . fromIntegral
 
 instance Num (CExp Double) where
     (+) = liftNum2 Add (+)

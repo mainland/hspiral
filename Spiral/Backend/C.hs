@@ -76,11 +76,11 @@ $items:items
 
 -- | Generate code to index into a matrix.
 cgIdx :: (Num (Exp a), ToCExp (Exp a) a, ToCType a, MonadCg m)
-      => Matrix M (Exp a)  -- ^ Matrix
-      -> (CExp Integer, CExp Integer)     -- ^ Index
+      => Matrix M (Exp a)     -- ^ Matrix
+      -> (CExp Int, CExp Int) -- ^ Index
       -> Cg m (CExp a)
 cgIdx a (CInt i, CInt j) =
-   return $ toCExp $ a ! ix2 (fromInteger i) (fromInteger j)
+   return $ toCExp $ a ! ix2 i j
 
 cgIdx a (ci, cj) = do
    CMat _ cmat <- cgMatrix a
@@ -89,7 +89,7 @@ cgIdx a (ci, cj) = do
 -- | Generate code to index into a 'CVec m'.
 cgVIdx :: MonadCg m
        => Vector C (CExp a) -- ^ Vector
-       -> CExp Integer      -- ^ Index
+       -> CExp Int           -- ^ Index
        -> Cg m (CExp a)
 cgVIdx (CVec _ cv) ci =
     return $ CExp [cexp|$cv[$ci]|]
@@ -100,14 +100,14 @@ cgAssign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
 
 -- | Generate code for a loop with the given start and end.
 cgFor :: MonadCg m
-      => Int                       -- ^ Initial value
-      -> Int                       -- ^ Upper bound (non-inclusive)
-      -> (CExp Integer -> Cg m ()) -- ^ Loop body
+      => Int                   -- ^ Initial value
+      -> Int                   -- ^ Upper bound (non-inclusive)
+      -> (CExp Int -> Cg m ()) -- ^ Loop body
       -> Cg m ()
 cgFor lo hi k = do
     maxun <- asksConfig maxUnroll
     if hi - lo <= maxun
-      then mapM_ k [CInt (fromIntegral i) | i <- [lo..hi-1::Int]]
+      then mapM_ k [CInt i | i <- [lo..hi-1::Int]]
       else do
         ci    <- cvar "i"
         items <- inNewBlock_ $ k (CExp [cexp|$id:ci|])
@@ -179,8 +179,8 @@ class ToCExp a b | a -> b where
 instance ToCExp (CExp a) a where
     toCExp ce = ce
 
-instance ToCExp (Exp Integer) Integer where
-    toCExp (IntC x) = CInt x
+instance ToCExp (Exp Integer) Int where
+    toCExp (IntC x) = CInt (fromIntegral x)
 
 instance ToCExp (Exp Double) Double where
     toCExp (DoubleC x) = CDouble (toRational x)
@@ -193,7 +193,7 @@ instance ToCExp (Exp (Complex Double)) (Complex Double) where
 class ToCType a where
     toCType :: a -> C.Type
 
-instance ToCType Integer where
+instance ToCType Int where
     toCType _ = [cty|int|]
 
 instance ToCType Double where
