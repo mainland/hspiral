@@ -5,6 +5,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Spiral.Backend.C
@@ -43,7 +44,7 @@ codegen :: forall a m .
         => String
         -> Matrix SPL (Exp a)
         -> Cg m ()
-codegen name a = cgTransform name (extent a) $ \x y -> cgMVProd y a x
+codegen name a = cgTransform name (extent a) $ \x y -> cgMVProd a x y
 
 -- | Set up code generator to compile a transform. The continuation is
 -- called with the input vector and output vector.
@@ -144,25 +145,66 @@ cgMVProd :: forall r1 r2 r3 a m .
             , Index r3 DIM1 (CExp Int) (CExp a)
             , MonadCg m
             )
-         => Vector r1 (CExp a)
-         -> Matrix r2 (Exp a)
+         => Matrix r2 (Exp a)
          -> Vector r3 (CExp a)
+         -> Vector r1 (CExp a)
          -> Cg m ()
-cgMVProd y a x = do
+cgMVProd a x y = do
     when (m' /= m || n' /= n) $
         fail "cgMVProd: mismatched dimensions"
     a' <- cgMatrix a
     cgFor 0 m $ \i -> do
+      let ai = crow a' i
       let yi = y ! i
-      yi .:=. 0
-      cgFor 0 n $ \j -> do
-        let xj  = x ! j
-        let aij = a' ! (i, j)
-        yi .:=. yi + xj * aij
+      cgZipFold (*) x ai (+) 0 yi
   where
     Z :. m'     = extent y
     Z :. n'     = extent x
     Z :. m :. n = extent a
+
+-- | Extract a row of a cached matrix.
+crow :: Matrix CC (CExp a)
+     -> CExp Int
+     -> Vector CC (CExp a)
+crow (CC (Z :. _m :. n) a ce) ci@(CInt i) =
+    CC sh (fromFunction sh (\(Z :. j) -> a ! (i, j))) (CExp [cexp|$ce[$ci]|])
+  where
+    sh = Z :. n
+
+crow (CC (Z :. _m :. n) _a ce) ci =
+    CC sh (fromFunction sh (const Nothing)) (CExp [cexp|$ce[$ci]|])
+  where
+    sh = Z :. n
+
+-- | A combined zip/fold over two vectors. We can't quite separate these into
+-- two operations because we would need to be able to index into the result of
+-- the zip with a symbolic expression to generate the body of the for loop.
+cgZipFold :: ( IsArray r1 (Z :. Int) c
+             , Index r1 (Z :. Int) (CExp Int) c
+             , Index r2 sh (CExp Int) d
+             , Index r2 sh Int d
+             , CAssign a
+             , MonadCg m
+             )
+          => (c -> d -> b)
+          -> Array r1 (Z :. Int) c
+          -> Array r2 sh d
+          -> (a -> b -> a)
+          -> a
+          -> a
+          -> Cg m ()
+cgZipFold g s t f z y = do
+    maxun <- asksConfig maxUnroll
+    if n <= maxun
+      then y .:=. foldl f z [g (s ! i) (t ! i) | i <- [0..n-1]]
+      else do
+        y .:=. z
+        cgFor 0 n $ \j -> do
+          let sj = s ! j
+          let tj = t ! j
+          y .:=. f y (g sj tj)
+  where
+    Z :. n = extent s
 
 -- | Compile a value to a C expression.
 class ToCExp a b | a -> b where
