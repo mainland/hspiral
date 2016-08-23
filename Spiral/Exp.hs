@@ -111,6 +111,7 @@ unComplex (RouC x) =
   where
     i = 0 :+ 1
 
+-- | A functor whose contents can be converted to a 'Complex Double'
 class ToComplex f where
     toComplex :: f a -> f (Complex Double)
 

@@ -31,20 +31,21 @@ import Spiral.Backend.C.Util
 import Spiral.Shape
 import Spiral.Util.Lift
 
+-- | A compiled C expression.
 data CExp a where
-    -- | A known integer constant
+    -- A known integer constant
     CInt :: Int -> CExp Int
 
-    -- | A known double constant
+    -- A known double constant
     CDouble :: Rational -> CExp Double
 
-    -- | A complex number.
+    -- A complex number.
     CComplex :: CExp Double -> CExp Double -> CExp (Complex Double)
 
-    -- | C expression
+    -- C expression
     CExp :: C.Exp -> CExp a
 
-    -- | C initializer
+    -- C initializer
     CInit :: C.Initializer -> CExp a
 
 deriving instance Eq (CExp a)

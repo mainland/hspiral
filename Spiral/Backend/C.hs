@@ -33,6 +33,7 @@ import Spiral.Monad (MonadCg)
 import Spiral.SPL
 import Spiral.Util.Uniq
 
+-- | Generate code for an SPL transform.
 codegen :: forall a m .
            ( Num (Exp a)
            , Num (CExp a)
@@ -52,12 +53,11 @@ cgTransform :: forall a m .
                ( MonadCg m
                , ToCType a
                )
-            -- | The name of the transform
-            => String
-            -- | The dimensions of the transform
-            -> DIM2
-            -- | The body of the transform
-            -> (Vector C (CExp a) -> Vector C (CExp a) -> Cg m ())
+            => String                -- ^ The name of the transform
+            -> DIM2                  -- ^ The dimensions of the transform
+            -> (Vector C (CExp a) ->
+                Vector C (CExp a) ->
+                Cg m ())             -- ^ The body of the transform
             -> Cg m ()
 cgTransform name (Z :. m :. n) k = do
    appendTopDef [cedecl|$esc:("#include <complex.h>")|]
@@ -91,9 +91,9 @@ cgFor lo hi k = do
         items <- inNewBlock_ $ k (CExp [cexp|$id:ci|])
         appendStm [cstm|for (int $id:ci = $int:lo; $id:ci < $int:hi; ++$id:ci) $stm:(toStm items)|]
 
-cvar :: MonadUnique m => String -> Cg m C.Id
-cvar = gensym
-
+-- | Cache a matrix. This generates code for the entire matrix, but the
+-- generated code is only used when we index into the matrix
+-- symbolically---otherwise we use the elements of the source matrix directly.
 cgMatrix :: forall r a m .
             ( Num (Exp a)
             , Num (CExp a)
@@ -131,23 +131,23 @@ cgMatrix a = do
     ctau :: C.Type
     ctau = toCType (undefined :: a)
 
--- | Compiled a matrix-vector product
+-- | Compile a matrix-vector product @y = A*x@.
 cgMVProd :: forall r1 r2 r3 a m .
             ( Num (Exp a)
             , Num (CExp a)
             , ToCExp (Exp a) a
             , ToCType a
             , CAssign (CExp a)
-            , IsArray r1 DIM1 (CExp a)
-            , IsArray r2 DIM2 (Exp a)
+            , IsArray r1 DIM2 (Exp a)
+            , IsArray r2 DIM1 (CExp a)
             , IsArray r3 DIM1 (CExp a)
-            , Index r1 DIM1 (CExp Int) (CExp a)
+            , Index r2 DIM1 (CExp Int) (CExp a)
             , Index r3 DIM1 (CExp Int) (CExp a)
             , MonadCg m
             )
-         => Matrix r2 (Exp a)
-         -> Vector r3 (CExp a)
-         -> Vector r1 (CExp a)
+         => Matrix r1 (Exp a)  -- ^ The matrix @A@
+         -> Vector r2 (CExp a) -- ^ The vector @x@
+         -> Vector r3 (CExp a) -- ^ The vector @y@
          -> Cg m ()
 cgMVProd a x y = do
     when (m' /= m || n' /= n) $
@@ -162,20 +162,6 @@ cgMVProd a x y = do
     Z :. n'     = extent x
     Z :. m :. n = extent a
 
--- | Extract a row of a cached matrix.
-crow :: Matrix CC (CExp a)
-     -> CExp Int
-     -> Vector CC (CExp a)
-crow (CC (Z :. _m :. n) a ce) ci@(CInt i) =
-    CC sh (fromFunction sh (\(Z :. j) -> a ! (i, j))) (CExp [cexp|$ce[$ci]|])
-  where
-    sh = Z :. n
-
-crow (CC (Z :. _m :. n) _a ce) ci =
-    CC sh (fromFunction sh (const Nothing)) (CExp [cexp|$ce[$ci]|])
-  where
-    sh = Z :. n
-
 -- | A combined zip/fold over two vectors. We can't quite separate these into
 -- two operations because we would need to be able to index into the result of
 -- the zip with a symbolic expression to generate the body of the for loop.
@@ -186,12 +172,12 @@ cgZipFold :: ( IsArray r1 (Z :. Int) c
              , CAssign a
              , MonadCg m
              )
-          => (c -> d -> b)
-          -> Array r1 (Z :. Int) c
-          -> Array r2 sh d
-          -> (a -> b -> a)
-          -> a
-          -> a
+          => (c -> d -> b)         -- ^ The zipping function
+          -> Array r1 (Z :. Int) c -- ^ The first vector to zip
+          -> Array r2 sh d         -- ^ The second vector to zip
+          -> (a -> b -> a)         -- ^ The fold function
+          -> a                     -- ^ The unit of the fold function
+          -> a                     -- ^ The destination of the computed value.
           -> Cg m ()
 cgZipFold g s t f z y = do
     maxun <- asksConfig maxUnroll
@@ -205,6 +191,24 @@ cgZipFold g s t f z y = do
           y .:=. f y (g sj tj)
   where
     Z :. n = extent s
+
+-- | Generate a unique C identifier name using the given prefix.
+cvar :: MonadUnique m => String -> Cg m C.Id
+cvar = gensym
+
+-- | Extract a row of a cached matrix.
+crow :: Matrix CC (CExp a)
+     -> CExp Int
+     -> Vector CC (CExp a)
+crow (CC (Z :. _m :. n) a ce) ci@(CInt i) =
+    CC sh (fromFunction sh (\(Z :. j) -> a ! (i, j))) (CExp [cexp|$ce[$ci]|])
+  where
+    sh = Z :. n
+
+crow (CC (Z :. _m :. n) _a ce) ci =
+    CC sh (fromFunction sh (const Nothing)) (CExp [cexp|$ce[$ci]|])
+  where
+    sh = Z :. n
 
 -- | Compile a value to a C expression.
 class ToCExp a b | a -> b where

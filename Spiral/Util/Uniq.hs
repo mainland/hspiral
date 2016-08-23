@@ -38,13 +38,16 @@ import Data.Monoid (Monoid)
 import qualified Language.C.Syntax as C
 import Text.PrettyPrint.Mainland
 
+-- | A unique value.
 newtype Uniq = Uniq Int
   deriving (Eq, Ord, Read, Show)
 
 instance Pretty Uniq where
     ppr (Uniq u) = ppr u
 
+-- | A monad that can generate unique values.
 class Monad m => MonadUnique m where
+    -- | Generate a new unique.
     newUnique :: m Uniq
 
 instance MonadUnique m => MonadUnique (MaybeT m) where
@@ -79,6 +82,7 @@ instance (Monoid w, MonadUnique m) => MonadUnique (WriterT w m) where
 instance (Monoid w, MonadUnique m) => MonadUnique (S.WriterT w m) where
     newUnique = lift newUnique
 
+-- | A type that can be gensym'd.
 class Gensym a where
     -- | Gensym a symbol using the given string as a basis.
     gensym :: MonadUnique m => String -> m a

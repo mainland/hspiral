@@ -44,19 +44,18 @@ spl = E
 instance Num e => IsArray SPL sh e where
     -- | A "delayed" matrix, i.e., functional representation.
     data Array SPL sh e where
-        -- | An "embedded" array with an unknown representation.
+        -- An "embedded" array with an unknown representation.
         E :: (IsArray r sh e, Pretty (Array r sh e))
           => Array r sh e
           -> Array SPL sh e
 
-        -- | The $n \times n$ identity matrix.
+        -- The $n \times n$ identity matrix.
         I :: Int -> Matrix SPL e
 
-        -- | The $L^{rs}_s$ $rs \times rs$ stride permutation matrix with stride
-        -- $s$.
+        -- The $L^{rs}_s$ $rs \times rs$ stride permutation matrix with stride $s$.
         L :: Int -> Int -> Matrix SPL e
 
-        -- | Binary operation on 2-d matrices
+        -- Binary operation on 2-d matrices
         B :: MatrixBinop -> Matrix SPL e -> Matrix SPL e -> Matrix SPL e
 
     extent (E a)     = extent a

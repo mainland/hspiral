@@ -50,6 +50,7 @@ defaultMainWith config m = do
     printFailure :: SomeException -> IO ()
     printFailure e = hPrint stderr e >> exitFailure
 
+-- | Generate C code for the given SPL transform.
 codegenC :: String
          -> Matrix SPL (Exp (Complex Double))
          -> Spiral ()
