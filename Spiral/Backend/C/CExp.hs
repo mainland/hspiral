@@ -136,10 +136,13 @@ instance Num (CExp (Complex Double)) where
 
     fromInteger x = CComplex (CDouble (fromInteger x)) 0
 
--- Type tag for a compiled arrays
+-- | Type tag for a compiled array.
 data C
 
 instance IsArray C sh (CExp e) where
+    -- | A compiled array. In particular, an array with the type tag 'C' is
+    -- guaranteed to have contiguously-allocated storage, so it can be
+    -- efficiently indexed.
     data Array C sh (CExp e) = C sh (CExp e)
 
     extent (C sh _) = sh
