@@ -62,8 +62,8 @@ cgTransform name (Z :. m :. n) k = do
    cin   <- cvar "in"
    cout  <- cvar "out"
    items <- inNewBlock_ $
-            k (CVec (ix1 n) (CExp [cexp|$id:cin|]))
-              (CVec (ix1 m) (CExp [cexp|$id:cout|]))
+            k (C (ix1 n) (CExp [cexp|$id:cin|]))
+              (C (ix1 m) (CExp [cexp|$id:cout|]))
    appendTopFunDef [cedecl|
 void $id:name(restrict $ty:ctau $id:cout[static $int:m],
               restrict $ty:ctau $id:cin[static $int:n])
@@ -83,7 +83,7 @@ cgIdx a (CInt i, CInt j) =
    return $ toCExp $ a ! ix2 i j
 
 cgIdx a (ci, cj) = do
-   CMat _ cmat <- cgMatrix a
+   C _ cmat <- cgMatrix a
    return $ CExp [cexp|$cmat[$ci][$cj]|]
 
 -- | Generate code to index into a 'CVec m'.
@@ -91,7 +91,7 @@ cgVIdx :: MonadCg m
        => Vector C (CExp a) -- ^ Vector
        -> CExp Int           -- ^ Index
        -> Cg m (CExp a)
-cgVIdx (CVec _ cv) ci =
+cgVIdx (C _ cv) ci =
     return $ CExp [cexp|$cv[$ci]|]
 
 -- | Compile an assignment.
@@ -127,7 +127,7 @@ cgMatrix mat = do
                                 appendTopDecl [cdecl|static const $ty:ctau $id:cmat[$int:m][$int:n] = $init:matInit;|]
                                 cacheConst matInit [cexp|$id:cmat|]
                                 return [cexp|$id:cmat|]
-    return $ CMat (extent mat) (CExp ce)
+    return $ C (extent mat) (CExp ce)
   where
     Z :. m :. n = extent mat
     ess = toLists mat

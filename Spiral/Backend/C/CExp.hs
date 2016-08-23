@@ -139,20 +139,12 @@ instance Num (CExp (Complex Double)) where
 -- Type tag for a compiled arrays
 data C
 
-instance IsArray C DIM1 (CExp e) where
-    -- | A compiled vector with begin, stride, and end.
-    data Array C DIM1 (CExp e) = CVec DIM1 (CExp e)
-      deriving (Eq, Show)
+instance IsArray C sh (CExp e) where
+    data Array C sh (CExp e) = C sh (CExp e)
 
-    extent (CVec sh _) = sh
+    extent (C sh _) = sh
 
-    index (CVec _ ce) (Z :. i) = CExp [cexp|$ce[$int:i]|]
-
-instance IsArray C DIM2 (CExp e) where
-    -- | A compiled vector with begin, stride, and end.
-    data Array C DIM2 (CExp e) = CMat DIM2 (CExp e)
-      deriving (Eq, Show)
-
-    extent (CMat sh _) = sh
-
-    index (CMat _ ce) (Z :. i :. j) = CExp [cexp|$ce[$int:i][$int:j]|]
+    index (C _ ce) i = foldr cidx ce (listOfShape i)
+      where
+        cidx :: Int -> CExp a -> CExp a
+        cidx ci ce = CExp [cexp|$ce[$int:ci]|]
