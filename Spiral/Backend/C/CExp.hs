@@ -16,6 +16,7 @@ module Spiral.Backend.C.CExp (
     CExp(..),
 
     C,
+    CC,
     Array(..)
   ) where
 
@@ -158,3 +159,24 @@ instance Index C (Z :. Int) (CExp Int) (CExp e) where
 
 instance Index C (Z :. Int :. Int) (CExp Int, CExp Int) (CExp e) where
     (!) (C _ ce) (ci, cj) = CExp [cexp|$ce[$ci][$cj]|]
+
+-- | Type tag for a cached compiled array.
+data CC
+
+instance IsArray CC sh (CExp e) where
+    -- | A /cached/ compiled array. This is an array whose contents has been
+    -- computed so it can be indexed symbolically, but we still want the
+    -- non-symbolic elements when we index by an integer constant.
+    data Array CC sh (CExp e) = CC sh (Array M sh (CExp e)) (CExp e)
+
+    extent (CC sh _ _) = sh
+
+    index (CC _ a _) = index a
+
+instance Index CC (Z :. Int) (CExp Int) (CExp e) where
+    (!) (CC _ a _)  (CInt i) = a ! i
+    (!) (CC _ _ ce) ci       = CExp [cexp|$ce[$ci]|]
+
+instance Index CC (Z :. Int :. Int) (CExp Int, CExp Int) (CExp e) where
+    (!) (CC _ a _)  (CInt i, CInt j) = a ! (i, j)
+    (!) (CC _ _ ce) (ci, cj)         = CExp [cexp|$ce[$ci][$cj]|]
