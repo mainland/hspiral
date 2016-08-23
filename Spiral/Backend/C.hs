@@ -37,6 +37,7 @@ codegen :: forall a m .
            , Num (CExp a)
            , ToCExp (Exp a) a
            , ToCType a
+           , CAssign (CExp a)
            , MonadCg m
            )
         => String
@@ -73,10 +74,6 @@ $items:items
   where
     ctau :: C.Type
     ctau = toCType (undefined :: a)
-
--- | Compile an assignment.
-cgAssign :: MonadCg m => CExp a -> CExp a -> Cg m ()
-cgAssign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
 
 -- | Generate code for a loop with the given start and end.
 cgFor :: MonadCg m
@@ -139,6 +136,7 @@ cgMVProd :: forall r1 r2 r3 a m .
             , Num (CExp a)
             , ToCExp (Exp a) a
             , ToCType a
+            , CAssign (CExp a)
             , IsArray r1 DIM1 (CExp a)
             , IsArray r2 DIM2 (Exp a)
             , IsArray r3 DIM1 (CExp a)
@@ -156,11 +154,11 @@ cgMVProd y a x = do
     a' <- cgMatrix a
     cgFor 0 m $ \i -> do
       let yi = y ! i
-      cgAssign yi 0
+      yi .:=. 0
       cgFor 0 n $ \j -> do
         let xj  = x ! j
         let aij = a' ! (i, j)
-        cgAssign yi (yi + xj * aij)
+        yi .:=. yi + xj * aij
   where
     Z :. m'     = extent y
     Z :. n'     = extent x
@@ -205,3 +203,20 @@ instance (ToCType a, IsArray r DIM2 a) => ToCType (Array r DIM2 a) where
     toCType a = [cty|$ty:(toCType (undefined :: a))[static $int:m][static $int:n]|]
       where
         Z :. m :. n = extent a
+
+class CAssign a where
+    -- | Compile an assignment.
+    cassign :: MonadCg m => a -> a -> Cg m ()
+
+infix 4 .:=.
+(.:=.) :: (CAssign a, MonadCg m) => a -> a -> Cg m ()
+(.:=.) = cassign
+
+instance CAssign (CExp Int) where
+    cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
+
+instance CAssign (CExp Double) where
+    cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
+
+instance CAssign (CExp (Complex Double)) where
+    cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
