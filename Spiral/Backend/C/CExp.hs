@@ -4,6 +4,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Spiral.Backend.C.CExp
@@ -151,3 +152,9 @@ instance IsArray C sh (CExp e) where
       where
         cidx :: Int -> CExp a -> CExp a
         cidx ci ce = CExp [cexp|$ce[$int:ci]|]
+
+instance Index C (Z :. Int) (CExp Int) (CExp e) where
+    (!) (C _ ce) ci = CExp [cexp|$ce[$ci]|]
+
+instance Index C (Z :. Int :. Int) (CExp Int, CExp Int) (CExp e) where
+    (!) (C _ ce) (ci, cj) = CExp [cexp|$ce[$ci][$cj]|]

@@ -86,14 +86,6 @@ cgIdx a (ci, cj) = do
    C _ cmat <- cgMatrix a
    return $ CExp [cexp|$cmat[$ci][$cj]|]
 
--- | Generate code to index into a 'CVec m'.
-cgVIdx :: MonadCg m
-       => Vector C (CExp a) -- ^ Vector
-       -> CExp Int           -- ^ Index
-       -> Cg m (CExp a)
-cgVIdx (C _ cv) ci =
-    return $ CExp [cexp|$cv[$ci]|]
-
 -- | Compile an assignment.
 cgAssign :: MonadCg m => CExp a -> CExp a -> Cg m ()
 cgAssign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
@@ -158,10 +150,10 @@ cgMVProd y a x = do
     when (m' /= m || n' /= n) $
         fail "cgMVProd: mismatched dimensions"
     cgFor 0 m $ \i -> do
-      yi <- cgVIdx y i
+      let yi = y ! i
       cgAssign yi 0
       cgFor 0 n $ \j -> do
-        xj  <- cgVIdx x j
+        let xj = x ! j
         aij <- cgIdx a' (i, j)
         cgAssign yi (yi + xj * aij)
   where
