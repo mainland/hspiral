@@ -110,7 +110,7 @@ cgMatrix a = do
                                 appendTopDecl [cdecl|static const $ty:ctau $id:cmat[$int:m][$int:n] = $init:matInit;|]
                                 cacheConst matInit [cexp|$id:cmat|]
                                 return [cexp|$id:cmat|]
-    return $ CC sh b (CExp ce)
+    return $ CC sh (delay (fmap Just b)) (CExp ce)
   where
     sh :: DIM2
     sh@(Z :. m :. n) = extent a
