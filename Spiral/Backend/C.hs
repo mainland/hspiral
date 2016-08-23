@@ -74,18 +74,6 @@ $items:items
     ctau :: C.Type
     ctau = toCType (undefined :: a)
 
--- | Generate code to index into a matrix.
-cgIdx :: (Num (Exp a), ToCExp (Exp a) a, ToCType a, MonadCg m)
-      => Matrix M (Exp a)     -- ^ Matrix
-      -> (CExp Int, CExp Int) -- ^ Index
-      -> Cg m (CExp a)
-cgIdx a (CInt i, CInt j) =
-   return $ toCExp $ a ! ix2 i j
-
-cgIdx a (ci, cj) = do
-   C _ cmat <- cgMatrix a
-   return $ CExp [cexp|$cmat[$ci][$cj]|]
-
 -- | Compile an assignment.
 cgAssign :: MonadCg m => CExp a -> CExp a -> Cg m ()
 cgAssign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
@@ -108,10 +96,16 @@ cgFor lo hi k = do
 cvar :: MonadUnique m => String -> Cg m C.Id
 cvar = gensym
 
-cgMatrix :: forall a m . (Num (Exp a), ToCExp (Exp a) a, ToCType a, MonadCg m)
-         => Matrix M (Exp a)
-         -> Cg m (Matrix C (CExp a))
-cgMatrix mat = do
+cgMatrix :: forall r a m .
+            ( Num (Exp a)
+            , Num (CExp a)
+            , ToCExp (Exp a) a
+            , ToCType a
+            , IsArray r DIM2 (Exp a)
+            , MonadCg m)
+         => Matrix r (Exp a)
+         -> Cg m (Matrix CC (CExp a))
+cgMatrix a = do
     maybe_ce <- lookupConst matInit
     ce       <- case maybe_ce of
                   Just ce -> return ce
@@ -119,13 +113,19 @@ cgMatrix mat = do
                                 appendTopDecl [cdecl|static const $ty:ctau $id:cmat[$int:m][$int:n] = $init:matInit;|]
                                 cacheConst matInit [cexp|$id:cmat|]
                                 return [cexp|$id:cmat|]
-    return $ C (extent mat) (CExp ce)
+    return $ CC sh b (CExp ce)
   where
-    Z :. m :. n = extent mat
-    ess = toLists mat
+    sh :: DIM2
+    sh@(Z :. m :. n) = extent a
 
-    cgRow :: [Exp a] -> C.Initializer
-    cgRow es = [cinit|{ $inits:(map (toInitializer . toCExp) es) }|]
+    b :: Matrix M (CExp a)
+    b = fmap toCExp (manifest a)
+
+    ess :: [[CExp a]]
+    ess = toLists b
+
+    cgRow :: [CExp a] -> C.Initializer
+    cgRow es = [cinit|{ $inits:(map toInitializer es) }|]
 
     matInit :: C.Initializer
     matInit = [cinit|{ $inits:(map cgRow ess) }|]
@@ -149,20 +149,18 @@ cgMVProd :: forall r a m .
 cgMVProd y a x = do
     when (m' /= m || n' /= n) $
         fail "cgMVProd: mismatched dimensions"
+    a' <- cgMatrix a
     cgFor 0 m $ \i -> do
       let yi = y ! i
       cgAssign yi 0
       cgFor 0 n $ \j -> do
-        let xj = x ! j
-        aij <- cgIdx a' (i, j)
+        let xj  = x ! j
+        let aij = a' ! (i, j)
         cgAssign yi (yi + xj * aij)
   where
-    (Z :. m')     = extent y
-    (Z :. n')     = extent x
-    (Z :. m :. n) = extent a
-
-    a' :: Matrix M (Exp a)
-    a' = manifest a
+    Z :. m'     = extent y
+    Z :. n'     = extent x
+    Z :. m :. n = extent a
 
 -- | Compile a value to a C expression.
 class ToCExp a b | a -> b where
