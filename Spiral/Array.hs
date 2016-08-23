@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Spiral.Array
@@ -16,7 +17,7 @@ module Spiral.Array (
     Vector,
     Matrix,
 
-    (!),
+    Index(..),
 
     M,
     fromLists,
@@ -60,9 +61,18 @@ class IsArray r sh e where
         sh :: sh
         sh = extent a
 
--- | Alias for 'index'
-(!) :: (Shape sh, IsArray r sh e) => Array r sh e -> sh -> e
-(!) = index
+-- | An array index.
+class Index r sh ix e where
+    (!) :: Array r sh e -> ix -> e
+
+instance (Shape sh, IsArray r sh e) => Index r sh sh e where
+    (!) = index
+
+instance IsArray r (Z :. Int) e => Index r (Z :. Int) Int e where
+    a ! i = a ! (Z :. i)
+
+instance IsArray r (Z :. Int :. Int) e => Index r (Z :. Int :. Int) (Int, Int) e where
+    a ! (i, j) = a ! (Z :. i :. j)
 
 -- | Type tag for a matrix whose entries are manifest.
 data M
