@@ -134,17 +134,21 @@ cgMatrix a = do
     ctau = toCType (undefined :: a)
 
 -- | Compiled a matrix-vector product
-cgMVProd :: forall r a m .
+cgMVProd :: forall r1 r2 r3 a m .
             ( Num (Exp a)
             , Num (CExp a)
             , ToCExp (Exp a) a
             , ToCType a
-            , IsArray r DIM2 (Exp a)
+            , IsArray r1 DIM1 (CExp a)
+            , IsArray r2 DIM2 (Exp a)
+            , IsArray r3 DIM1 (CExp a)
+            , Index r1 DIM1 (CExp Int) (CExp a)
+            , Index r3 DIM1 (CExp Int) (CExp a)
             , MonadCg m
             )
-         => Vector C (CExp a)
-         -> Matrix r (Exp a)
-         -> Vector C (CExp a)
+         => Vector r1 (CExp a)
+         -> Matrix r2 (Exp a)
+         -> Vector r3 (CExp a)
          -> Cg m ()
 cgMVProd y a x = do
     when (m' /= m || n' /= n) $
