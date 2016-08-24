@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -23,6 +24,7 @@ import Data.Complex
 import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
+import Text.PrettyPrint.Mainland
 
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
@@ -31,11 +33,13 @@ import Spiral.Config
 import Spiral.Exp
 import Spiral.Monad (MonadCg)
 import Spiral.SPL
+import Spiral.Trace
 import Spiral.Util.Uniq
 
 -- | Generate code for an SPL transform.
 codegen :: forall a m .
-           ( Num (Exp a)
+           ( Num a
+           , Num (Exp a)
            , Num (CExp a)
            , ToCExp (Exp a) a
            , ToCType a
@@ -45,7 +49,69 @@ codegen :: forall a m .
         => String
         -> Matrix SPL (Exp a)
         -> Cg m ()
-codegen name a = cgTransform name (extent a) $ \x y -> cgMVProd a x y
+codegen name a = do
+    traceCg $ text "Compiling:" </> ppr a
+    cgTransform name (extent a) $ \x y -> cgSPL a x y
+  where
+    cgSPL :: Matrix SPL (Exp a)
+          -> Vector C (CExp a)
+          -> Vector C (CExp a)
+          -> Cg m ()
+    cgSPL a@E{} x y =
+        cgMVProd a x y
+
+    cgSPL I{} x y =
+        y .:=. x
+
+    cgSPL (L mn n) x y =
+        cgFor 0 m $ \i ->
+          cgFor 0 n $ \j ->
+              y ! (i + j * toCExp m) .:=. x ! (i * toCExp n + j)
+      where
+        m = mn `quot` n
+
+    cgSPL e@(B K (I m) a) x y = do
+        when (n' /= n) $
+            faildoc $ text "Non-square matrix in second argument of ⊗:" </> ppr e
+        cgFor 0 m $ \i ->
+          cgMVProd a (slice x (i*toCExp n) 1 n) (slice y (i*toCExp n) 1 n)
+      where
+        Z :. n :. n' = extent a
+
+    cgSPL e@(B K a (I n)) x y = do
+        when (m' /= m) $
+            faildoc $ text "Non-square matrix in first argument of ⊗:" </> ppr e
+        cgFor 0 m $ \i ->
+          cgMVProd a (slice x i n m) (slice y i n m)
+      where
+       Z :. m :. m' = extent a
+
+    cgSPL e@(B DS a b) x y = do
+        when (m' /= m) $
+            faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
+        when (n' /= n) $
+            faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
+        cgMVProd a (slice x 0 1 m) (slice y 0 1 m)
+        cgMVProd b (slice x (toCExp m) 1 n) (slice y (toCExp m) 1 n)
+      where
+        Z :. m :. m' = extent a
+        Z :. n :. n' = extent b
+
+    cgSPL e@(B P a b) x y = do
+        when (n' /= n) $
+            faildoc $ text "Mismatched dimensions in arguments to ×:" </> ppr e
+        CExp ce <- cgTemp (fromFunction (ix1 n) (const (0 :: a)))
+        let t :: Vector C (CExp a)
+            t = C (ix1 n) (CExp ce)
+        cgSPL b x t
+        cgSPL a t y
+      where
+        Z :. _m :.  n = extent a
+        Z :. n' :. _p = extent b
+
+    cgSPL a x y = do
+        traceCg $ text "Falling back to default compilation path:" </> ppr a
+        cgMVProd a x y
 
 -- | Set up code generator to compile a transform. The continuation is
 -- called with the input vector and output vector.
@@ -150,8 +216,10 @@ cgMVProd :: forall r1 r2 r3 a m .
          -> Vector r3 (CExp a) -- ^ The vector @y@
          -> Cg m ()
 cgMVProd a x y = do
-    when (m' /= m || n' /= n) $
-        fail "cgMVProd: mismatched dimensions"
+    when (n' /= n) $
+      faildoc $ text "cgMVProd: mismatched dimensions in input. Expected" <+> ppr n <+> text "but got" <+> ppr n'
+    when (m' /= m) $
+      faildoc $ text "cgMVProd: mismatched dimensions in output. Expected" <+> ppr m <+> text "but got" <+> ppr m'
     a' <- cgMatrix a
     cgFor 0 m $ \i -> do
       let ai = crow a' i
@@ -192,6 +260,16 @@ cgZipFold g s t f z y = do
   where
     Z :. n = extent s
 
+-- | Generate a temporary variable.
+cgTemp :: forall a m . (ToCType a, MonadCg m) => a -> Cg m (CExp a)
+cgTemp a = do
+    t <- cvar "t"
+    appendDecl [cdecl|$ty:ctau $id:t;|]
+    return $ CExp [cexp|$id:t|]
+  where
+    ctau :: C.Type
+    ctau = toCType a
+
 -- | Generate a unique C identifier name using the given prefix.
 cvar :: MonadUnique m => String -> Cg m C.Id
 cvar = gensym
@@ -210,9 +288,46 @@ crow (CC (Z :. _m :. n) _a ce) ci =
   where
     sh = Z :. n
 
+-- | Type tag for a vector slice.
+data S
+
+-- | A vector slice in @begin:stride:len@ form. @begin@ is symbolic, where as
+-- @stride@ and @len@ are statically known. Note that the end of the slice is
+-- @begin + len - 1@.
+instance IsArray S DIM1 a where
+    data Array S DIM1 a where
+        S :: Index r DIM1 (CExp Int) a => Array r DIM1 a -> CExp Int -> Int -> Int -> Array S DIM1 a
+
+    extent (S _ _b _s len) = Z :. len
+
+    index (S a b s _len) (Z :. i) = a ! (b + fromIntegral (i*s))
+
+instance Index S DIM1 (CExp Int) a where
+    (!) (S a b s _e) ci = a ! (b + ci * fromIntegral s)
+
+instance Pretty (Array S DIM1 a) where
+    ppr (S _ b s e) = brackets $ colonsep [text "...", ppr b, ppr s, ppr e]
+      where
+        colonsep :: [Doc] -> Doc
+        colonsep = align . sep . punctuate colon
+
+slice :: (Index r DIM1 (CExp Int) a, IsArray r DIM1 a)
+      => Array r DIM1 a
+      -> CExp Int
+      -> Int
+      -> Int
+      -> Array S DIM1 a
+slice = S
+
 -- | Compile a value to a C expression.
 class ToCExp a b | a -> b where
     toCExp :: a -> CExp b
+
+instance ToCExp Int Int where
+    toCExp = CInt
+
+instance ToCExp Double Double where
+    toCExp = CDouble . toRational
 
 instance ToCExp (CExp a) a where
     toCExp ce = ce
@@ -266,3 +381,10 @@ instance CAssign (CExp Double) where
 
 instance CAssign (CExp (Complex Double)) where
     cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
+
+instance CAssign (CExp a) => CAssign (Vector C (CExp a)) where
+    cassign y x =
+        cgFor 0 n $ \i ->
+            y ! i .:=. x ! i
+      where
+        Z :. n = extent x

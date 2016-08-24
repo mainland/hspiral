@@ -19,6 +19,7 @@ module Spiral.SPL (
 
     SPL,
     spl,
+    MatrixBinop(..),
 
     (⊗),
     (×),
