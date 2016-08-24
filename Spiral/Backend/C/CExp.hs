@@ -51,6 +51,22 @@ data CExp a where
 deriving instance Eq (CExp a)
 deriving instance Show (CExp a)
 
+instance Ord (CExp a) where
+    compare (CInt x) (CInt y) = compare x y
+    compare CInt{}   _        = LT
+
+    compare (CDouble x) (CDouble y) = compare x y
+    compare CDouble{}   _           = LT
+
+    compare (CComplex r i) (CComplex r' i') = compare (r, i) (r', i')
+    compare CComplex{}     _               = LT
+
+    compare (CExp e1) (CExp e2) = compare e1 e2
+    compare CExp{}    _         = LT
+
+    compare (CInit i1) (CInit i2) = compare i1 i2
+    compare CInit{}    _          = GT
+
 instance Pretty (CExp a) where
     ppr (CInt x)      = ppr x
     ppr (CDouble x)   = ppr x
