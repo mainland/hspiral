@@ -34,7 +34,6 @@ import Spiral.Exp
 import Spiral.Monad (MonadCg)
 import Spiral.SPL
 import Spiral.Trace
-import Spiral.Util.Uniq
 
 -- | Generate code for an SPL transform.
 codegen :: forall a m .
@@ -170,13 +169,7 @@ cgMatrix :: forall r a m .
          => Matrix r (Exp a)
          -> Cg m (Matrix CC (CExp a))
 cgMatrix a = do
-    maybe_ce <- lookupConst matInit
-    ce       <- case maybe_ce of
-                  Just ce -> return ce
-                  Nothing -> do cmat <- cvar "mat"
-                                appendTopDecl [cdecl|static const $ty:ctau $id:cmat[$int:m][$int:n] = $init:matInit;|]
-                                cacheConst matInit [cexp|$id:cmat|]
-                                return [cexp|$id:cmat|]
+    ce <- cacheConst matInit [cty|static const $ty:ctau [$int:m][$int:n]|]
     return $ CC sh (delay (fmap Just b)) (CExp ce)
   where
     sh :: DIM2
@@ -270,9 +263,6 @@ cgTemp a = do
     ctau :: C.Type
     ctau = toCType a
 
--- | Generate a unique C identifier name using the given prefix.
-cvar :: MonadUnique m => String -> Cg m C.Id
-cvar = gensym
 
 -- | Extract a row of a cached matrix.
 crow :: Matrix CC (CExp a)

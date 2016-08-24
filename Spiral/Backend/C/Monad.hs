@@ -38,8 +38,9 @@ module Spiral.Backend.C.Monad (
     appendStms,
     appendBlock,
 
-    lookupConst,
-    cacheConst
+    cacheConst,
+
+    cvar
   ) where
 
 import Control.Monad.Exception (MonadException(..))
@@ -214,14 +215,20 @@ appendBlock citems
     isBlockStm C.BlockStm{} = True
     isBlockStm _            = False
 
-lookupConst :: Monad m
-            => C.Initializer
-            -> Cg m (Maybe C.Exp)
-lookupConst m = gets (Map.lookup m . constCache)
-
-cacheConst :: Monad m
+cacheConst :: MonadUnique m
            => C.Initializer
-           -> C.Exp
-           -> Cg m ()
-cacheConst cinits ce =
-    modify $ \s -> s { constCache = Map.insert cinits ce (constCache s) }
+           -> C.Type
+           -> Cg m C.Exp
+cacheConst cinits ctau = do
+    maybe_ce <- gets (Map.lookup cinits . constCache)
+    case maybe_ce of
+      Just ce -> return ce
+      Nothing -> do ctemp  <- cvar "m"
+                    let ce =  [cexp|$id:ctemp|]
+                    appendTopDecl [cdecl|$ty:ctau $id:ctemp = $init:cinits;|]
+                    modify $ \s -> s { constCache = Map.insert cinits ce (constCache s) }
+                    return ce
+
+-- | Generate a unique C identifier name using the given prefix.
+cvar :: MonadUnique m => String -> Cg m C.Id
+cvar = gensym
