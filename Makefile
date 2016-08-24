@@ -74,11 +74,11 @@ distclean : clean
 
 test : src/Test.hs $(SRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
-	$(_QUIET)$(GHC) $(GHCFLAGS) --make $^ -odir obj -hidir obj -o $@
+	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
 dftgen : examples/DFTGen.hs $(SRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
-	$(_QUIET)$(GHC) $(GHCFLAGS) --make $^ -odir obj -hidir obj -o $@
+	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
 dist/build/autogen/cabal_macros.h :
 	cabal build
