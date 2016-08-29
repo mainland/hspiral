@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -13,7 +14,8 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Backend.C.CExp (
-    CExp(..)
+    CExp(..),
+    ToCExp(..)
   ) where
 
 import Data.Complex
@@ -21,6 +23,7 @@ import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 import Text.PrettyPrint.Mainland
 
+import Spiral.Exp
 import Spiral.Backend.C.Util
 import Spiral.Util.Lift
 
@@ -150,3 +153,26 @@ instance Num (CExp (Complex Double)) where
     signum  = liftNum Signum signum
 
     fromInteger x = CComplex (CDouble (fromInteger x)) 0
+
+-- | Compile a value to a C expression.
+class ToCExp a b | a -> b where
+    toCExp :: a -> CExp b
+
+instance ToCExp Int Int where
+    toCExp = CInt
+
+instance ToCExp Double Double where
+    toCExp = CDouble . toRational
+
+instance ToCExp (CExp a) a where
+    toCExp ce = ce
+
+instance ToCExp (Exp Integer) Int where
+    toCExp (IntC x) = CInt (fromIntegral x)
+
+instance ToCExp (Exp Double) Double where
+    toCExp (DoubleC x) = CDouble (toRational x)
+
+instance ToCExp (Exp (Complex Double)) (Complex Double) where
+    toCExp (ComplexC e1 e2) = CComplex (toCExp e1) (toCExp e2)
+    toCExp e@RouC{}         = toCExp (toComplex e)

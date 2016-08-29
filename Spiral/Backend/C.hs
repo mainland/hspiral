@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -304,29 +303,6 @@ slice :: (Index r DIM1 (CExp Int) a, IsArray r DIM1 a)
       -> Int
       -> Array S DIM1 a
 slice = S
-
--- | Compile a value to a C expression.
-class ToCExp a b | a -> b where
-    toCExp :: a -> CExp b
-
-instance ToCExp Int Int where
-    toCExp = CInt
-
-instance ToCExp Double Double where
-    toCExp = CDouble . toRational
-
-instance ToCExp (CExp a) a where
-    toCExp ce = ce
-
-instance ToCExp (Exp Integer) Int where
-    toCExp (IntC x) = CInt (fromIntegral x)
-
-instance ToCExp (Exp Double) Double where
-    toCExp (DoubleC x) = CDouble (toRational x)
-
-instance ToCExp (Exp (Complex Double)) (Complex Double) where
-    toCExp (ComplexC e1 e2) = CComplex (toCExp e1) (toCExp e2)
-    toCExp e@RouC{}         = toCExp (toComplex e)
 
 class CAssign a where
     -- | Compile an assignment.
