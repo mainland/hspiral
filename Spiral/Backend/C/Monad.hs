@@ -40,6 +40,7 @@ module Spiral.Backend.C.Monad (
 
     cacheConst,
     cacheCExp,
+    lookupCExp,
 
     cvar
   ) where
@@ -238,6 +239,7 @@ cacheConst cinits ctau = do
                     modify $ \s -> s { constCache = Map.insert cinits ce (constCache s) }
                     return ce
 
+-- | Cache a 'CExp'. This generates a local binding for the value of the 'CExp'.
 cacheCExp :: forall a m . (ToCType a, MonadUnique m)
           => CExp a
           -> Cg m (CExp a)
@@ -277,6 +279,20 @@ cacheCExp e = do
         appendDecl [cdecl|$ty:ctau $id:ctemp;|]
         appendStm [cstm|$id:ctemp = $e;|]
         return ce'
+
+-- | Look up the cached C expression corresponding to a 'CExp'. If the 'CExp'
+-- has not been cached, we return it without caching it.
+lookupCExp :: forall a m . (ToCType a, MonadUnique m)
+           => CExp a
+           -> Cg m (CExp a)
+lookupCExp e = do
+    maybe_ce' <- gets (Map.lookup ce . expCache)
+    case maybe_ce' of
+      Just ce' -> return $ CExp ce'
+      Nothing  -> return e
+  where
+    ce :: C.Exp
+    ce = toExp e noLoc
 
 -- | Generate a unique C identifier name using the given prefix.
 cvar :: MonadUnique m => String -> Cg m C.Id
