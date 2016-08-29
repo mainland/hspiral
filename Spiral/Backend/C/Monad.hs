@@ -39,6 +39,7 @@ module Spiral.Backend.C.Monad (
     appendBlock,
 
     cacheConst,
+    cacheCExp,
 
     cvar
   ) where
@@ -62,7 +63,9 @@ import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 
+import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
+import Spiral.Backend.C.Types
 import Spiral.Config
 import Spiral.Trace
 import Spiral.Util.Uniq
@@ -72,12 +75,15 @@ data CgState = CgState
       code :: Code
     , -- | Cached constants
       constCache :: Map C.Initializer C.Exp
+    , -- | Cached expressions
+      expCache :: Map C.Exp C.Exp
     }
 
 defaultCgState :: CgState
 defaultCgState = CgState
     { code       = mempty
     , constCache = mempty
+    , expCache   = mempty
     }
 
 -- | The 'Cg' monad transformer.
@@ -228,6 +234,46 @@ cacheConst cinits ctau = do
                     appendTopDecl [cdecl|$ty:ctau $id:ctemp = $init:cinits;|]
                     modify $ \s -> s { constCache = Map.insert cinits ce (constCache s) }
                     return ce
+
+cacheCExp :: forall a m . (ToCType a, MonadUnique m)
+          => CExp a
+          -> Cg m (CExp a)
+cacheCExp e = do
+    maybe_ce' <- gets (Map.lookup ce . expCache)
+    case maybe_ce' of
+      Just ce' -> return $ CExp ce'
+      Nothing  -> do ce' <- go e
+                     modify $ \s -> s { expCache = Map.insert ce ce' (expCache s) }
+                     return $ CExp ce'
+  where
+    ce :: C.Exp
+    ce = toExp e noLoc
+
+    ctau :: C.Type
+    ctau = toCType (undefined :: a)
+
+    go :: CExp a -> Cg m C.Exp
+    go CInt{} =
+        return ce
+
+    go CDouble{} =
+        return ce
+
+    go (CComplex CDouble{} CDouble{}) =
+        return ce
+
+    go (CExp [cexp|$id:_|]) =
+        return ce
+
+    go (CInit ini) =
+        cacheConst ini ctau
+
+    go _ = do
+        ctemp   <- cvar "x"
+        let ce' =  [cexp|$id:ctemp|]
+        appendDecl [cdecl|$ty:ctau $id:ctemp;|]
+        appendStm [cstm|$id:ctemp = $e;|]
+        return ce'
 
 -- | Generate a unique C identifier name using the given prefix.
 cvar :: MonadUnique m => String -> Cg m C.Id
