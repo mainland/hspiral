@@ -42,7 +42,8 @@ module Spiral.Backend.C.Monad (
     cacheCExp,
     lookupCExp,
 
-    cvar
+    cgVar,
+    cgTemp
   ) where
 
 import Control.Monad.Exception (MonadException(..))
@@ -233,7 +234,7 @@ cacheConst cinits ctau = do
     maybe_ce <- gets (Map.lookup cinits . constCache)
     case maybe_ce of
       Just ce -> return ce
-      Nothing -> do ctemp  <- cvar "m"
+      Nothing -> do ctemp  <- cgVar "m"
                     let ce =  [cexp|$id:ctemp|]
                     appendTopDecl [cdecl|$ty:ctau $id:ctemp = $init:cinits;|]
                     modify $ \s -> s { constCache = Map.insert cinits ce (constCache s) }
@@ -274,7 +275,7 @@ cacheCExp e = do
         cacheConst ini ctau
 
     go _ = do
-        ctemp   <- cvar "x"
+        ctemp   <- cgVar "x"
         let ce' =  [cexp|$id:ctemp|]
         appendDecl [cdecl|$ty:ctau $id:ctemp;|]
         appendStm [cstm|$id:ctemp = $e;|]
@@ -295,5 +296,15 @@ lookupCExp e = do
     ce = toExp e noLoc
 
 -- | Generate a unique C identifier name using the given prefix.
-cvar :: MonadUnique m => String -> Cg m C.Id
-cvar = gensym
+cgVar :: MonadUnique m => String -> Cg m C.Id
+cgVar = gensym
+
+-- | Generate a temporary variable.
+cgTemp :: forall a m . (ToCType a, MonadCg m) => a -> Cg m (CExp a)
+cgTemp a = do
+    t <- cgVar "t"
+    appendDecl [cdecl|$ty:ctau $id:t;|]
+    return $ CExp [cexp|$id:t|]
+  where
+    ctau :: C.Type
+    ctau = toCType a

@@ -129,8 +129,8 @@ cgTransform :: forall a m .
             -> Cg m ()
 cgTransform name (Z :. m :. n) k = do
    appendTopDef [cedecl|$esc:("#include <complex.h>")|]
-   cin   <- cvar "in"
-   cout  <- cvar "out"
+   cin   <- cgVar "in"
+   cout  <- cgVar "out"
    items <- inNewBlock_ $
             k (C (ix1 n) (CExp [cexp|$id:cin|]))
               (C (ix1 m) (CExp [cexp|$id:cout|]))
@@ -155,7 +155,7 @@ cgFor lo hi k = do
     if hi - lo <= maxun
       then mapM_ k [CInt i | i <- [lo..hi-1::Int]]
       else do
-        ci    <- cvar "i"
+        ci    <- cgVar "i"
         items <- inNewBlock_ $ k (CExp [cexp|$id:ci|])
         appendStm [cstm|for (int $id:ci = $int:lo; $id:ci < $int:hi; ++$id:ci) $stm:(toStm items)|]
 
@@ -259,17 +259,6 @@ cgZipFold g s t f z y = do
           y .:=. f y (g sj tj)
   where
     Z :. n = extent s
-
--- | Generate a temporary variable.
-cgTemp :: forall a m . (ToCType a, MonadCg m) => a -> Cg m (CExp a)
-cgTemp a = do
-    t <- cvar "t"
-    appendDecl [cdecl|$ty:ctau $id:t;|]
-    return $ CExp [cexp|$id:t|]
-  where
-    ctau :: C.Type
-    ctau = toCType a
-
 
 -- | Extract a row of a cached matrix.
 crow :: Matrix CC (CExp a)
