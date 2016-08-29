@@ -28,6 +28,7 @@ import Text.PrettyPrint.Mainland
 
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
+import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
 import Spiral.Config
 import Spiral.Exp
@@ -331,29 +332,6 @@ instance ToCExp (Exp Double) Double where
 instance ToCExp (Exp (Complex Double)) (Complex Double) where
     toCExp (ComplexC e1 e2) = CComplex (toCExp e1) (toCExp e2)
     toCExp e@RouC{}         = toCExp (toComplex e)
-
--- | Compile a value to a C type.
-class ToCType a where
-    toCType :: a -> C.Type
-
-instance ToCType Int where
-    toCType _ = [cty|int|]
-
-instance ToCType Double where
-    toCType _ = [cty|double|]
-
-instance ToCType (Complex Double) where
-    toCType _ = [cty|double _Complex|]
-
-instance (ToCType a, IsArray r DIM1 a) => ToCType (Array r DIM1 a) where
-    toCType a = [cty|$ty:(toCType (undefined :: a))[static $int:n]|]
-      where
-        Z :. n = extent a
-
-instance (ToCType a, IsArray r DIM2 a) => ToCType (Array r DIM2 a) where
-    toCType a = [cty|$ty:(toCType (undefined :: a))[static $int:m][static $int:n]|]
-      where
-        Z :. m :. n = extent a
 
 class CAssign a where
     -- | Compile an assignment.
