@@ -25,6 +25,7 @@ library
     Spiral.Array
     Spiral.Backend.C
     Spiral.Backend.C.Array
+    Spiral.Backend.C.Assign
     Spiral.Backend.C.CExp
     Spiral.Backend.C.Code
     Spiral.Backend.C.Monad

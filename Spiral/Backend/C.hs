@@ -19,13 +19,13 @@ module Spiral.Backend.C (
   ) where
 
 import Control.Monad (when)
-import Data.Complex
 import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 import Text.PrettyPrint.Mainland
 
 import Spiral.Backend.C.Array
+import Spiral.Backend.C.Assign
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Types
@@ -288,27 +288,3 @@ slice :: (Index r DIM1 (CExp Int) a, IsArray r DIM1 a)
       -> Int
       -> Array S DIM1 a
 slice = S
-
-class CAssign a where
-    -- | Compile an assignment.
-    cassign :: MonadCg m => a -> a -> Cg m ()
-
-infix 4 .:=.
-(.:=.) :: (CAssign a, MonadCg m) => a -> a -> Cg m ()
-(.:=.) = cassign
-
-instance CAssign (CExp Int) where
-    cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
-
-instance CAssign (CExp Double) where
-    cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
-
-instance CAssign (CExp (Complex Double)) where
-    cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
-
-instance CAssign (CExp a) => CAssign (Vector C (CExp a)) where
-    cassign y x =
-        cgFor 0 n $ \i ->
-            y ! i .:=. x ! i
-      where
-        Z :. n = extent x

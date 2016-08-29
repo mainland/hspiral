@@ -43,6 +43,7 @@ SRC = \
 	Spiral/Array.hs \
 	Spiral/Backend/C.hs \
 	Spiral/Backend/C/Array.hs \
+	Spiral/Backend/C/Assign.hs \
 	Spiral/Backend/C/CExp.hs \
 	Spiral/Backend/C/Code.hs \
 	Spiral/Backend/C/Monad.hs \
