@@ -93,10 +93,12 @@ instance ToInitializer (CExp a) where
     toInitializer ce            = [cinit|$ce|]
 
 instance LiftNum (CExp a) where
-    isIntegral x (CInt y)       = y == fromInteger x
-    isIntegral x (CDouble y)    = y == fromInteger x
-    isIntegral x (CComplex r i) = isIntegral x r && isZero i
-    isIntegral _ _              = False
+    isIntegral x (CInt y)                 = y == fromInteger x
+    isIntegral x (CDouble y)              = y == fromInteger x
+    isIntegral x (CComplex r i)           = isIntegral x r && isZero i
+    isIntegral x (CExp [cexp|$int:y|])    = y == fromInteger x
+    isIntegral x (CExp [cexp|$double:y|]) = y == fromInteger x
+    isIntegral _ _                        = False
 
     liftNum_ _ f (CInt x)    = CInt (f x)
     liftNum_ _ f (CDouble x) = CDouble (f x)
