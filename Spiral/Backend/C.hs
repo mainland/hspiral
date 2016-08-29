@@ -1,8 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -29,7 +31,6 @@ import Spiral.Backend.C.Assign
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Types
-import Spiral.Backend.C.Repr.Cached
 import Spiral.Backend.C.Util
 import Spiral.Config
 import Spiral.Exp
@@ -154,13 +155,17 @@ cgMatrix :: forall r a m .
             , IsArray r DIM2 (Exp a)
             , MonadCg m)
          => Matrix r (Exp a)
-         -> Cg m (Matrix CC (CExp a))
+         -> Cg m (Matrix CD (CExp a))
 cgMatrix a = do
     ce <- cacheConst matInit [cty|static const $ty:ctau [$int:m][$int:n]|]
-    return $ CC sh (delay (fmap Just b)) (CExp ce)
+    return $ fromCFunction sh (cidx ce)
   where
     sh :: DIM2
     sh@(Z :. m :. n) = extent a
+
+    cidx :: C.Exp -> CShape DIM2 -> CExp a
+    cidx _ce (Z :. CInt i :. CInt j) = toCExp (index a (ix2 i j))
+    cidx ce  (Z :. ci :. cj)         = CExp [cexp|$ce[$ci][$cj]|]
 
     b :: Matrix M (CExp a)
     b = fmap toCExp (manifest a)
@@ -244,19 +249,19 @@ cgZipFold g s t f z y = do
   where
     Z :. n = extent s
 
--- | Extract a row of a cached matrix.
-crow :: Matrix CC (CExp a)
-     -> CExp Int
-     -> Vector CC (CExp a)
-crow (CC (Z :. _m :. n) a ce) ci@(CInt i) =
-    CC sh (fromFunction sh (\(Z :. j) -> a ! (i, j))) (CExp [cexp|$ce[$ci]|])
+-- | Extract a row of a C array.
+crow :: forall r a . IsCArray r DIM2 a => Matrix r (CExp a) -> CExp Int -> Vector CD (CExp a)
+crow a ci = fromCFunctions (Z :. n) cidx' cidxm'
   where
-    sh = Z :. n
+    cidx :: CShape DIM2 -> CExp a
+    cidxm :: forall m . MonadCg m => CShape DIM2 -> Cg m (CExp a)
+    (Z :. _m :. n, cidx, cidxm) = toCFunctions (cdelay a)
 
-crow (CC (Z :. _m :. n) _a ce) ci =
-    CC sh (fromFunction sh (const Nothing)) (CExp [cexp|$ce[$ci]|])
-  where
-    sh = Z :. n
+    cidx' :: CShape DIM1 -> CExp a
+    cidx' (Z :. cj) = cidx (Z :. ci :. cj)
+
+    cidxm' :: MonadCg m => CShape DIM1 -> Cg m (CExp a)
+    cidxm' (Z :. cj) = cidxm (Z :. ci :. cj)
 
 -- | Type tag for a vector slice.
 data S

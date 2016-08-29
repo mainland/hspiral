@@ -47,7 +47,6 @@ SRC = \
 	Spiral/Backend/C/CExp.hs \
 	Spiral/Backend/C/Code.hs \
 	Spiral/Backend/C/Monad.hs \
-	Spiral/Backend/C/Repr/Cached.hs \
 	Spiral/Backend/C/Types.hs \
 	Spiral/Backend/C/Util.hs \
 	Spiral/Config.hs \
