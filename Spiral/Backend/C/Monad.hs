@@ -67,6 +67,7 @@ import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
 import Spiral.Backend.C.Types
 import Spiral.Config
+import Spiral.Monad (MonadCg)
 import Spiral.Trace
 import Spiral.Util.Uniq
 
@@ -97,6 +98,8 @@ newtype Cg m a = Cg { unCg :: StateT CgState m a }
 
 instance MonadTrans Cg where
     lift = Cg . lift
+
+instance MonadCg m => MonadCg (Cg m) where
 
 -- | Evaluate a 'Cg' action and return a list of 'C.Definition's.
 evalCg :: Monad m => Cg m () -> m (Seq C.Definition)
