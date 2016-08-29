@@ -43,7 +43,8 @@ module Spiral.Backend.C.Monad (
     lookupCExp,
 
     cgVar,
-    cgTemp
+    cgTemp,
+    cgFor
   ) where
 
 import Control.Monad.Exception (MonadException(..))
@@ -68,6 +69,7 @@ import Language.C.Quote.C
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
 import Spiral.Backend.C.Types
+import Spiral.Backend.C.Util
 import Spiral.Config
 import Spiral.Monad (MonadCg)
 import Spiral.Trace
@@ -308,3 +310,18 @@ cgTemp a = do
   where
     ctau :: C.Type
     ctau = toCType a
+
+-- | Generate code for a loop with the given start and end.
+cgFor :: MonadCg m
+      => Int                   -- ^ Initial value
+      -> Int                   -- ^ Upper bound (non-inclusive)
+      -> (CExp Int -> Cg m ()) -- ^ Loop body
+      -> Cg m ()
+cgFor lo hi k = do
+    maxun <- asksConfig maxUnroll
+    if hi - lo <= maxun
+      then mapM_ k [CInt i | i <- [lo..hi-1::Int]]
+      else do
+        ci    <- cgVar "i"
+        items <- inNewBlock_ $ k (CExp [cexp|$id:ci|])
+        appendStm [cstm|for (int $id:ci = $int:lo; $id:ci < $int:hi; ++$id:ci) $stm:(toStm items)|]

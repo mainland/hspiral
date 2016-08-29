@@ -143,21 +143,6 @@ $items:items
     ctau :: C.Type
     ctau = toCType (undefined :: a)
 
--- | Generate code for a loop with the given start and end.
-cgFor :: MonadCg m
-      => Int                   -- ^ Initial value
-      -> Int                   -- ^ Upper bound (non-inclusive)
-      -> (CExp Int -> Cg m ()) -- ^ Loop body
-      -> Cg m ()
-cgFor lo hi k = do
-    maxun <- asksConfig maxUnroll
-    if hi - lo <= maxun
-      then mapM_ k [CInt i | i <- [lo..hi-1::Int]]
-      else do
-        ci    <- cgVar "i"
-        items <- inNewBlock_ $ k (CExp [cexp|$id:ci|])
-        appendStm [cstm|for (int $id:ci = $int:lo; $id:ci < $int:hi; ++$id:ci) $stm:(toStm items)|]
-
 -- | Cache a matrix. This generates code for the entire matrix, but the
 -- generated code is only used when we index into the matrix
 -- symbolically---otherwise we use the elements of the source matrix directly.
