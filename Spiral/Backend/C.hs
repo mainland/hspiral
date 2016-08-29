@@ -227,29 +227,33 @@ cgMVProd a x y = do
 -- | A combined zip/fold over two vectors. We can't quite separate these into
 -- two operations because we would need to be able to index into the result of
 -- the zip with a symbolic expression to generate the body of the for loop.
-cgZipFold :: ( IsArray r1 (Z :. Int) c
-             , Index r1 (Z :. Int) (CExp Int) c
-             , Index r2 sh (CExp Int) d
-             , Index r2 sh Int d
-             , CAssign a
+cgZipFold :: ( IsArray r1 (Z :. Int) (CExp c)
+             , Index r1 (Z :. Int) (CExp Int) (CExp c)
+             , Index r2 sh (CExp Int) (CExp d)
+             , Index r2 sh Int (CExp d)
+             , ToCType b
+             , ToCType c
+             , ToCType d
+             , CAssign (CExp a)
              , MonadCg m
              )
-          => (c -> d -> b)         -- ^ The zipping function
-          -> Array r1 (Z :. Int) c -- ^ The first vector to zip
-          -> Array r2 sh d         -- ^ The second vector to zip
-          -> (a -> b -> a)         -- ^ The fold function
-          -> a                     -- ^ The unit of the fold function
-          -> a                     -- ^ The destination of the computed value.
+          => (CExp c -> CExp d -> CExp b) -- ^ The zipping function
+          -> Array r1 (Z :. Int) (CExp c) -- ^ The first vector to zip
+          -> Array r2 sh (CExp d)         -- ^ The second vector to zip
+          -> (CExp a -> CExp b -> CExp a) -- ^ The fold function
+          -> CExp a                       -- ^ The unit of the fold function
+          -> CExp a                       -- ^ The destination of the computed value.
           -> Cg m ()
 cgZipFold g s t f z y = do
     maxun <- asksConfig maxUnroll
     if n <= maxun
-      then y .:=. foldl f z [g (s ! i) (t ! i) | i <- [0..n-1]]
+      then do xs <- mapM cacheCExp [g (s ! i) (t ! i) | i <- [0..n-1]]
+              y .:=. foldl f z xs
       else do
         y .:=. z
         cgFor 0 n $ \j -> do
-          let sj = s ! j
-          let tj = t ! j
+          sj <- cacheCExp (s ! j)
+          tj <- cacheCExp (t ! j)
           y .:=. f y (g sj tj)
   where
     Z :. n = extent s
