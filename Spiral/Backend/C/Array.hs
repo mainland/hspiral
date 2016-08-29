@@ -1,8 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -25,7 +27,9 @@ module Spiral.Backend.C.Array (
 
     CD,
     fromCFunction,
+    fromCFunctions,
     toCFunction,
+    toCFunctions,
     cdelay
   ) where
 
@@ -138,33 +142,48 @@ data CD
 
 instance ToCShape sh => IsArray CD sh (CExp e) where
     -- | A delayed C array.
-    data Array CD sh (CExp e) = CD sh (CShape sh -> CExp e)
+    data Array CD sh (CExp e) = CD sh (CShape sh -> CExp e) (forall m . MonadCg m => CShape sh -> Cg m (CExp e))
 
-    extent (CD sh _) = sh
+    extent (CD sh _ _) = sh
 
-    index (CD _ f) sh = f (toCShape sh)
+    index (CD _ f _) sh = f (toCShape sh)
 
 -- | Create a delayed array from a function mapping indices to elements.
 fromCFunction :: sh -> (CShape sh -> CExp e) -> Array CD sh (CExp e)
-fromCFunction = CD
+fromCFunction sh f = CD sh f (return . f)
+
+-- | Create a delayed array from a function mapping indices to elements.
+fromCFunctions :: sh
+               -> (CShape sh -> CExp e)
+               -> (forall m . MonadCg m => CShape sh -> Cg m (CExp e))
+               -> Array CD sh (CExp e)
+fromCFunctions = CD
 
 toCFunction :: (Shape sh, IsCArray D sh e)
             => Array D sh (CExp e)
             -> (sh, CShape sh -> CExp e)
 toCFunction a =
     case cdelay a of
-      CD sh f -> (sh, f)
+      CD sh f _ -> (sh, f)
+
+toCFunctions :: (Shape sh, IsCArray r sh e)
+             => Array r sh (CExp e)
+             -> (sh, CShape sh -> CExp e, forall m . MonadCg m => CShape sh -> Cg m (CExp e))
+toCFunctions a =
+    case cdelay a of
+      CD sh f g -> (sh, f, g)
 
 cdelay :: (Shape sh, IsCArray r sh e)
        => Array r sh (CExp e)
        -> Array CD sh (CExp e)
-cdelay a = CD (extent a) (cindex a)
+cdelay a = CD (extent a) (cindex a) (cindexM a)
 
 instance Index CD (Z :. Int) (CExp Int) (CExp e) where
-    (!) (CD _ f) ci = f (Z :. ci)
+    (!) (CD _ f _) ci = f (Z :. ci)
 
 instance Index CD (Z :. Int :. Int) (CExp Int, CExp Int) (CExp e) where
-    (!) (CD _ f) (ci, cj) = f (Z :. ci :. cj)
+    (!) (CD _ f _) (ci, cj) = f (Z :. ci :. cj)
 
 instance (Shape sh, ToCShape sh, ToCType e) => IsCArray CD sh e where
-    cindex (CD _ f) = f
+    cindex  (CD _ f _) = f
+    cindexM (CD _ _ f) = f
