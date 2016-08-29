@@ -26,9 +26,11 @@ import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 import Text.PrettyPrint.Mainland
 
+import Spiral.Backend.C.Array
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Types
+import Spiral.Backend.C.Repr.Cached
 import Spiral.Backend.C.Util
 import Spiral.Config
 import Spiral.Exp

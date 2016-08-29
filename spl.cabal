@@ -24,9 +24,11 @@ library
     Spiral
     Spiral.Array
     Spiral.Backend.C
+    Spiral.Backend.C.Array
     Spiral.Backend.C.CExp
     Spiral.Backend.C.Code
     Spiral.Backend.C.Monad
+    Spiral.Backend.C.Repr.Cached
     Spiral.Backend.C.Types
     Spiral.Backend.C.Util
     Spiral.Config

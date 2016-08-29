@@ -13,22 +13,15 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Backend.C.CExp (
-    CExp(..),
-
-    C,
-    CC,
-    Array(..)
+    CExp(..)
   ) where
 
 import Data.Complex
-import Data.Maybe (fromMaybe)
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 import Text.PrettyPrint.Mainland
 
-import Spiral.Array
 import Spiral.Backend.C.Util
-import Spiral.Shape
 import Spiral.Util.Lift
 
 -- | A compiled C expression.
@@ -157,52 +150,3 @@ instance Num (CExp (Complex Double)) where
     signum  = liftNum Signum signum
 
     fromInteger x = CComplex (CDouble (fromInteger x)) 0
-
--- | Type tag for a compiled array.
-data C
-
-instance IsArray C sh (CExp e) where
-    -- | A compiled array. In particular, an array with the type tag 'C' is
-    -- guaranteed to have contiguously-allocated storage, so it can be
-    -- efficiently indexed.
-    data Array C sh (CExp e) = C sh (CExp e)
-
-    extent (C sh _) = sh
-
-    index (C _ ce) i = foldr cidx ce (listOfShape i)
-      where
-        cidx :: Int -> CExp a -> CExp a
-        cidx ci ce = CExp [cexp|$ce[$int:ci]|]
-
-instance Index C (Z :. Int) (CExp Int) (CExp e) where
-    (!) (C _ ce) ci = CExp [cexp|$ce[$ci]|]
-
-instance Index C (Z :. Int :. Int) (CExp Int, CExp Int) (CExp e) where
-    (!) (C _ ce) (ci, cj) = CExp [cexp|$ce[$ci][$cj]|]
-
--- | Type tag for a cached compiled array.
-data CC
-
-instance IsArray CC sh (CExp e) where
-    -- | A /cached/ compiled array. This is an array whose contents has been
-    -- computed so it can be indexed symbolically, but we still want the
-    -- non-symbolic elements when we index by an integer constant.
-    data Array CC sh (CExp e) = CC sh (Array D sh (Maybe (CExp e))) (CExp e)
-
-    extent (CC sh _ _) = sh
-
-    index (CC sh a ce) i = fromMaybe (index (C sh ce) i) (index a i)
-
-instance Index CC (Z :. Int) (CExp Int) (CExp e) where
-    (!) (CC _ a _) (CInt i) | Just ce <- a ! i =
-        ce
-
-    (!) (CC _ _ ce) ci =
-        CExp [cexp|$ce[$ci]|]
-
-instance Index CC (Z :. Int :. Int) (CExp Int, CExp Int) (CExp e) where
-    (!) (CC _ a _) (CInt i, CInt j) | Just ce <- a ! (i, j) =
-        ce
-
-    (!) (CC _ _ ce) (ci, cj) =
-        CExp [cexp|$ce[$ci][$cj]|]
