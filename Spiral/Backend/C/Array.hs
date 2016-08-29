@@ -80,8 +80,9 @@ class (Shape sh, ToCType e, IsArray r sh (CExp e)) => IsCArray r sh e where
         sh = extent a
 
         assign :: Int -> Cg m ()
-        assign i =
-            appendStm [cstm|$(foldr cidx cdst (listOfShape ix)) = $(a ! ix);|]
+        assign i = do
+            csrc <- lookupCExp $ a ! ix
+            appendStm [cstm|$(foldr cidx cdst (listOfShape ix)) = $csrc;|]
           where
             ix :: sh
             ix = fromIndex sh i
