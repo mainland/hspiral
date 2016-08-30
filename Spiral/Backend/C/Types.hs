@@ -33,12 +33,11 @@ instance ToCType Double where
 instance ToCType (Complex Double) where
     toCType _ = [cty|double _Complex|]
 
-instance (ToCType a, IsArray r DIM1 a) => ToCType (Array r DIM1 a) where
-    toCType a = [cty|$ty:(toCType (undefined :: a))[static $int:n]|]
-      where
-        Z :. n = extent a
+mkArrayT :: Shape sh => C.Type -> sh -> C.Type
+mkArrayT ctau sh = foldl cidx ctau (listOfShape sh)
+  where
+    cidx :: C.Type -> Int -> C.Type
+    cidx ctau i = [cty|$ty:ctau[static $int:i]|]
 
-instance (ToCType a, IsArray r DIM2 a) => ToCType (Array r DIM2 a) where
-    toCType a = [cty|$ty:(toCType (undefined :: a))[static $int:m][static $int:n]|]
-      where
-        Z :. m :. n = extent a
+instance (ToCType a, Shape sh, IsArray r sh a) => ToCType (Array r sh a) where
+    toCType a = mkArrayT (toCType (undefined :: a)) (extent a)
