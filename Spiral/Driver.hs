@@ -36,16 +36,16 @@ import Spiral.Driver.Opts
 import Spiral.Exp
 import Spiral.SPL
 
-defaultMain :: Spiral () -> IO ()
+defaultMain :: ([String] -> Spiral ()) -> IO ()
 defaultMain = defaultMainWith mempty
 
-defaultMainWith :: Config -> Spiral () -> IO ()
-defaultMainWith config m = do
-    args              <- getArgs
-    (config', _files) <- parseOpts args
+defaultMainWith :: Config -> ([String] -> Spiral ()) -> IO ()
+defaultMainWith config k = do
+    args             <- getArgs
+    (config', args') <- parseOpts args
     if mode config == Help
       then usage >>= hPutStrLn stderr
-      else runSpiral (localConfig (const (config <> config')) m) `catch` printFailure
+      else runSpiral (localConfig (const (config <> config')) (k args')) `catch` printFailure
   where
     printFailure :: SomeException -> IO ()
     printFailure e = hPrint stderr e >> exitFailure
