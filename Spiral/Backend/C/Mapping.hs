@@ -23,8 +23,8 @@ import Spiral.Monad (MonadCg)
 import Spiral.SPL
 
 zipWithP :: forall r1 r2 sh a b c .
-            ( IsCArray r1 sh a
-            , IsCArray r2 sh b
+            ( CArray r1 sh a
+            , CArray r2 sh b
             )
          => (CExp a -> CExp b -> CExp c)
          -> Array r1 sh (CExp a)
@@ -38,7 +38,7 @@ zipWithP f a b = fromCFunction (intersectDim (extent a) (extent b)) cidx
 infixl 6 +^, -^
 infixl 7 *^
 
-(+^), (-^), (*^) :: (IsCArray r1 sh a, IsCArray r2 sh a, Num (CExp a))
+(+^), (-^), (*^) :: (CArray r1 sh a, CArray r2 sh a, Num (CExp a))
                  => Array r1 sh (CExp a)
                  -> Array r2 sh (CExp a)
                  -> Array CD sh (CExp a)

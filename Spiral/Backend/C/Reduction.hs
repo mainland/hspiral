@@ -29,7 +29,7 @@ foldP :: forall a b r .
          ( ToCType a
          , ToCType b
          , CAssign (CExp a)
-         , IsCArray r DIM1 b
+         , CArray r DIM1 b
          )
       => (CExp a -> CExp b -> CExp a)
       -> CExp a
@@ -59,7 +59,7 @@ sumP :: forall a r .
          ( Num (CExp a)
          , ToCType a
          , CAssign (CExp a)
-         , IsCArray r DIM1 a
+         , CArray r DIM1 a
          )
      => Array r (Z :. Int) (CExp a)
      -> Array CD Z (CExp a)

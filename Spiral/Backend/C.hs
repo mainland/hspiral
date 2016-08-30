@@ -195,8 +195,8 @@ cgMVProd :: forall r1 r2 r3 a m .
             , ToCType a
             , CAssign (CExp a)
             , IndexedArray  r1 DIM2 (Exp a)
-            , IsCArray r2 DIM1 a
-            , IsCArray r3 DIM1 a
+            , CArray r2 DIM1 a
+            , CArray r3 DIM1 a
             , MonadCg m
             )
          => Matrix r1 (Exp a)  -- ^ The matrix @A@
@@ -223,7 +223,7 @@ cgMVProd a x y = do
     a' = cgMatrix a
 
 -- | Extract a row of a C array.
-crow :: forall r a . IsCArray r DIM2 a => Matrix r (CExp a) -> CExp Int -> Vector CD (CExp a)
+crow :: forall r a . CArray r DIM2 a => Matrix r (CExp a) -> CExp Int -> Vector CD (CExp a)
 crow a ci = fromCFunction (Z :. n) cidx'
   where
     cidx :: forall m . MonadCg m => CShapeOf DIM2 -> Cg m (CExp a)
@@ -240,7 +240,7 @@ data S
 -- @begin + len - 1@.
 instance IsArray S DIM1 (CExp a) where
     data Array S DIM1 (CExp a) where
-        S :: IsCArray r DIM1 a
+        S :: CArray r DIM1 a
           => Array r DIM1 (CExp a)
           -> CExp Int
           -> Int
@@ -255,10 +255,10 @@ instance Pretty (Array S DIM1 (CExp a)) where
         colonsep :: [Doc] -> Doc
         colonsep = align . sep . punctuate colon
 
-instance ToCType e => IsCArray S DIM1 e where
+instance ToCType e => CArray S DIM1 e where
     cindex (S a b s _len) (Z :. ci) = cindex a (Z :. b + ci * fromIntegral s)
 
-slice :: IsCArray r DIM1 a
+slice :: CArray r DIM1 a
       => Array r DIM1 (CExp a)
       -> CExp Int
       -> Int

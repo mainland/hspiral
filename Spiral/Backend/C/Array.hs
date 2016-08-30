@@ -18,10 +18,10 @@
 module Spiral.Backend.C.Array (
     ToCShape(..),
 
-    IsCArray(..),
-    Array(..),
-
+    CArray(..),
     CIndex(..),
+
+    Array(..),
 
     C,
 
@@ -68,7 +68,7 @@ instance ToCShape sh => ToCShape (sh :. Int) where
 
     toCShape (sh :. i) = toCShape sh :. CInt i
 
-class (ToCShape sh, ToCType e, IsArray r sh (CExp e)) => IsCArray r sh e where
+class (ToCShape sh, ToCType e, IsArray r sh (CExp e)) => CArray r sh e where
     cindex :: (Shape sh, MonadCg m)
            => Array r sh (CExp e)
            -> CShapeOf sh
@@ -99,16 +99,16 @@ class (ToCShape sh, ToCType e, IsArray r sh (CExp e)) => IsCArray r sh e where
 class CIndex r sh ix e where
     (!!) :: MonadCg m => Array r sh (CExp e) -> ix -> Cg m (CExp e)
 
-instance IsCArray r DIM1 e => CIndex r DIM1 Int e where
+instance CArray r DIM1 e => CIndex r DIM1 Int e where
     a !! i = cindex a (Z :. CInt i)
 
-instance IsCArray r DIM2 e => CIndex r DIM2 (Int, Int) e where
+instance CArray r DIM2 e => CIndex r DIM2 (Int, Int) e where
     a !! (i, j) = cindex a (Z :. CInt i :. CInt j)
 
-instance IsCArray r DIM1 e => CIndex r DIM1 (CExp Int) e where
+instance CArray r DIM1 e => CIndex r DIM1 (CExp Int) e where
     a !! ci = cindex a (Z :. ci)
 
-instance IsCArray r DIM2 e => CIndex r DIM2 (CExp Int, CExp Int) e where
+instance CArray r DIM2 e => CIndex r DIM2 (CExp Int, CExp Int) e where
     a !! (ci, cj) = cindex a (Z :. ci :. cj)
 
 -- | Type tag for a manifest C array.
@@ -127,7 +127,7 @@ instance IndexedArray C sh (CExp e) where
         cidx :: Int -> CExp a -> CExp a
         cidx ci ce = CExp [cexp|$ce[$int:ci]|]
 
-instance (ToCShape sh, ToCType e) => IsCArray C sh e where
+instance (ToCShape sh, ToCType e) => CArray C sh e where
     cindex (C _ ce) i = return $ foldr cidx ce (listOfCShape i)
       where
         cidx :: CExp Int -> CExp e -> CExp e
@@ -142,7 +142,7 @@ instance ToCShape sh => IsArray CD sh (CExp e) where
 
     extent (CD sh _) = sh
 
-instance (ToCShape sh, ToCType e) => IsCArray CD sh e where
+instance (ToCShape sh, ToCType e) => CArray CD sh e where
     cindex (CD _ f) = f
 
 -- | Create a delayed array from a function mapping indices to elements.
@@ -151,14 +151,14 @@ fromCFunction :: sh
               -> Array CD sh (CExp e)
 fromCFunction = CD
 
-toCFunction :: (Shape sh, IsCArray r sh e)
+toCFunction :: (Shape sh, CArray r sh e)
             => Array r sh (CExp e)
             -> (sh, forall m . MonadCg m => CShapeOf sh -> Cg m (CExp e))
 toCFunction a =
     case cdelay a of
       CD sh f -> (sh, f)
 
-cdelay :: (Shape sh, IsCArray r sh e)
+cdelay :: (Shape sh, CArray r sh e)
        => Array r sh (CExp e)
        -> Array CD sh (CExp e)
 cdelay a = CD (extent a) (cindex a >=> cacheCExp)
