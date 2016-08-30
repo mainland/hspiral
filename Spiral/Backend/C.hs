@@ -107,7 +107,7 @@ codegen name a = do
             faildoc $ text "Mismatched dimensions in arguments to ×:" </> ppr e
         CExp ce <- cgTemp (fromFunction (ix1 n) (const (0 :: a)))
         let t :: Vector C (CExp a)
-            t = C (ix1 n) (CExp ce)
+            t = C (ix1 n) ce
         cgSPL b x t
         cgSPL a t y
       where
@@ -135,8 +135,8 @@ cgTransform name (Z :. m :. n) k = do
    cin   <- cgVar "in"
    cout  <- cgVar "out"
    items <- inNewBlock_ $
-            k (C (ix1 n) (CExp [cexp|$id:cin|]))
-              (C (ix1 m) (CExp [cexp|$id:cout|]))
+            k (C (ix1 n) [cexp|$id:cin|])
+              (C (ix1 m) [cexp|$id:cout|])
    appendTopFunDef [cedecl|
 void $id:name(restrict $ty:ctau $id:cout[static $int:m],
               restrict $ty:ctau $id:cin[static $int:n])
@@ -215,7 +215,7 @@ cgMVProd a x y = do
       let v2 = sumP v1
       --- XXX: gross!
       let yi' :: Array C DIM0 (CExp a)
-          yi' = C Z (CExp [cexp|$yi|])
+          yi' = C Z [cexp|$yi|]
       compute yi' v2
   where
     Z :. m'     = extent y

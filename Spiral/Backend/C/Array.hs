@@ -36,6 +36,7 @@ import Prelude hiding ((!!))
 
 import Control.Monad ((>=>))
 import Language.C.Quote.C
+import qualified Language.C.Syntax as C
 
 import Spiral.Array
 import Spiral.Backend.C.CExp
@@ -124,28 +125,28 @@ data C
 instance IsArray C sh (CExp e) where
     -- | A manifest C array. An array with the type tag 'C' is guaranteed to
     -- have contiguously-allocated storage, so it can be efficiently indexed.
-    data Array C sh (CExp e) = C sh (CExp e)
+    data Array C sh (CExp e) = C sh C.Exp
 
     extent (C sh _) = sh
 
 instance IndexedArray C sh (CExp e) where
-    index (C _ ce) i = foldr cidx ce (listOfShape i)
+    index (C _ ce) i = CExp $ foldr cidx ce (listOfShape i)
       where
-        cidx :: Int -> CExp a -> CExp a
-        cidx ci ce = CExp [cexp|$ce[$int:ci]|]
+        cidx :: Int -> C.Exp -> C.Exp
+        cidx ci ce = [cexp|$ce[$int:ci]|]
 
 instance (ToCShape sh, ToCType e) => CArray C sh e where
-    cindex (C _ ce) i = return $ foldr cidx ce (listOfCShape i)
+    cindex (C _ ce) i = return $ CExp $ foldr cidx ce (listOfCShape i)
       where
-        cidx :: CExp Int -> CExp e -> CExp e
-        cidx ci ce = CExp [cexp|$ce[$ci]|]
+        cidx :: CExp Int -> C.Exp -> C.Exp
+        cidx ci ce = [cexp|$ce[$ci]|]
 
 instance (ToCShape sh, ToCType e) => MCArray C sh e where
     cwrite (C _ ce) i ce' =
         appendStm [cstm|$(foldr cidx ce (listOfCShape i)) = $ce';|]
       where
-        cidx :: CExp Int -> CExp e -> CExp e
-        cidx ci ce = CExp [cexp|$ce[$ci]|]
+        cidx :: CExp Int -> C.Exp -> C.Exp
+        cidx ci ce = [cexp|$ce[$ci]|]
 
 -- | Type tag for a delayed C array.
 data CD
