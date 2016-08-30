@@ -28,7 +28,9 @@ library
     Spiral.Backend.C.Assign
     Spiral.Backend.C.CExp
     Spiral.Backend.C.Code
+    Spiral.Backend.C.Mapping
     Spiral.Backend.C.Monad
+    Spiral.Backend.C.Reduction
     Spiral.Backend.C.Types
     Spiral.Backend.C.Util
     Spiral.Config
