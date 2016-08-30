@@ -21,6 +21,7 @@ import Spiral.Backend.C.Array
 import Spiral.Backend.C.Assign
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
+import Spiral.Backend.C.Temp
 import Spiral.Backend.C.Types
 import Spiral.Config
 import Spiral.SPL
@@ -28,6 +29,7 @@ import Spiral.SPL
 foldP :: forall a b r .
          ( ToCType a
          , ToCType b
+         , CTemp a (CExp a)
          , CAssign (CExp a) (CExp a)
          , CArray r DIM1 b
          )
@@ -58,6 +60,7 @@ foldP f z xs =
 sumP :: forall a r .
          ( Num (CExp a)
          , ToCType a
+         , CTemp a (CExp a)
          , CAssign (CExp a) (CExp a)
          , CArray r DIM1 a
          )

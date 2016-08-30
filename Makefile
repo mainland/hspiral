@@ -49,6 +49,7 @@ SRC = \
 	Spiral/Backend/C/Mapping.hs \
 	Spiral/Backend/C/Monad.hs \
 	Spiral/Backend/C/Reduction.hs \
+	Spiral/Backend/C/Temp.hs \
 	Spiral/Backend/C/Types.hs \
 	Spiral/Backend/C/Util.hs \
 	Spiral/Config.hs \

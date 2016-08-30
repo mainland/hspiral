@@ -34,6 +34,7 @@ import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Mapping
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Reduction
+import Spiral.Backend.C.Temp
 import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
 import Spiral.Exp
@@ -48,6 +49,7 @@ codegen :: forall a m .
            , Num (CExp a)
            , ToCExp (Exp a) a
            , ToCType a
+           , CTemp a (CExp a)
            , CAssign (CExp a) (CExp a)
            , MonadCg m
            )
@@ -105,9 +107,9 @@ codegen name a = do
     cgSPL e@(B P a b) x y = do
         when (n' /= n) $
             faildoc $ text "Mismatched dimensions in arguments to ×:" </> ppr e
-        CExp ce <- cgTemp (fromFunction (ix1 n) (const (0 :: a)))
-        let t :: Vector C (CExp a)
-            t = C (ix1 n) ce
+        let t0 :: Vector D a
+            t0 = fromFunction (ix1 n) (const (0 :: a))
+        t <- cgTemp t0
         cgSPL b x t
         cgSPL a t y
       where
@@ -193,6 +195,7 @@ cgMVProd :: forall r1 r2 r3 a m .
             , Num (CExp a)
             , ToCExp (Exp a) a
             , ToCType a
+            , CTemp a (CExp a)
             , CAssign (CExp a) (CExp a)
             , IndexedArray  r1 DIM2 (Exp a)
             , CArray r2 DIM1 a

@@ -43,7 +43,6 @@ module Spiral.Backend.C.Monad (
     lookupCExp,
 
     cgVar,
-    cgTemp,
     cgFor
   ) where
 
@@ -300,16 +299,6 @@ lookupCExp e = do
 -- | Generate a unique C identifier name using the given prefix.
 cgVar :: MonadUnique m => String -> Cg m C.Id
 cgVar = gensym
-
--- | Generate a temporary variable.
-cgTemp :: forall a m . (ToCType a, MonadCg m) => a -> Cg m (CExp a)
-cgTemp a = do
-    t <- cgVar "t"
-    appendDecl [cdecl|$ty:ctau $id:t;|]
-    return $ CExp [cexp|$id:t|]
-  where
-    ctau :: C.Type
-    ctau = toCType a
 
 -- | Generate code for a loop with the given start and end.
 cgFor :: MonadCg m

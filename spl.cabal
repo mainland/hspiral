@@ -31,6 +31,7 @@ library
     Spiral.Backend.C.Mapping
     Spiral.Backend.C.Monad
     Spiral.Backend.C.Reduction
+    Spiral.Backend.C.Temp
     Spiral.Backend.C.Types
     Spiral.Backend.C.Util
     Spiral.Config
