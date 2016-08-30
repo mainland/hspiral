@@ -68,10 +68,10 @@ class Index r sh ix e where
 instance (Shape sh, IsArray r sh e) => Index r sh sh e where
     (!) = index
 
-instance IsArray r (Z :. Int) e => Index r (Z :. Int) Int e where
+instance IsArray r DIM1 e => Index r DIM1 Int e where
     a ! i = a ! (Z :. i)
 
-instance IsArray r (Z :. Int :. Int) e => Index r (Z :. Int :. Int) (Int, Int) e where
+instance IsArray r DIM2 e => Index r DIM2 (Int, Int) e where
     a ! (i, j) = a ! (Z :. i :. j)
 
 -- | Type tag for a matrix whose entries are manifest.

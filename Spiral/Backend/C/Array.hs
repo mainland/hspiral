@@ -98,10 +98,10 @@ class (Shape sh, ToCType e, IsArray r sh (CExp e)) => IsCArray r sh e where
 class CIndex r sh ix e where
     (!!) :: MonadCg m => Array r sh (CExp e) -> ix -> Cg m (CExp e)
 
-instance IsCArray r (Z :. Int) e => CIndex r (Z :. Int) Int e where
+instance IsCArray r DIM1 e => CIndex r DIM1 Int e where
     a !! i = cindexM a (Z :. CInt i)
 
-instance IsCArray r (Z :. Int :. Int) e => CIndex r (Z :. Int :. Int) (Int, Int) e where
+instance IsCArray r DIM2 e => CIndex r DIM2 (Int, Int) e where
     a !! (i, j) = cindexM a (Z :. CInt i :. CInt j)
 
 -- | Type tag for a manifest C array.
@@ -119,22 +119,22 @@ instance IsArray C sh (CExp e) where
         cidx :: Int -> CExp a -> CExp a
         cidx ci ce = CExp [cexp|$ce[$int:ci]|]
 
-instance Index C (Z :. Int) (CExp Int) (CExp e) where
+instance Index C DIM1 (CExp Int) (CExp e) where
     (!) (C _ ce) ci = CExp [cexp|$ce[$ci]|]
 
-instance Index C (Z :. Int :. Int) (CExp Int, CExp Int) (CExp e) where
+instance Index C DIM2 (CExp Int, CExp Int) (CExp e) where
     (!) (C _ ce) (ci, cj) = CExp [cexp|$ce[$ci][$cj]|]
 
-instance ToCType e => IsCArray C (Z :. Int) e where
+instance ToCType e => IsCArray C DIM1 e where
     cindex (C _ ce) (Z :. ci) = CExp [cexp|$ce[$ci]|]
 
-instance ToCType e => IsCArray C (Z :. Int :. Int) e where
+instance ToCType e => IsCArray C DIM2 e where
     cindex (C _ ce) (Z :. ci :. cj) = CExp [cexp|$ce[$ci][$cj]|]
 
-instance CIndex C (Z :. Int) (CExp Int) e where
+instance CIndex C DIM1 (CExp Int) e where
     a !! i = return $ a ! i
 
-instance CIndex C (Z :. Int :. Int) (CExp Int, CExp Int) e where
+instance CIndex C DIM2 (CExp Int, CExp Int) e where
     a !! i = return $ a ! i
 
 -- | Type tag for a delayed C array.
@@ -178,10 +178,10 @@ cdelay :: (Shape sh, IsCArray r sh e)
        -> Array CD sh (CExp e)
 cdelay a = CD (extent a) (cindex a) (cindexM a)
 
-instance Index CD (Z :. Int) (CExp Int) (CExp e) where
+instance Index CD DIM1 (CExp Int) (CExp e) where
     (!) (CD _ f _) ci = f (Z :. ci)
 
-instance Index CD (Z :. Int :. Int) (CExp Int, CExp Int) (CExp e) where
+instance Index CD DIM2 (CExp Int, CExp Int) (CExp e) where
     (!) (CD _ f _) (ci, cj) = f (Z :. ci :. cj)
 
 instance (Shape sh, ToCShape sh, ToCType e) => IsCArray CD sh e where

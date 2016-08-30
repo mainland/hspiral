@@ -218,8 +218,8 @@ cgMVProd a x y = do
 -- | A combined zip/fold over two vectors. We can't quite separate these into
 -- two operations because we would need to be able to index into the result of
 -- the zip with a symbolic expression to generate the body of the for loop.
-cgZipFold :: ( IsArray r1 (Z :. Int) (CExp c)
-             , Index r1 (Z :. Int) (CExp Int) (CExp c)
+cgZipFold :: ( IsArray r1 DIM1 (CExp c)
+             , Index r1 DIM1 (CExp Int) (CExp c)
              , Index r2 sh (CExp Int) (CExp d)
              , Index r2 sh Int (CExp d)
              , ToCType b
@@ -229,7 +229,7 @@ cgZipFold :: ( IsArray r1 (Z :. Int) (CExp c)
              , MonadCg m
              )
           => (CExp c -> CExp d -> CExp b) -- ^ The zipping function
-          -> Array r1 (Z :. Int) (CExp c) -- ^ The first vector to zip
+          -> Array r1 DIM1 (CExp c) -- ^ The first vector to zip
           -> Array r2 sh (CExp d)         -- ^ The second vector to zip
           -> (CExp a -> CExp b -> CExp a) -- ^ The fold function
           -> CExp a                       -- ^ The unit of the fold function
