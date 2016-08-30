@@ -154,6 +154,41 @@ instance Num (CExp (Complex Double)) where
 
     fromInteger x = CComplex (CDouble (fromInteger x)) 0
 
+instance Enum (CExp Int) where
+    toEnum n = CInt (fromIntegral n)
+
+    fromEnum (CInt n) = fromIntegral n
+    fromEnum _        = error "Enum Exp: fromEnum not implemented"
+
+instance Real (CExp Int) where
+    toRational (CInt n) = toRational n
+    toRational _        = error "Real CExp: toRational not implemented"
+
+instance Integral (CExp Int) where
+    CInt x `quot` CInt y = CInt (x `quot` y)
+    x      `quot` y      = CExp [cexp|$x / $y|]
+
+    CInt x `quotRem` CInt y = (CInt q, CInt r)
+      where
+        (q, r) = x `quotRem` y
+
+    ce1 `quotRem` ce2@(CInt i) | isPowerOf2 i =
+        (CExp [cexp|$ce1 / $ce2|], CExp [cexp|$ce1 & $(ce2-1)|])
+      where
+        isPowerOf2 0 = False
+        isPowerOf2 1 = False
+        isPowerOf2 2 = True
+        isPowerOf2 n | r == 0    = isPowerOf2 q
+                     | otherwise = False
+          where
+            (q,r) = n `quotRem` 2
+
+    ce1 `quotRem` ce2 =
+        (CExp [cexp|$ce1 / $ce2|], CExp [cexp|$ce1 % $ce2|])
+
+    toInteger (CInt i) = fromIntegral i
+    toInteger _        = error "Integral CExp: fromInteger not implemented"
+
 -- | Compile a value to a C expression.
 class ToCExp a b | a -> b where
     toCExp :: a -> CExp b
