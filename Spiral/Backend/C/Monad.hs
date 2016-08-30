@@ -37,6 +37,8 @@ module Spiral.Backend.C.Monad (
     appendStm,
     appendStms,
     appendBlock,
+    appendTopComment,
+    appendComment,
 
     cacheConst,
     cacheCExp,
@@ -64,6 +66,7 @@ import qualified Data.Sequence as Seq
 import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
+import Text.PrettyPrint.Mainland
 
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
@@ -226,6 +229,19 @@ appendBlock citems
     isBlockStm :: C.BlockItem -> Bool
     isBlockStm C.BlockStm{} = True
     isBlockStm _            = False
+
+-- | Append a comment to the list of top-level definitions.
+appendTopComment :: Monad m => Doc -> Cg m ()
+appendTopComment doc = appendTopDef [cedecl|$esc:(formatComment doc)|]
+
+-- | Append a comment to the current sequence of statements.
+appendComment :: Monad m => Doc -> Cg m ()
+appendComment doc = appendStm [cstm|$escstm:(formatComment doc)|]
+
+formatComment :: Doc -> String
+formatComment doc =
+    pretty 80 $ group $
+    text "/*" <+> align doc </> text "*/"
 
 cacheConst :: MonadUnique m
            => C.Initializer
