@@ -35,7 +35,6 @@ import Spiral.Backend.C.Mapping
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Reduction
 import Spiral.Backend.C.Slice
-import Spiral.Backend.C.Temp
 import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
 import Spiral.Config
@@ -154,7 +153,7 @@ codegen name a = do
             return $ cdelay t
 
 -- | Create a slice and delay it
-dslice :: CArray r DIM1 a
+dslice :: (CTemp a (CExp a), CArray r DIM1 a)
        => Array r DIM1 (CExp a)
        -> CExp Int
        -> Int
@@ -276,7 +275,10 @@ cgMVProd a x = do
         ai = crow a' ci
 
 -- | Extract a row of a C array.
-crow :: forall r a . CArray r DIM2 a => Matrix r (CExp a) -> CExp Int -> Vector CD (CExp a)
+crow :: forall r a . (CTemp a (CExp a), CArray r DIM2 a)
+     => Matrix r (CExp a)
+     -> CExp Int
+     -> Vector CD (CExp a)
 crow a ci = fromCFunction (Z :. n) cidx'
   where
     cidx :: forall m . MonadCg m => CShapeOf DIM2 -> Cg m (CExp a)

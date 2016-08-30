@@ -23,7 +23,9 @@ import Spiral.Monad (MonadCg)
 import Spiral.SPL
 
 zipWithP :: forall r1 r2 sh a b c .
-            ( CArray r1 sh a
+            ( CTemp a (CExp a)
+            , CTemp b (CExp b)
+            , CArray r1 sh a
             , CArray r2 sh b
             )
          => (CExp a -> CExp b -> CExp c)
@@ -38,7 +40,10 @@ zipWithP f a b = fromCFunction (intersectDim (extent a) (extent b)) cidx
 infixl 6 +^, -^
 infixl 7 *^
 
-(+^), (-^), (*^) :: (CArray r1 sh a, CArray r2 sh a, Num (CExp a))
+(+^), (-^), (*^) :: ( Num (CExp a)
+                    , CTemp a (CExp a)
+                    , CArray r1 sh a
+                    , CArray r2 sh a)
                  => Array r1 sh (CExp a)
                  -> Array r2 sh (CExp a)
                  -> Array CD sh (CExp a)

@@ -1,4 +1,8 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -45,7 +49,10 @@ module Spiral.Backend.C.Monad (
     lookupCExp,
 
     cgVar,
-    cgFor
+    cgFor,
+
+    cgRawTemp,
+    CTemp(..)
   ) where
 
 import Control.Monad.Exception (MonadException(..))
@@ -56,6 +63,7 @@ import Control.Monad.State (MonadState(..),
                             execStateT,
                             gets,
                             modify)
+import Data.Complex
 import Data.Foldable (toList)
 import Data.Loc (noLoc)
 import Data.Map (Map)
@@ -258,7 +266,7 @@ cacheConst cinits ctau = do
                     return ce
 
 -- | Cache a 'CExp'. This generates a local binding for the value of the 'CExp'.
-cacheCExp :: forall a m . (ToCType a, MonadUnique m)
+cacheCExp :: forall a m . (ToCType a, CTemp a (CExp a), MonadCg m)
           => CExp a
           -> Cg m (CExp a)
 cacheCExp e = do
@@ -271,9 +279,6 @@ cacheCExp e = do
   where
     ce :: C.Exp
     ce = toExp e noLoc
-
-    ctau :: C.Type
-    ctau = toCType (undefined :: a)
 
     go :: CExp a -> Cg m C.Exp
     go CInt{} =
@@ -289,14 +294,12 @@ cacheCExp e = do
         return ce
 
     go (CInit ini) =
-        cacheConst ini ctau
+        cacheConst ini (toCType (undefined :: a))
 
     go _ = do
-        ctemp   <- cgVar "x"
-        let ce' =  [cexp|$id:ctemp|]
-        appendDecl [cdecl|$ty:ctau $id:ctemp;|]
-        appendStm [cstm|$id:ctemp = $e;|]
-        return ce'
+        ctemp <- cgTemp (undefined :: a)
+        appendStm [cstm|$ctemp = $e;|]
+        return [cexp|$ctemp|]
 
 -- | Look up the cached C expression corresponding to a 'CExp'. If the 'CExp'
 -- has not been cached, we return it without caching it.
@@ -330,3 +333,26 @@ cgFor lo hi k = do
         ci    <- cgVar "i"
         items <- inNewBlock_ $ k (CExp [cexp|$id:ci|])
         appendStm [cstm|for (int $id:ci = $int:lo; $id:ci < $int:hi; ++$id:ci) $stm:(toStm items)|]
+
+-- | Type-directed generation of temporary variables.
+class CTemp a b | a -> b where
+    -- | Generate a temporary variable.
+    cgTemp :: MonadCg m => a -> Cg m b
+
+cgRawTemp :: (ToCType a, MonadCg m) => a -> Cg m C.Exp
+cgRawTemp a = do
+    t <- cgVar "t"
+    appendDecl [cdecl|$ty:ctau $id:t;|]
+    return [cexp|$id:t|]
+  where
+    ctau :: C.Type
+    ctau = toCType a
+
+instance CTemp Int (CExp Int) where
+    cgTemp x = CExp <$> cgRawTemp x
+
+instance CTemp Double (CExp Double) where
+    cgTemp x = CExp <$> cgRawTemp x
+
+instance CTemp (Complex Double) (CExp (Complex Double)) where
+    cgTemp x = CExp <$> cgRawTemp x

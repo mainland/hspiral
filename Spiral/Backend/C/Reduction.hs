@@ -21,7 +21,6 @@ import Spiral.Backend.C.Array
 import Spiral.Backend.C.Assign
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
-import Spiral.Backend.C.Temp
 import Spiral.Backend.C.Types
 import Spiral.Config
 import Spiral.SPL

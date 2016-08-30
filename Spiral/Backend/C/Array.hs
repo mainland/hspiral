@@ -8,6 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- Module      :  Spiral.Backend.C.Array
@@ -148,6 +149,16 @@ instance (ToCShape sh, ToCType e) => MCArray C sh e where
         cidx :: CExp Int -> C.Exp -> C.Exp
         cidx ci ce = [cexp|$ce[$ci]|]
 
+instance ( Shape sh
+         , ToCType (Array r sh a)
+         , IsArray r sh a
+         , IsArray r sh (CExp a)
+         )
+      => CTemp (Array r sh a) (Array C sh (CExp a)) where
+    cgTemp a = do
+        ce <- cgRawTemp a
+        return $ C (extent a) ce
+
 -- | Type tag for a delayed C array.
 data CD
 
@@ -166,14 +177,14 @@ fromCFunction :: sh
               -> Array CD sh (CExp e)
 fromCFunction = CD
 
-toCFunction :: (Shape sh, CArray r sh e)
+toCFunction :: (Shape sh, CTemp e (CExp e), CArray r sh e)
             => Array r sh (CExp e)
             -> (sh, forall m . MonadCg m => CShapeOf sh -> Cg m (CExp e))
 toCFunction a =
     case cdelay a of
       CD sh f -> (sh, f)
 
-cdelay :: (Shape sh, CArray r sh e)
+cdelay :: (Shape sh, CTemp e (CExp e), CArray r sh e)
        => Array r sh (CExp e)
        -> Array CD sh (CExp e)
 cdelay a = CD (extent a) (cindex a >=> cacheCExp)
