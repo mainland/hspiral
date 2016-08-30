@@ -17,6 +17,8 @@ module Spiral.Array (
     Vector,
     Matrix,
 
+    IndexedArray(..),
+
     Index(..),
 
     M,
@@ -51,10 +53,11 @@ class IsArray r sh e where
     -- | Take the extent (size) of an array.
     extent :: Shape sh => Array r sh e -> sh
 
+class IsArray r sh e => IndexedArray r sh e where
     -- | Shape polymorphic indexing.
     index :: Shape sh => Array r sh e -> sh -> e
 
-    -- | Create a manifest version of an array.
+    -- | Create a manifest version of an indexed array.
     manifest :: Shape sh => Array r sh e -> Array M sh e
     manifest a = M sh $ V.fromList [a ! fromIndex sh i | i <- [0..size sh-1]]
       where
@@ -62,16 +65,16 @@ class IsArray r sh e where
         sh = extent a
 
 -- | An array index.
-class Index r sh ix e where
+class IndexedArray r sh e => Index r sh ix e where
     (!) :: Array r sh e -> ix -> e
 
-instance (Shape sh, IsArray r sh e) => Index r sh sh e where
+instance (Shape sh, IndexedArray r sh e) => Index r sh sh e where
     (!) = index
 
-instance IsArray r DIM1 e => Index r DIM1 Int e where
+instance IndexedArray r DIM1 e => Index r DIM1 Int e where
     a ! i = a ! (Z :. i)
 
-instance IsArray r DIM2 e => Index r DIM2 (Int, Int) e where
+instance IndexedArray r DIM2 e => Index r DIM2 (Int, Int) e where
     a ! (i, j) = a ! (Z :. i :. j)
 
 -- | Type tag for a matrix whose entries are manifest.
@@ -84,6 +87,7 @@ instance IsArray M sh e where
 
     extent (M sh _) = sh
 
+instance IndexedArray M sh e where
     index (M sh es) i = es V.! toIndex sh i
 
     manifest a = a
@@ -116,7 +120,7 @@ matrix :: [[e]] -> Matrix M e
 matrix = fromLists
 
 -- | Convert a matrix to a list of lists of elements.
-toLists :: (Num e, IsArray r DIM2 e)
+toLists :: (Num e, IndexedArray r DIM2 e)
         => Matrix r e
         -> [[e]]
 toLists e = [[a ! ix2 i j | i <- [0..m-1]] | j <- [0..n-1]]
@@ -132,6 +136,7 @@ instance IsArray D sh e where
 
     extent (D sh _) = sh
 
+instance IndexedArray D sh e where
     index (D _sh f) = f
 
 instance Functor (Array D sh) where
@@ -165,7 +170,7 @@ toFunction a =
 
 -- | Delay an array. This ensures that the internal representation of the array
 -- is a function from indices to elements.
-delay :: (Shape sh, IsArray r sh e)
+delay :: (Shape sh, IndexedArray r sh e)
       => Array r sh e
       -> Array D sh e
 delay a = D (extent a) (index a)

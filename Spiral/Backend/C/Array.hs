@@ -60,7 +60,7 @@ instance ToCShape sh => ToCShape (sh :. Int) where
 
     toCShape (sh :. i) = toCShape sh :. CInt i
 
-class (Shape sh, ToCType e, IsArray r sh (CExp e)) => IsCArray r sh e where
+class (Shape sh, ToCType e, IndexedArray r sh (CExp e)) => IsCArray r sh e where
     -- | Shape polymorphic indexing.
     cindex :: Shape sh
            => Array r sh (CExp e)
@@ -114,6 +114,7 @@ instance IsArray C sh (CExp e) where
 
     extent (C sh _) = sh
 
+instance IndexedArray C sh (CExp e) where
     index (C _ ce) i = foldr cidx ce (listOfShape i)
       where
         cidx :: Int -> CExp a -> CExp a
@@ -146,6 +147,7 @@ instance ToCShape sh => IsArray CD sh (CExp e) where
 
     extent (CD sh _ _) = sh
 
+instance ToCShape sh => IndexedArray CD sh (CExp e) where
     index (CD _ f _) sh = f (toCShape sh)
 
 -- | Create a delayed array from a function mapping indices to elements.

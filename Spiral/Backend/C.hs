@@ -152,7 +152,7 @@ cgMatrix :: forall r a m .
             , Num (CExp a)
             , ToCExp (Exp a) a
             , ToCType a
-            , IsArray r DIM2 (Exp a)
+            , IndexedArray r DIM2 (Exp a)
             , MonadCg m)
          => Matrix r (Exp a)
          -> Cg m (Matrix CD (CExp a))
@@ -189,9 +189,9 @@ cgMVProd :: forall r1 r2 r3 a m .
             , ToCExp (Exp a) a
             , ToCType a
             , CAssign (CExp a)
-            , IsArray r1 DIM2 (Exp a)
-            , IsArray r2 DIM1 (CExp a)
-            , IsArray r3 DIM1 (CExp a)
+            , IndexedArray r1 DIM2 (Exp a)
+            , IndexedArray r2 DIM1 (CExp a)
+            , IndexedArray r3 DIM1 (CExp a)
             , Index r2 DIM1 (CExp Int) (CExp a)
             , Index r3 DIM1 (CExp Int) (CExp a)
             , MonadCg m
@@ -218,7 +218,7 @@ cgMVProd a x y = do
 -- | A combined zip/fold over two vectors. We can't quite separate these into
 -- two operations because we would need to be able to index into the result of
 -- the zip with a symbolic expression to generate the body of the for loop.
-cgZipFold :: ( IsArray r1 DIM1 (CExp c)
+cgZipFold :: ( IndexedArray r1 DIM1 (CExp c)
              , Index r1 DIM1 (CExp Int) (CExp c)
              , Index r2 sh (CExp Int) (CExp d)
              , Index r2 sh Int (CExp d)
@@ -275,6 +275,7 @@ instance IsArray S DIM1 a where
 
     extent (S _ _b _s len) = Z :. len
 
+instance IndexedArray S DIM1 a where
     index (S a b s _len) (Z :. i) = a ! (b + fromIntegral (i*s))
 
 instance Index S DIM1 (CExp Int) a where

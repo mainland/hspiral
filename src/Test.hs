@@ -44,7 +44,7 @@ instance Arbitrary RootOfUnity where
     shrink (RootOfUnity (RouC r)) = [RootOfUnity (RouC r') | r' <- shrink r]
     shrink _                      = []
 
-manifestComplex :: (ToComplex f, IsArray r DIM2 (f (Complex Double)))
+manifestComplex :: (ToComplex f, IndexedArray r DIM2 (f (Complex Double)))
                 => Matrix r (f (Complex Double))
                 -> Matrix M (f (Complex Double))
 manifestComplex = fmap toComplex . manifest

@@ -37,7 +37,7 @@ import Spiral.Util.Pretty
 data SPL
 
 -- | Embed any 'Array' as an SPL term.
-spl :: (IsArray r sh e, Pretty (Array r sh e))
+spl :: (IndexedArray r sh e, Pretty (Array r sh e))
     => Array r sh e
     -> Array SPL sh e
 spl = E
@@ -46,7 +46,7 @@ instance Num e => IsArray SPL sh e where
     -- | A "delayed" matrix, i.e., functional representation.
     data Array SPL sh e where
         -- An "embedded" array with an unknown representation.
-        E :: (IsArray r sh e, Pretty (Array r sh e))
+        E :: (IndexedArray r sh e, Pretty (Array r sh e))
           => Array r sh e
           -> Array SPL sh e
 
@@ -73,7 +73,10 @@ instance Num e => IsArray SPL sh e where
         go DS = ix2 (m+p) (n+q)
         go P  = ix2 m q
 
-    index (E a) i = index a i
+instance Num e => IndexedArray SPL sh e where
+    index (E a) i =
+        index a i
+
     index (I _sh) i =
         case listOfShape i of
           i:js | all (== i) js -> 1
@@ -102,7 +105,8 @@ instance Num e => IsArray SPL sh e where
         go P (Z :. i :. j) =
             sum [a ! ix2 i k * b ! ix2 k j | k <- [0..n-1]]
 
-    manifest (E a) = manifest a
+    manifest (E a) =
+        manifest a
 
     manifest (B op a b) =
         go op
