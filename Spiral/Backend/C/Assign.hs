@@ -20,6 +20,7 @@ import Language.C.Quote.C
 import Spiral.Backend.C.Array
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
+import Spiral.Backend.C.Types
 import Spiral.Monad (MonadCg)
 import Spiral.SPL
 
@@ -40,9 +41,5 @@ instance CAssign (CExp Double) where
 instance CAssign (CExp (Complex Double)) where
     cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
 
-instance CAssign (CExp a) => CAssign (Vector C (CExp a)) where
-    cassign y x =
-        cgFor 0 n $ \i ->
-            y ! i .:=. x ! i
-      where
-        Z :. n = extent x
+instance (ToCType a, CAssign (CExp a)) => CAssign (Vector C (CExp a)) where
+    cassign (C _ ce) x = compute [cexp|$ce|] x

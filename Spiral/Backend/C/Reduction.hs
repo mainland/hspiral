@@ -26,45 +26,41 @@ import Spiral.Config
 import Spiral.SPL
 
 foldP :: forall a b r .
-         ( IsArray r (Z :. Int) (CExp b)
-         , Index  r (Z :. Int) (CExp Int) (CExp b)
-         , CIndex r (Z :. Int) Int b
-         , ToCType a
+         ( ToCType a
          , ToCType b
-         , CAssign (CExp a))
+         , CAssign (CExp a)
+         , IsCArray r DIM1 b
+         )
       => (CExp a -> CExp b -> CExp a)
       -> CExp a
       -> Array r (Z :. Int) (CExp b)
       -> Array CD Z (CExp a)
 foldP f z xs =
-    fromCFunctions Z cidx cidxm
+    fromCFunction Z cidx
   where
     Z :. n = extent xs
 
-    cidx _ = foldl f z (map ((xs !) . CInt) [0..n-1])
-
-    cidxm _ =
+    cidx _ =
         asksConfig maxUnroll >>= go
       where
         go maxun | n <= maxun = do
-            ces <- mapM (cacheCExp . (xs !) . CInt) [0..n-1]
+            ces <- mapM (xs !!) [0..n-1]
             return $ foldl f z ces
 
         go _ = do
             temp <- cgTemp (undefined :: a)
             temp .:=. z
             cgFor 0 n $ \i -> do
-              xi <- lookupCExp $ xs ! i
+              xi <- xs !! i
               temp .:=. f temp xi
             return temp
 
 sumP :: forall a r .
-         ( IsArray r (Z :. Int) (CExp a)
-         , Index  r (Z :. Int) (CExp Int) (CExp a)
-         , CIndex r (Z :. Int) Int a
-         , Num (CExp a)
+         ( Num (CExp a)
          , ToCType a
-         , CAssign (CExp a))
+         , CAssign (CExp a)
+         , IsCArray r DIM1 a
+         )
      => Array r (Z :. Int) (CExp a)
      -> Array CD Z (CExp a)
 sumP = foldP (+) 0

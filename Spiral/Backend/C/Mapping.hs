@@ -12,6 +12,8 @@ module Spiral.Backend.C.Mapping (
     (+^), (-^), (*^)
   ) where
 
+import Prelude hiding ((!!))
+
 import Language.C.Pretty ()
 
 import Spiral.Backend.C.Array
@@ -21,22 +23,17 @@ import Spiral.Monad (MonadCg)
 import Spiral.SPL
 
 zipWithP :: forall r1 r2 sh a b c .
-            ( IsArray  r1 sh (CExp a)
-            , IsCArray r1 sh a
-            , IsArray  r2 sh (CExp b)
+            ( IsCArray r1 sh a
             , IsCArray r2 sh b
             )
          => (CExp a -> CExp b -> CExp c)
          -> Array r1 sh (CExp a)
          -> Array r2 sh (CExp b)
          -> Array CD sh (CExp c)
-zipWithP f a b = fromCFunctions (intersectDim (extent a) (extent b)) cidx cidxm
+zipWithP f a b = fromCFunction (intersectDim (extent a) (extent b)) cidx
   where
-    cidx :: CShape sh -> CExp c
-    cidx ix = f (cindex a ix) (cindex b ix)
-
-    cidxm :: MonadCg m => CShape sh -> Cg m (CExp c)
-    cidxm ix = f <$> cindexM a ix <*> cindexM b ix
+    cidx :: MonadCg m => CShapeOf sh -> Cg m (CExp c)
+    cidx ix = f <$> (cindex a ix >>= cacheCExp) <*> (cindex b ix >>= cacheCExp)
 
 infixl 6 +^, -^
 infixl 7 *^
