@@ -29,10 +29,11 @@ import Text.PrettyPrint.Mainland
 import Spiral.Backend.C.Array
 import Spiral.Backend.C.Assign
 import Spiral.Backend.C.CExp
+import Spiral.Backend.C.Mapping
 import Spiral.Backend.C.Monad
+import Spiral.Backend.C.Reduction
 import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
-import Spiral.Config
 import Spiral.Exp
 import Spiral.Monad (MonadCg)
 import Spiral.SPL
@@ -189,11 +190,14 @@ cgMVProd :: forall r1 r2 r3 a m .
             , ToCExp (Exp a) a
             , ToCType a
             , CAssign (CExp a)
-            , IndexedArray r1 DIM2 (Exp a)
-            , IndexedArray r2 DIM1 (CExp a)
-            , IndexedArray r3 DIM1 (CExp a)
+            , IndexedArray  r1 DIM2 (Exp a)
+            , IndexedArray  r2 DIM1 (CExp a)
+            , IsCArray r2 DIM1 a
+            , IsArray  r3 DIM1 (CExp a)
+            , IsCArray r3 DIM1 a
             , Index r2 DIM1 (CExp Int) (CExp a)
             , Index r3 DIM1 (CExp Int) (CExp a)
+            , CIndex r3 DIM1 (CExp Int) a
             , MonadCg m
             )
          => Matrix r1 (Exp a)  -- ^ The matrix @A@
@@ -209,45 +213,13 @@ cgMVProd a x y = do
     cgFor 0 m $ \i -> do
       let ai = crow a' i
       let yi = y ! i
-      cgZipFold (*) x ai (+) 0 yi
+      let v1 = x *^ ai
+      let v2 = sumP v1
+      compute [cexp|$yi|] v2
   where
     Z :. m'     = extent y
     Z :. n'     = extent x
     Z :. m :. n = extent a
-
--- | A combined zip/fold over two vectors. We can't quite separate these into
--- two operations because we would need to be able to index into the result of
--- the zip with a symbolic expression to generate the body of the for loop.
-cgZipFold :: ( IndexedArray r1 DIM1 (CExp c)
-             , Index r1 DIM1 (CExp Int) (CExp c)
-             , Index r2 sh (CExp Int) (CExp d)
-             , Index r2 sh Int (CExp d)
-             , ToCType b
-             , ToCType c
-             , ToCType d
-             , CAssign (CExp a)
-             , MonadCg m
-             )
-          => (CExp c -> CExp d -> CExp b) -- ^ The zipping function
-          -> Array r1 DIM1 (CExp c) -- ^ The first vector to zip
-          -> Array r2 sh (CExp d)         -- ^ The second vector to zip
-          -> (CExp a -> CExp b -> CExp a) -- ^ The fold function
-          -> CExp a                       -- ^ The unit of the fold function
-          -> CExp a                       -- ^ The destination of the computed value.
-          -> Cg m ()
-cgZipFold g s t f z y = do
-    maxun <- asksConfig maxUnroll
-    if n <= maxun
-      then do xs <- mapM cacheCExp [g (s ! i) (t ! i) | i <- [0..n-1]]
-              y .:=. foldl f z xs
-      else do
-        y .:=. z
-        cgFor 0 n $ \j -> do
-          sj <- cacheCExp (s ! j)
-          tj <- cacheCExp (t ! j)
-          y .:=. f y (g sj tj)
-  where
-    Z :. n = extent s
 
 -- | Extract a row of a C array.
 crow :: forall r a . IsCArray r DIM2 a => Matrix r (CExp a) -> CExp Int -> Vector CD (CExp a)
@@ -271,7 +243,12 @@ data S
 -- @begin + len - 1@.
 instance IsArray S DIM1 a where
     data Array S DIM1 a where
-        S :: Index r DIM1 (CExp Int) a => Array r DIM1 a -> CExp Int -> Int -> Int -> Array S DIM1 a
+        S :: (Index r DIM1 (CExp Int) a, CIndex r DIM1 (CExp Int) a)
+          => Array r DIM1 a
+          -> CExp Int
+          -> Int
+          -> Int
+          -> Array S DIM1 a
 
     extent (S _ _b _s len) = Z :. len
 
@@ -287,7 +264,16 @@ instance Pretty (Array S DIM1 a) where
         colonsep :: [Doc] -> Doc
         colonsep = align . sep . punctuate colon
 
-slice :: (Index r DIM1 (CExp Int) a, IsArray r DIM1 a)
+instance ToCType e => IsCArray S (Z :. Int) e where
+    cindex (S a b s _len) (Z :. ci) = a ! (b + ci * fromIntegral s)
+
+instance ToCType e => CIndex S DIM1 (CExp Int) e where
+    a !! ci = cindexM a (Z :. ci)
+
+slice :: ( IsArray r DIM1 a
+         , Index  r DIM1 (CExp Int) a
+         , CIndex r DIM1 (CExp Int) a
+         )
       => Array r DIM1 a
       -> CExp Int
       -> Int
