@@ -15,7 +15,8 @@
 
 module Spiral.Backend.C.CExp (
     CExp(..),
-    ToCExp(..)
+    ToCExp(..),
+    unComplex
   ) where
 
 import Data.Complex
@@ -23,8 +24,8 @@ import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 import Text.PrettyPrint.Mainland
 
-import Spiral.Exp
 import Spiral.Backend.C.Util
+import Spiral.Exp
 import Spiral.Util.Lift
 
 -- | A compiled C expression.
@@ -43,6 +44,10 @@ data CExp a where
 
     -- C initializer
     CInit :: C.Initializer -> CExp a
+
+unComplex :: CExp (Complex Double) -> (CExp Double, CExp Double)
+unComplex (CComplex r i) = (r, i)
+unComplex ce             = (CExp [cexp|creal($ce)|], CExp [cexp|cimag($ce)|])
 
 deriving instance Eq (CExp a)
 deriving instance Show (CExp a)
@@ -99,12 +104,26 @@ instance LiftNum (CExp a) where
     liftNum_ _ f (CInt x)    = CInt (f x)
     liftNum_ _ f (CDouble x) = CDouble (f x)
 
+    liftNum_ Neg _ (CComplex cr ci) =
+        CComplex (-cr) (-ci)
+
+    liftNum_ Neg _ (CExp [cexp|-$ce|]) = CExp ce
+
     liftNum_ Neg    _ ce  = CExp [cexp|-$ce|]
     liftNum_ Abs    _ _ce = error "LiftNum CExp: cannot lift abs"
     liftNum_ Signum _ ce  = CExp [cexp|$ce == 0 ? 0 : ($ce > 0 ? 1 : -1)|]
 
     liftNum2_ _ f (CInt x)    (CInt y)    = CInt (f x y)
     liftNum2_ _ f (CDouble x) (CDouble y) = CDouble (f x y)
+
+    liftNum2_ Add _ (CComplex a b) (CComplex c d) =
+        CComplex (a + c) (b + d)
+
+    liftNum2_ Sub _ (CComplex a b) (CComplex c d) =
+        CComplex (a - c) (b - d)
+
+    liftNum2_ Mul _ (CComplex a b) (CComplex c d) =
+        CComplex (a*c - b*d) (b*c + a*d)
 
     liftNum2_ Add _ ce1 (CExp [cexp|-$ce2|]) = CExp [cexp|$ce1 - $ce2|]
 

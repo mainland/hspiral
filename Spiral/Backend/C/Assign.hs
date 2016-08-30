@@ -21,6 +21,7 @@ import Language.C.Quote.C
 import Spiral.Backend.C.Array
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
+import Spiral.Globals
 import Spiral.Monad (MonadCg)
 
 class CAssign a b where
@@ -38,7 +39,15 @@ instance CAssign (CExp Double) (CExp Double) where
     cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
 
 instance CAssign (CExp (Complex Double)) (CExp (Complex Double)) where
-    cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
+    cassign ce1 ce2 | useComplexType =
+        appendStm [cstm|$ce1 = $ce2;|]
 
-instance (MCArray r1 sh a, CArray r2 sh a) => CAssign (Array r1 sh (CExp a)) (Array r2 sh (CExp a)) where
+    cassign ce1 ce2 = do
+        appendStm [cstm|$cr1 = $cr2;|]
+        appendStm [cstm|$ci1 = $ci2;|]
+      where
+        (cr1, ci1) = unComplex ce1
+        (cr2, ci2) = unComplex ce2
+
+instance (CTemp a (CExp a), MCArray r1 sh a, CArray r2 sh a) => CAssign (Array r1 sh (CExp a)) (Array r2 sh (CExp a)) where
     cassign = compute

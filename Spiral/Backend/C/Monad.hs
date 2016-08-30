@@ -81,6 +81,7 @@ import Spiral.Backend.C.Code
 import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
 import Spiral.Config
+import Spiral.Globals
 import Spiral.Monad (MonadCg)
 import Spiral.Trace
 import Spiral.Util.Uniq
@@ -269,37 +270,58 @@ cacheConst cinits ctau = do
 cacheCExp :: forall a m . (ToCType a, CTemp a (CExp a), MonadCg m)
           => CExp a
           -> Cg m (CExp a)
-cacheCExp e = do
+cacheCExp e0 = do
     maybe_ce' <- gets (Map.lookup ce . expCache)
     case maybe_ce' of
       Just ce' -> return $ CExp ce'
-      Nothing  -> do ce' <- go e
-                     modify $ \s -> s { expCache = Map.insert ce ce' (expCache s) }
-                     return $ CExp ce'
+      Nothing  -> go e0
   where
     ce :: C.Exp
-    ce = toExp e noLoc
+    ce = toExp e0 noLoc
 
-    go :: CExp a -> Cg m C.Exp
-    go CInt{} =
+    go :: CExp a -> Cg m (CExp a)
+    go ce@CInt{} =
         return ce
 
-    go CDouble{} =
+    go ce@CDouble{} =
         return ce
 
-    go (CComplex CDouble{} CDouble{}) =
+    go ce@(CComplex CDouble{} CDouble{}) =
         return ce
 
-    go (CExp [cexp|$id:_|]) =
+    go (CComplex cr ci) | not useComplexType = do
+        cr' <- cacheCExp cr
+        ci' <- cacheCExp ci
+        return $ CComplex cr' ci'
+
+    go ce@(CExp [cexp|$id:_|]) =
         return ce
 
-    go (CInit ini) =
-        cacheConst ini (toCType (undefined :: a))
+    go ce@(CExp [cexp|-$id:_|]) =
+        return ce
 
-    go _ = do
+    go (CExp [cexp|-$ce1 - $ce2|]) = do
+        ce1' <- lookupCExp (CExp [cexp|-$ce1|] :: CExp a)
+        ce2' <- lookupCExp (CExp [cexp|-$ce2|] :: CExp a)
+        case (ce1', ce2') of
+          (CExp [cexp|$id:_|], CExp [cexp|$id:_|]) ->
+              return $ CExp [cexp|$ce1' + $ce2'|]
+          _ -> do
+              ce' <- cacheCExp e'
+              return $ CExp [cexp|-$ce'|]
+      where
+        e' :: CExp a
+        e' = CExp [cexp|$ce1 + $ce2|]
+
+    go (CInit ini) = do
+        ce <- cacheConst ini (toCType (undefined :: a))
+        return $ CExp ce
+
+    go e = do
         ctemp <- cgTemp (undefined :: a)
         appendStm [cstm|$ctemp = $e;|]
-        return [cexp|$ctemp|]
+        modify $ \s -> s { expCache = Map.insert ce [cexp|$ctemp|] (expCache s) }
+        return ctemp
 
 -- | Look up the cached C expression corresponding to a 'CExp'. If the 'CExp'
 -- has not been cached, we return it without caching it.
@@ -355,4 +377,8 @@ instance CTemp Double (CExp Double) where
     cgTemp x = CExp <$> cgRawTemp x
 
 instance CTemp (Complex Double) (CExp (Complex Double)) where
-    cgTemp x = CExp <$> cgRawTemp x
+    cgTemp x | useComplexType =
+        CExp <$> cgRawTemp x
+
+    cgTemp _ =
+        CComplex <$> cgTemp (undefined :: Double) <*> cgTemp (undefined :: Double)

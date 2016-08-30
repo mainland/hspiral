@@ -36,13 +36,15 @@ module Spiral.Backend.C.Array (
 import Prelude hiding ((!!))
 
 import Control.Monad ((>=>))
+import Data.Complex
 import Language.C.Quote.C
-import qualified Language.C.Syntax as C
+import qualified Language.C.Quote as C
 
 import Spiral.Array
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Types
+import Spiral.Globals
 import Spiral.Monad (MonadCg)
 import Spiral.Shape
 
@@ -88,13 +90,14 @@ class (ToCShape sh, ToCType e, IsArray r sh (CExp e)) => CArray r sh e where
            -> CShapeOf sh
            -> Cg m (CExp e)
 
-    compute :: forall r' m . (MonadCg m, MCArray r' sh e)
+    compute :: forall r' m . (MonadCg m, CTemp e (CExp e), MCArray r' sh e)
             => Array r' sh (CExp e)
             -> Array r sh (CExp e)
             -> Cg m ()
     compute a b =
-        cgForShape (extent b) $ \ix ->
-            cindex b ix >>= cwrite a ix
+        cgForShape (extent b) $ \ix -> do
+            x <- cindex b ix >>= cacheCExp
+            cwrite a ix x
 
 -- | A 'CArray' with mutable values.
 class CArray r sh e => MCArray r sh e where
@@ -130,24 +133,70 @@ instance IsArray C sh (CExp e) where
 
     extent (C sh _) = sh
 
-instance IndexedArray C sh (CExp e) where
-    index (C _ ce) i = CExp $ foldr cidx ce (listOfShape i)
-      where
-        cidx :: Int -> C.Exp -> C.Exp
-        cidx ci ce = [cexp|$ce[$int:ci]|]
+mkIdx :: forall e . C.ToExp e => C.Exp -> [e] -> C.Exp
+mkIdx = foldr cidx
+  where
+    cidx :: e -> C.Exp -> C.Exp
+    cidx ci ce = [cexp|$ce[$ci]|]
 
-instance (ToCShape sh, ToCType e) => CArray C sh e where
-    cindex (C _ ce) i = return $ CExp $ foldr cidx ce (listOfCShape i)
-      where
-        cidx :: CExp Int -> C.Exp -> C.Exp
-        cidx ci ce = [cexp|$ce[$ci]|]
+mkComplexIdx :: forall e . (Num e, C.ToExp e)
+             => C.Exp
+             -> [e]
+             -> (C.Exp, C.Exp)
+mkComplexIdx ce [] =
+    ([cexp|$ce[0]|], [cexp|$ce[1]|])
 
-instance (ToCShape sh, ToCType e) => MCArray C sh e where
+mkComplexIdx ce (ci:cis) =
+    (mkIdx ce (2*ci:cis), mkIdx ce (2*ci+1:cis))
+
+instance IndexedArray C sh (CExp Int) where
+    index (C _ ce) i = CExp $ mkIdx ce (listOfShape i)
+
+instance IndexedArray C sh (CExp Double) where
+    index (C _ ce) i = CExp $ mkIdx ce (listOfShape i)
+
+instance IndexedArray C sh (CExp (Complex Double)) where
+    index (C _ ce) i | useComplexType =
+        CExp $ mkIdx ce (listOfShape i)
+
+    index (C _ ce) i =
+        CComplex (CExp cr) (CExp ci)
+      where
+        (cr, ci) = mkComplexIdx ce (listOfShape i)
+
+instance ToCShape sh => CArray C sh Int where
+    cindex (C _ ce) i = return $ CExp $ mkIdx ce (listOfCShape i)
+
+instance ToCShape sh => CArray C sh Double where
+    cindex (C _ ce) i = return $ CExp $ mkIdx ce (listOfCShape i)
+
+instance ToCShape sh => CArray C sh (Complex Double) where
+    cindex (C _ ce) i | useComplexType =
+        return $ CExp $ mkIdx ce (listOfCShape i)
+
+    cindex (C _ ce) i =
+        return $ CComplex (CExp cr) (CExp ci)
+      where
+        (cr, ci) = mkComplexIdx ce (listOfCShape i)
+
+instance ToCShape sh => MCArray C sh Int where
     cwrite (C _ ce) i ce' =
-        appendStm [cstm|$(foldr cidx ce (listOfCShape i)) = $ce';|]
+        appendStm [cstm|$(mkIdx ce (listOfCShape i)) = $ce';|]
+
+instance ToCShape sh => MCArray C sh Double where
+    cwrite (C _ ce) i ce' =
+        appendStm [cstm|$(mkIdx ce (listOfCShape i)) = $ce';|]
+
+instance ToCShape sh => MCArray C sh (Complex Double) where
+    cwrite (C _ ce) i ce' | useComplexType =
+        appendStm [cstm|$(mkIdx ce (listOfCShape i)) = $ce';|]
+
+    cwrite (C _ ce) i ce' = do
+        appendStm [cstm|$cr = $cr';|]
+        appendStm [cstm|$ci = $ci';|]
       where
-        cidx :: CExp Int -> C.Exp -> C.Exp
-        cidx ci ce = [cexp|$ce[$ci]|]
+        (cr, ci)   = mkComplexIdx ce (listOfCShape i)
+        (cr', ci') = unComplex ce'
 
 instance ( Shape sh
          , ToCType (Array r sh a)

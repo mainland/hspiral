@@ -50,8 +50,12 @@ codegen :: forall a m .
            , Num (CExp a)
            , ToCExp (Exp a) a
            , ToCType a
+           , ToCType (Array D DIM1 a)
+           , ToCType (Array D DIM2 a)
            , CTemp a (CExp a)
            , CAssign (CExp a) (CExp a)
+           , MCArray C DIM1 a
+           , CArray C DIM2 a
            , MonadCg m
            )
         => String
@@ -177,6 +181,9 @@ cbackpermute f v = fromCFunction (extent v) g
 cgTransform :: forall a m .
                ( MonadCg m
                , ToCType a
+               , ToCType (Array D DIM1 a)
+               , CTemp a (CExp a)
+               , MCArray C DIM1 a
                )
             => String                -- ^ The name of the transform
             -> DIM2                  -- ^ The dimensions of the transform
@@ -193,14 +200,16 @@ cgTransform name (Z :. m :. n) k = do
             appendComment $ text "Computing output"
             compute cout y
    appendTopFunDef [cedecl|
-void $id:name(restrict $ty:ctau $id:cvin[static $int:m],
-              restrict $ty:ctau $id:cvout[static $int:n])
+void $id:name(const restrict $ty:(toCType (fakeArray cin)) $id:cvin,
+              restrict $ty:(toCType (fakeArray cout)) $id:cvout)
 {
 $items:items
 }|]
-  where
-    ctau :: C.Type
-    ctau = toCType (undefined :: a)
+
+fakeArray :: (Shape sh, IsArray r sh (CExp a))
+          => Array r sh (CExp a)
+          -> Array D sh a
+fakeArray x = fromFunction (extent x) (const (undefined :: a))
 
 -- | Cache a matrix. This generates code for the entire matrix, but the
 -- generated code is only used when we index into the matrix
@@ -210,22 +219,26 @@ cgMatrix :: forall r a .
             , Num (CExp a)
             , ToCExp (Exp a) a
             , ToCType a
+            , ToCType (Array D DIM2 a)
             , IndexedArray r DIM2 (Exp a)
+            , CArray C DIM2 a
             )
          => Matrix r (Exp a)
          -> Matrix CD (CExp a)
 cgMatrix a = fromCFunction sh cidx
   where
     sh :: DIM2
-    sh@(Z :. m :. n) = extent a
+    sh = extent a
 
     cidx :: forall m . MonadCg m => CShapeOf DIM2 -> Cg m (CExp a)
     cidx (Z :. CInt i :. CInt j) =
         return $ toCExp (index a (ix2 i j))
 
-    cidx (Z :. ci :. cj) = do
-      ce <- cacheConst matInit [cty|static const $ty:ctau [$int:m][$int:n]|]
-      return $ CExp [cexp|$ce[$ci][$cj]|]
+    cidx ix = do
+      ce <- cacheConst matInit [cty|static const $ty:ctau |]
+      let m :: Matrix C (CExp a)
+          m = C sh ce
+      cindex m ix
 
     b :: Matrix M (CExp a)
     b = fmap toCExp (manifest a)
@@ -240,7 +253,7 @@ cgMatrix a = fromCFunction sh cidx
     matInit = [cinit|{ $inits:(map cgRow ess) }|]
 
     ctau :: C.Type
-    ctau = toCType (undefined :: a)
+    ctau = toCType (fromFunction sh (const (undefined :: a)))
 
 -- | Compile a matrix-vector product @y = A*x@.
 cgMVProd :: forall r1 r2 a m .
@@ -248,10 +261,12 @@ cgMVProd :: forall r1 r2 a m .
             , Num (CExp a)
             , ToCExp (Exp a) a
             , ToCType a
+            , ToCType (Array D DIM2 a)
             , CTemp a (CExp a)
             , CAssign (CExp a) (CExp a)
             , IndexedArray r1 DIM2 (Exp a)
             , CArray       r2 DIM1 a
+            , CArray C DIM2 a
             , MonadCg m
             )
          => Matrix r1 (Exp a)         -- ^ The matrix @A@

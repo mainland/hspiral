@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Spiral.Backend.C.Types
@@ -18,6 +19,7 @@ import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 
 import Spiral.Array
+import Spiral.Globals
 import Spiral.Shape
 
 -- | Compile a value to a C type.
@@ -31,7 +33,8 @@ instance ToCType Double where
     toCType _ = [cty|double|]
 
 instance ToCType (Complex Double) where
-    toCType _ = [cty|double _Complex|]
+    toCType _ | useComplexType = [cty|double _Complex|]
+              | otherwise      = error "Cannot convert complex double to C type"
 
 mkArrayT :: Shape sh => C.Type -> sh -> C.Type
 mkArrayT ctau sh = foldl cidx ctau (listOfShape sh)
@@ -39,5 +42,18 @@ mkArrayT ctau sh = foldl cidx ctau (listOfShape sh)
     cidx :: C.Type -> Int -> C.Type
     cidx ctau i = [cty|$ty:ctau[static $int:i]|]
 
-instance (ToCType a, Shape sh, IsArray r sh a) => ToCType (Array r sh a) where
-    toCType a = mkArrayT (toCType (undefined :: a)) (extent a)
+instance (ToCType a, IsArray r Z a) => ToCType (Array r Z a) where
+    toCType _ = toCType (undefined :: a)
+
+instance (Shape sh, IsArray r (sh :. Int) Int) => ToCType (Array r (sh :. Int) Int) where
+    toCType a = mkArrayT (toCType (undefined :: Int)) (extent a)
+
+instance (Shape sh, IsArray r (sh :. Int) Double) => ToCType (Array r (sh :. Int) Double) where
+    toCType a = mkArrayT (toCType (undefined :: Double)) (extent a)
+
+instance (Shape sh, IsArray r (sh :. Int) (Complex Double)) => ToCType (Array r (sh :. Int) (Complex Double)) where
+    toCType a
+        | useComplexType = mkArrayT (toCType (undefined :: Complex Double)) sh
+        | otherwise      = mkArrayT (toCType (undefined :: Double)) (sh0 :. 2*n)
+      where
+        sh@(sh0 :. n) = extent a
