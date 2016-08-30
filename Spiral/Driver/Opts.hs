@@ -12,11 +12,13 @@ module Spiral.Driver.Opts (
     usage
   ) where
 
-import Control.Monad ((>=>))
+import Control.Monad ((>=>),
+                      when)
 import System.Console.GetOpt
 import System.Environment (getProgName)
 
 import Spiral.Config
+import Spiral.Globals
 
 options :: forall m . Monad m => [OptDescr (Config -> m Config)]
 options =
@@ -139,7 +141,9 @@ mkFlagOpts pfx opts set unset =
     [FlagOpt f (pfx ++ s) desc set unset | (f, s, desc) <- opts]
 
 fFlags :: [(DynFlag, String, String)]
-fFlags = [(LinePragmas, "line-pragmas", "print line pragmas in generated C")]
+fFlags = [ (LinePragmas, "line-pragmas", "print line pragmas in generated C")
+         , (UseComplex,  "use-complex",  "use C99 _Complex type")
+         ]
 
 fOpts :: forall m . Monad m => [FlagOptDescr (Config -> m Config)]
 fOpts =
@@ -164,6 +168,8 @@ parseOpts :: [String] -> IO (Config, [String])
 parseOpts argv =
     case getOpt Permute options argv of
       (fs,n,[])  -> do config <- foldl (>=>) return fs defaultConfig
+                       when (testDynFlag UseComplex config) $
+                           setUseComplexType True
                        return (config, n)
       (_,_,errs) -> do usageDesc <- usage
                        ioError (userError (concat errs ++ usageDesc))

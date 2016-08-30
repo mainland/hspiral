@@ -59,6 +59,7 @@ SRC = \
 	Spiral/Exp.hs \
 	Spiral/ExtendedFloat.hs \
 	Spiral/FFT.hs \
+	Spiral/Globals.hs \
 	Spiral/Monad.hs \
 	Spiral/SPL.hs \
 	Spiral/Shape.hs \

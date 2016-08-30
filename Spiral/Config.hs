@@ -52,6 +52,7 @@ data ModeFlag = Help
 
 data DynFlag = Quiet
              | LinePragmas
+             | UseComplex
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data TraceFlag = TraceCg
