@@ -48,7 +48,7 @@ codegen :: forall a m .
            , Num (CExp a)
            , ToCExp (Exp a) a
            , ToCType a
-           , CAssign (CExp a)
+           , CAssign (CExp a) (CExp a)
            , MonadCg m
            )
         => String
@@ -193,7 +193,7 @@ cgMVProd :: forall r1 r2 r3 a m .
             , Num (CExp a)
             , ToCExp (Exp a) a
             , ToCType a
-            , CAssign (CExp a)
+            , CAssign (CExp a) (CExp a)
             , IndexedArray  r1 DIM2 (Exp a)
             , CArray r2 DIM1 a
             , CArray r3 DIM1 a
@@ -213,7 +213,10 @@ cgMVProd a x y = do
       yi <- y !! i
       let v1 = x *^ ai
       let v2 = sumP v1
-      compute [cexp|$yi|] v2
+      --- XXX: gross!
+      let yi' :: Array C DIM0 (CExp a)
+          yi' = C Z (CExp [cexp|$yi|])
+      compute yi' v2
   where
     Z :. m'     = extent y
     Z :. n'     = extent x

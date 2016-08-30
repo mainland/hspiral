@@ -28,7 +28,7 @@ import Spiral.SPL
 foldP :: forall a b r .
          ( ToCType a
          , ToCType b
-         , CAssign (CExp a)
+         , CAssign (CExp a) (CExp a)
          , CArray r DIM1 b
          )
       => (CExp a -> CExp b -> CExp a)
@@ -58,7 +58,7 @@ foldP f z xs =
 sumP :: forall a r .
          ( Num (CExp a)
          , ToCType a
-         , CAssign (CExp a)
+         , CAssign (CExp a) (CExp a)
          , CArray r DIM1 a
          )
      => Array r (Z :. Int) (CExp a)

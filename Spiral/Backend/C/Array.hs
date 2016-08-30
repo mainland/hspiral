@@ -19,6 +19,7 @@ module Spiral.Backend.C.Array (
     ToCShape(..),
 
     CArray(..),
+    MCArray(..),
     CIndex(..),
 
     Array(..),
@@ -35,7 +36,6 @@ import Prelude hiding ((!!))
 
 import Control.Monad ((>=>))
 import Language.C.Quote.C
-import qualified Language.C.Syntax as C
 
 import Spiral.Array
 import Spiral.Backend.C.CExp
@@ -58,15 +58,27 @@ class (Shape sh, CShape (CShapeOf sh)) => ToCShape sh where
 
     toCShape :: sh -> CShapeOf sh
 
+    cgForShape :: MonadCg m
+               => sh
+               -> (CShapeOf sh -> Cg m ())
+               -> Cg m ()
+
 instance ToCShape Z where
     type CShapeOf Z = Z
 
     toCShape sh = sh
 
+    cgForShape _ k = k Z
+
 instance ToCShape sh => ToCShape (sh :. Int) where
     type CShapeOf (sh :. Int) = CShapeOf sh :. CExp Int
 
     toCShape (sh :. i) = toCShape sh :. CInt i
+
+    cgForShape (sh :. i) k =
+      cgForShape sh $ \csh ->
+        cgFor 0 i $ \ci ->
+          k (csh :. ci)
 
 class (ToCShape sh, ToCType e, IsArray r sh (CExp e)) => CArray r sh e where
     cindex :: (Shape sh, MonadCg m)
@@ -74,26 +86,21 @@ class (ToCShape sh, ToCType e, IsArray r sh (CExp e)) => CArray r sh e where
            -> CShapeOf sh
            -> Cg m (CExp e)
 
-    compute :: forall m . MonadCg m
-            => C.Exp
+    compute :: forall r' m . (MonadCg m, MCArray r' sh e)
+            => Array r' sh (CExp e)
             -> Array r sh (CExp e)
             -> Cg m ()
-    compute cdst a =
-        mapM_ assign [0..size sh-1]
-      where
-        sh :: sh
-        sh = extent a
+    compute a b =
+        cgForShape (extent b) $ \ix ->
+            cindex b ix >>= cwrite a ix
 
-        assign :: Int -> Cg m ()
-        assign i = do
-            csrc <- cindex a (toCShape ix)
-            appendStm [cstm|$(foldr cidx cdst (listOfShape ix)) = $csrc;|]
-          where
-            ix :: sh
-            ix = fromIndex sh i
-
-            cidx :: Int -> C.Exp -> C.Exp
-            cidx ci ce = [cexp|$ce[$int:ci]|]
+-- | A 'CArray' with mutable values.
+class CArray r sh e => MCArray r sh e where
+    cwrite :: (Shape sh, MonadCg m)
+           => Array r sh (CExp e)
+           -> CShapeOf sh
+           -> CExp e
+           -> Cg m ()
 
 -- | Array indexing that may require code generation.
 class CIndex r sh ix e where
@@ -129,6 +136,13 @@ instance IndexedArray C sh (CExp e) where
 
 instance (ToCShape sh, ToCType e) => CArray C sh e where
     cindex (C _ ce) i = return $ foldr cidx ce (listOfCShape i)
+      where
+        cidx :: CExp Int -> CExp e -> CExp e
+        cidx ci ce = CExp [cexp|$ce[$ci]|]
+
+instance (ToCShape sh, ToCType e) => MCArray C sh e where
+    cwrite (C _ ce) i ce' =
+        appendStm [cstm|$(foldr cidx ce (listOfCShape i)) = $ce';|]
       where
         cidx :: CExp Int -> CExp e -> CExp e
         cidx ci ce = CExp [cexp|$ce[$ci]|]

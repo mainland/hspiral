@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 -- |
@@ -20,26 +21,24 @@ import Language.C.Quote.C
 import Spiral.Backend.C.Array
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
-import Spiral.Backend.C.Types
 import Spiral.Monad (MonadCg)
-import Spiral.SPL
 
-class CAssign a where
+class CAssign a b where
     -- | Compile an assignment.
-    cassign :: MonadCg m => a -> a -> Cg m ()
+    cassign :: MonadCg m => a -> b -> Cg m ()
 
 infix 4 .:=.
-(.:=.) :: (CAssign a, MonadCg m) => a -> a -> Cg m ()
+(.:=.) :: (CAssign a b, MonadCg m) => a -> b -> Cg m ()
 (.:=.) = cassign
 
-instance CAssign (CExp Int) where
+instance CAssign (CExp Int) (CExp Int) where
     cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
 
-instance CAssign (CExp Double) where
+instance CAssign (CExp Double) (CExp Double) where
     cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
 
-instance CAssign (CExp (Complex Double)) where
+instance CAssign (CExp (Complex Double)) (CExp (Complex Double)) where
     cassign ce1 ce2 = appendStm [cstm|$ce1 = $ce2;|]
 
-instance (ToCType a, CAssign (CExp a)) => CAssign (Vector C (CExp a)) where
-    cassign (C _ ce) x = compute [cexp|$ce|] x
+instance (MCArray r1 sh a, CArray r2 sh a) => CAssign (Array r1 sh (CExp a)) (Array r2 sh (CExp a)) where
+    cassign = compute
