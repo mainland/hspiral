@@ -101,7 +101,7 @@ instance LiftNum (CExp a) where
 
     liftNum_ Neg    _ ce = CExp [cexp|-$ce|]
     liftNum_ Abs    _ ce = CExp [cexp|abs($ce)|]
-    liftNum_ Signum _ _  = error "LiftNum CExp: cannot lift signum"
+    liftNum_ Signum _ ce = CExp [cexp|$ce == 0 ? 0 : ($ce > 0 ? 1 : -1)|]
 
     liftNum2_ _ f (CInt x)    (CInt y)    = CInt (f x y)
     liftNum2_ _ f (CDouble x) (CDouble y) = CDouble (f x y)
