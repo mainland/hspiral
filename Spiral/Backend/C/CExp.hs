@@ -168,23 +168,12 @@ instance Real (CExp Int) where
     toRational _        = error "Real CExp: toRational not implemented"
 
 instance Integral (CExp Int) where
-    CInt x `quot` CInt y = CInt (x `quot` y)
-    x      `quot` y      = CExp [cexp|$x / $y|]
+    CExp [cexp|$int:x|] `quotRem` y = CInt (fromIntegral x) `quotRem` y
+    x `quotRem` CExp [cexp|$int:y|] = x `quotRem` CInt (fromIntegral y)
 
     CInt x `quotRem` CInt y = (CInt q, CInt r)
       where
         (q, r) = x `quotRem` y
-
-    ce1 `quotRem` ce2@(CInt i) | isPowerOf2 i =
-        (CExp [cexp|$ce1 / $ce2|], CExp [cexp|$ce1 & $(ce2-1)|])
-      where
-        isPowerOf2 0 = False
-        isPowerOf2 1 = False
-        isPowerOf2 2 = True
-        isPowerOf2 n | r == 0    = isPowerOf2 q
-                     | otherwise = False
-          where
-            (q,r) = n `quotRem` 2
 
     ce1 `quotRem` ce2 =
         (CExp [cexp|$ce1 / $ce2|], CExp [cexp|$ce1 % $ce2|])
