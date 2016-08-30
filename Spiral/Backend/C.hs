@@ -34,6 +34,7 @@ import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Mapping
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Reduction
+import Spiral.Backend.C.Slice
 import Spiral.Backend.C.Temp
 import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
@@ -237,37 +238,3 @@ crow a ci = fromCFunction (Z :. n) cidx'
 
     cidx' :: MonadCg m => CShapeOf DIM1 -> Cg m (CExp a)
     cidx' (Z :. cj) = cidx (Z :. ci :. cj)
-
--- | Type tag for a vector slice.
-data S
-
--- | A vector slice in @begin:stride:len@ form. @begin@ is symbolic, where as
--- @stride@ and @len@ are statically known. Note that the end of the slice is
--- @begin + len - 1@.
-instance IsArray S DIM1 (CExp a) where
-    data Array S DIM1 (CExp a) where
-        S :: CArray r DIM1 a
-          => Array r DIM1 (CExp a)
-          -> CExp Int
-          -> Int
-          -> Int
-          -> Array S DIM1 (CExp a)
-
-    extent (S _ _b _s len) = Z :. len
-
-instance Pretty (Array S DIM1 (CExp a)) where
-    ppr (S _ b s e) = brackets $ colonsep [text "...", ppr b, ppr s, ppr e]
-      where
-        colonsep :: [Doc] -> Doc
-        colonsep = align . sep . punctuate colon
-
-instance ToCType e => CArray S DIM1 e where
-    cindex (S a b s _len) (Z :. ci) = cindex a (Z :. b + ci * fromIntegral s)
-
-slice :: CArray r DIM1 a
-      => Array r DIM1 (CExp a)
-      -> CExp Int
-      -> Int
-      -> Int
-      -> Array S DIM1 (CExp a)
-slice = S
