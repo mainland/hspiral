@@ -334,6 +334,26 @@ cacheCExp e0 = do
     go ce@(CExp [cexp|-$id:_|]) =
         return ce
 
+    go (CExp [cexp|$ce1 * $double:x - $ce2 * $double:y|]) | y < 0 =
+        go (CExp [cexp|$ce1 * $double:x + $ce2 * $double:(-y)|])
+
+    go (CExp [cexp|$ce1 * $double:x + $ce2 * $double:y|]) | y < 0 =
+        go (CExp [cexp|$ce1 * $double:x - $ce2 * $double:(-y)|])
+
+    go (CExp [cexp|$ce1 * $double:x + $ce2 * $double:y|]) | epsDiff x y = do
+        ce12 <- go e12
+        go (CExp [cexp|$double:x * $ce12|])
+      where
+        e12 :: CExp a
+        e12 = CExp [cexp|$ce1 + $ce2|]
+
+    go (CExp [cexp|$ce1 * $double:x - $ce2 * $double:y|]) | epsDiff x y = do
+        ce12 <- go e12
+        go (CExp [cexp|$double:x * $ce12|])
+      where
+        e12 :: CExp a
+        e12 = CExp [cexp|$ce1 - $ce2|]
+
     go (CExp [cexp|-$ce1 - $ce2|]) = do
         ce1' <- lookupCExp (CExp [cexp|-$ce1|] :: CExp a)
         ce2' <- lookupCExp (CExp [cexp|-$ce2|] :: CExp a)
@@ -356,6 +376,11 @@ cacheCExp e0 = do
         appendStm [cstm|$ctemp = $e;|]
         modify $ \s -> s { expCache = Map.insert ce [cexp|$ctemp|] (expCache s) }
         return ctemp
+
+    epsDiff :: forall a . (Ord a, Fractional a) => a -> a -> Bool
+    epsDiff x y = abs (x - y) < eps
+      where
+        eps = 1e-15
 
 -- | Look up the cached C expression corresponding to a 'CExp'. If the 'CExp'
 -- has not been cached, we return it without caching it.
