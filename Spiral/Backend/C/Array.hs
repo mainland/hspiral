@@ -62,6 +62,8 @@ class (Shape sh, CShape (CShapeOf sh)) => ToCShape sh where
 
     toCShape :: sh -> CShapeOf sh
 
+    fromCShape :: CShapeOf sh -> sh
+
     cgForShape :: MonadCg m
                => sh
                -> (CShapeOf sh -> Cg m ())
@@ -72,12 +74,17 @@ instance ToCShape Z where
 
     toCShape sh = sh
 
+    fromCShape sh = sh
+
     cgForShape _ k = k Z
 
 instance ToCShape sh => ToCShape (sh :. Int) where
     type CShapeOf (sh :. Int) = CShapeOf sh :. CExp Int
 
     toCShape (sh :. i) = toCShape sh :. CInt i
+
+    fromCShape (sh :. CInt i) = fromCShape sh :. i
+    fromCShape _              = error "fromCShape: bad shape"
 
     cgForShape (sh :. i) k =
       cgForShape sh $ \csh ->
