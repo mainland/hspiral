@@ -26,10 +26,13 @@ module Spiral.Config (
     setTraceFlag,
     setTraceFlags,
 
+    whenDynFlag,
+
     MonadConfig(..),
     asksConfig
   ) where
 
+import Control.Monad (when)
 import Control.Monad.Except (ExceptT(..), runExceptT)
 import Control.Monad.Exception (ExceptionT(..), runExceptionT)
 import Control.Monad.Reader (ReaderT(..))
@@ -195,3 +198,8 @@ setTraceFlag f flags = flags { traceFlags = setFlag (traceFlags flags) f }
 
 setTraceFlags :: [TraceFlag] -> Config -> Config
 setTraceFlags fs flags = foldl' (flip setTraceFlag) flags fs
+
+whenDynFlag :: MonadConfig m => DynFlag -> m () -> m ()
+whenDynFlag f act = do
+    doit <- asksConfig (testDynFlag f)
+    when doit act
