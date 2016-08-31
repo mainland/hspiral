@@ -34,6 +34,7 @@ library
     Spiral.Backend.C.Slice
     Spiral.Backend.C.Types
     Spiral.Backend.C.Util
+    Spiral.Backend.C.Virtual
     Spiral.Config
     Spiral.Driver
     Spiral.Exp

@@ -53,6 +53,7 @@ SRC = \
 	Spiral/Backend/C/Slice.hs \
 	Spiral/Backend/C/Types.hs \
 	Spiral/Backend/C/Util.hs \
+	Spiral/Backend/C/Virtual.hs \
 	Spiral/Config.hs \
 	Spiral/Driver.hs \
 	Spiral/Driver/Opts.hs \
