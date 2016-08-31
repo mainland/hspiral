@@ -22,7 +22,7 @@ module Spiral.Backend.C.CExp (
 import Data.Complex
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
-import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland hiding (flatten)
 
 import Spiral.Backend.C.Util
 import Spiral.Exp
@@ -225,4 +225,4 @@ instance ToCExp (Exp Double) Double where
 
 instance ToCExp (Exp (Complex Double)) (Complex Double) where
     toCExp (ComplexC e1 e2) = CComplex (toCExp e1) (toCExp e2)
-    toCExp e@RouC{}         = toCExp (toComplex e)
+    toCExp e@RouC{}         = toCExp (flatten e)
