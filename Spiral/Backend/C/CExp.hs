@@ -216,8 +216,11 @@ instance ToCExp Double Double where
 instance ToCExp (CExp a) a where
     toCExp ce = ce
 
+instance ToCExp (Exp Int) Int where
+    toCExp (IntC x) = CInt x
+
 instance ToCExp (Exp Integer) Int where
-    toCExp (IntC x) = CInt (fromIntegral x)
+    toCExp (IntegerC x) = CInt (fromIntegral x)
 
 instance ToCExp (Exp Double) Double where
     toCExp (PiC x)     = CDouble (toRational (fromRational x * pi :: Double))

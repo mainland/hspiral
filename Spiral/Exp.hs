@@ -28,7 +28,8 @@ import Spiral.Util.Lift
 
 -- | Representation of scalar constants.
 data Exp a where
-    IntC      :: Integer -> Exp Integer
+    IntC      :: Int -> Exp Int
+    IntegerC  :: Integer -> Exp Integer
     DoubleC   :: Double -> Exp Double
     RationalC :: Rational -> Exp Rational
     ComplexC  :: Exp Double -> Exp Double -> Exp (Complex Double)
@@ -42,6 +43,7 @@ data Exp a where
 -- | Lower an expression to its constant value.
 lower :: Exp a -> a
 lower (IntC x)       = x
+lower (IntegerC x)   = x
 lower (DoubleC x)    = x
 lower (RationalC x)  = x
 lower (ComplexC r i) = lower r :+ lower i
@@ -55,13 +57,17 @@ instance Ord (Exp a) where
     compare x y =
         case (flatten x, flatten y) of
             (IntC x, IntC y)                 -> compare x y
+            (IntegerC x, IntegerC y)         -> compare x y
             (DoubleC x, DoubleC y)           -> compare x y
             (RationalC x, RationalC y)       -> compare x y
             (ComplexC r1 i1, ComplexC r2 i2) -> compare (r1, i1) (r2, i2)
             _                                -> error "can't happen"
 
-instance Arbitrary (Exp Integer) where
+instance Arbitrary (Exp Int) where
     arbitrary = IntC <$> arbitrary
+
+instance Arbitrary (Exp Integer) where
+    arbitrary = IntegerC <$> arbitrary
 
 instance Arbitrary (Exp Double) where
     arbitrary = DoubleC <$> arbitrary
@@ -79,6 +85,7 @@ pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
 
 instance Pretty (Exp a) where
     ppr (IntC x)      = ppr x
+    ppr (IntegerC x)  = ppr x
     ppr (DoubleC x)   = ppr x
     ppr (RationalC x) = ppr x
 
@@ -166,6 +173,19 @@ instance LiftNum (Exp a) where
     liftNum2_ _  f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (lower x) (lower y)
     liftNum2_ op f x             y             = liftNum2 op f (flatten x) (flatten y)
 
+instance Num (Exp Int) where
+    (+) = liftNum2 Add (+)
+    (-) = liftNum2 Sub (-)
+    (*) = liftNum2 Mul (*)
+
+    abs = liftNum Abs abs
+
+    negate = liftNum Neg negate
+
+    signum  = liftNum Signum signum
+
+    fromInteger = IntC . fromInteger
+
 instance Num (Exp Integer) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
@@ -177,7 +197,7 @@ instance Num (Exp Integer) where
 
     signum  = liftNum Signum signum
 
-    fromInteger = IntC
+    fromInteger = IntegerC
 
 instance Num (Exp Double) where
     (+) = liftNum2 Add (+)
