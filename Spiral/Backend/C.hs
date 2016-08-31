@@ -28,6 +28,7 @@ import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 import Text.PrettyPrint.Mainland
 
+import Spiral.Array
 import Spiral.Backend.C.Array
 import Spiral.Backend.C.Assign
 import Spiral.Backend.C.CExp
@@ -42,15 +43,14 @@ import Spiral.Config
 import Spiral.Exp
 import Spiral.Monad (MonadCg)
 import Spiral.SPL
+import Spiral.Shape
 import Spiral.Trace
 
 -- | Generate code for an SPL transform.
 codegen :: forall a m .
-           ( Num a
-           , Num (Exp a)
+           ( Num (Exp a)
            , Num (CExp a)
            , ToCExp (Exp a) a
-           , ToCType a
            , ToCType (Array D DIM1 a)
            , ToCType (Array D DIM2 a)
            , CTemp a (CExp a)
@@ -60,92 +60,105 @@ codegen :: forall a m .
            , MonadCg m
            )
         => String
-        -> Matrix SPL (Exp a)
+        -> SPL (Exp a)
         -> Cg m ()
 codegen name a = do
     traceCg $ text "Compiling:" </> ppr a
-    cgTransform name (extent a) $ \x -> cgSPL a x
+    cgTransform name (splExtent a) $ \x -> cgSPL a x
+
+cgSPL :: forall r1 r2 a m .
+         ( Num (Exp a)
+         , Num (CExp a)
+         , ToCExp (Exp a) a
+         , ToCType (Array D DIM1 a)
+         , ToCType (Array D DIM2 a)
+         , CTemp a (CExp a)
+         , CAssign (CExp a) (CExp a)
+         , MCArray r1 DIM1 a
+         , MCArray r2 DIM1 a
+         , MCArray C DIM1 a
+         , CArray C DIM2 a
+         , MonadCg m
+         )
+      => SPL (Exp a)
+      -> Vector r1 (CExp a)
+      -> Vector r2 (CExp a)
+      -> Cg m ()
+cgSPL a@E{} y x = do
+    whenDynFlag GenComments $
+        appendComment $ ppr a
+    cgMVProd (toMatrix a) x >>= compute y
+
+cgSPL I{} y x =
+    compute y $ cdelay x
+
+cgSPL (L mn n) y x =
+    compute y $ cbackpermute (lperm (fromIntegral mn) (fromIntegral n)) x
   where
-    cgSPL :: forall r1 r2 . (MCArray r1 DIM1 a, MCArray r2 DIM1 a)
-          => Matrix SPL (Exp a)
-          -> Vector r1 (CExp a)
-          -> Vector r2 (CExp a)
-          -> Cg m ()
-    cgSPL a@E{} y x = do
-        whenDynFlag GenComments $
-            appendComment $ ppr a
-        cgMVProd a x >>= compute y
-
-    cgSPL I{} y x =
-        compute y $ cdelay x
-
-    cgSPL (L mn n) y x =
-        compute y $ cbackpermute (lperm (fromIntegral mn) (fromIntegral n)) x
+    lperm :: forall m . MonadCg m => Int -> Int -> CExp Int -> Cg m (CExp Int)
+    lperm mn n i = do
+        cin <- cacheCExp $ i*cn
+        (+) <$> cacheCExp (cin `mod` cmn) <*> cacheCExp (cin `div` cmn)
       where
-        lperm :: forall m . MonadCg m => Int -> Int -> CExp Int -> Cg m (CExp Int)
-        lperm mn n i = do
-            cin <- cacheCExp $ i*cn
-            (+) <$> cacheCExp (cin `mod` cmn) <*> cacheCExp (cin `div` cmn)
-          where
-            cmn = fromIntegral mn
-            cn  = fromIntegral n
+        cmn = fromIntegral mn
+        cn  = fromIntegral n
 
-    cgSPL e@(B K (I m) a) y x = do
-        when (n' /= n) $
-            faildoc $ text "Non-square matrix in second argument of ⊗:" </> ppr e
-        whenDynFlag GenComments $
-            appendComment $ ppr e
-        cgFor 0 m $ \i ->
-          cgSPL a (slice y (i*toCExp n) 1 n) (slice x (i*toCExp n) 1 n)
-      where
-        Z :. n :. n' = extent a
+cgSPL e@(Kron (I m) a) y x = do
+    when (n' /= n) $
+        faildoc $ text "Non-square matrix in second argument of ⊗:" </> ppr e
+    whenDynFlag GenComments $
+        appendComment $ ppr e
+    cgFor 0 m $ \i ->
+      cgSPL a (slice y (i*toCExp n) 1 n) (slice x (i*toCExp n) 1 n)
+  where
+    Z :. n :. n' = splExtent a
 
-    cgSPL e@(B K a (I n)) y x = do
-        when (m' /= m) $
-            faildoc $ text "Non-square matrix in first argument of ⊗:" </> ppr e
-        whenDynFlag GenComments $
-            appendComment $ ppr e
-        cgFor 0 n $ \i ->
-          cgSPL a (slice y i n m) (slice x i n m)
-      where
-       Z :. m :. m' = extent a
+cgSPL e@(Kron a (I n)) y x = do
+    when (m' /= m) $
+        faildoc $ text "Non-square matrix in first argument of ⊗:" </> ppr e
+    whenDynFlag GenComments $
+        appendComment $ ppr e
+    cgFor 0 n $ \i ->
+      cgSPL a (slice y i n m) (slice x i n m)
+  where
+   Z :. m :. m' = splExtent a
 
-    cgSPL e@(B DS a b) y x = do
-        when (m' /= m) $
-            faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
-        when (n' /= n) $
-            faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
-        whenDynFlag GenComments $
-            appendComment $ ppr e
-        cgSPL a (slice y 0 1 m)          (slice x 0 1 m)
-        cgSPL b (slice y (toCExp m) 1 n) (slice x (toCExp m) 1 n)
-      where
-        Z :. m :. m' = extent a
-        Z :. n :. n' = extent b
+cgSPL e@(DSum a b) y x = do
+    when (m' /= m) $
+        faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
+    when (n' /= n) $
+        faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
+    whenDynFlag GenComments $
+        appendComment $ ppr e
+    cgSPL a (slice y 0 1 m)          (slice x 0 1 m)
+    cgSPL b (slice y (toCExp m) 1 n) (slice x (toCExp m) 1 n)
+  where
+    Z :. m :. m' = splExtent a
+    Z :. n :. n' = splExtent b
 
-    cgSPL e@(B P a b) y x = do
-        when (n' /= n) $
-            faildoc $ text "Mismatched dimensions in arguments to ×:" </> ppr e
-        whenDynFlag GenComments $
-            appendComment $ ppr e
-        shouldUnroll n >>= go
-      where
-        Z :. _m :.  n = extent a
-        Z :. n' :. _p = extent b
+cgSPL e@(Prod a b) y x = do
+    when (n' /= n) $
+        faildoc $ text "Mismatched dimensions in arguments to ×:" </> ppr e
+    whenDynFlag GenComments $
+        appendComment $ ppr e
+    shouldUnroll n >>= go
+  where
+    Z :. _m :.  n = splExtent a
+    Z :. n' :. _p = splExtent b
 
-        go True = do
-            t <- newVirtual (ix1 n) 0
-            cgSPL b t x
-            cgSPL a y t
+    go True = do
+        t <- newVirtual (ix1 n) 0
+        cgSPL b t x
+        cgSPL a y t
 
-        go _ = do
-            t <- cgTemp (fromFunction (ix1 n) (const (undefined :: a)))
-            cgSPL b t x
-            cgSPL a y t
+    go _ = do
+        t <- cgTemp (fromFunction (ix1 n) (const (undefined :: a)))
+        cgSPL b t x
+        cgSPL a y t
 
-    cgSPL a y x = do
-        traceCg $ text "Falling back to default compilation path:" </> ppr a
-        cgMVProd a x >>= compute y
+cgSPL a y x = do
+    traceCg $ text "Falling back to default compilation path:" </> ppr a
+    cgMVProd (toMatrix a) x >>= compute y
 
 cbackpermute :: forall r a . CArray r DIM1 a
              => (forall m . MonadCg m => CExp Int -> Cg m (CExp Int))

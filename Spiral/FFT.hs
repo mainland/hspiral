@@ -8,7 +8,7 @@
 
 module Spiral.FFT (
     omega,
-    
+
     w,
     t,
     f
@@ -17,15 +17,17 @@ module Spiral.FFT (
 import Data.Complex
 import Data.Ratio
 
+import Spiral.Array
 import Spiral.Exp
 import Spiral.SPL
+import Spiral.Shape
 
 -- | $e^{\frac{-2 \pi i}{n}$
 omega :: Integral a => a -> Exp (Complex Double)
 omega n = rootOfUnity (-1 % fromIntegral n)
 
 -- | The $W_m(\omega_n)$ matrix
-w :: Int -> Int -> Matrix SPL (Exp (Complex Double))
+w :: Int -> Int -> SPL (Exp (Complex Double))
 w m n = spl $ fromFunction (ix2 m m) f
   where
     f :: DIM2 -> Exp (Complex Double)
@@ -33,7 +35,7 @@ w m n = spl $ fromFunction (ix2 m m) f
                     | otherwise = 0
 
 -- | Twiddle factor matrix $T^{mn}_m$
-t :: Int -> Int -> Matrix SPL (Exp (Complex Double))
+t :: Int -> Int -> SPL (Exp (Complex Double))
 t mn m = I m ⊕ go (n-1)
   where
     n = mn `quot` m
@@ -42,7 +44,7 @@ t mn m = I m ⊕ go (n-1)
          | otherwise = w m mn ⊕ go (i-1)
 
 -- | DFT matrix $F_n$, for $n$ even
-f :: Int -> Matrix SPL (Exp (Complex Double))
+f :: Int -> SPL (Exp (Complex Double))
 f 1 = spl $ matrix [[1]]
 
 f 2 = spl $  matrix [[1,  1],

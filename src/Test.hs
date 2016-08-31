@@ -19,9 +19,11 @@ import Test.Framework.Providers.QuickCheck2
 import Test.HUnit ((@?=))
 import Test.QuickCheck
 
+import Spiral.Array
 import Spiral.Exp
 import qualified Spiral.FFT as FFT
 import Spiral.SPL
+import Spiral.Shape
 
 -- | A small number
 newtype SmallPowerOfTwo = SmallPowerOfTwo Int
@@ -58,7 +60,7 @@ tests = [strideTest, kroneckerTest, directSumTest, dftTests]
 --   https://en.wikipedia.org/wiki/Kronecker_product
 strideTest :: Test
 strideTest = testCase "Stride matrix L^8_4" $
-    manifest (L 8 4) @?= a
+    toMatrix (L 8 4) @?= a
   where
     a :: Matrix M Int
     a = matrix [[1, 0, 0, 0, 0, 0, 0, 0],
@@ -73,7 +75,7 @@ strideTest = testCase "Stride matrix L^8_4" $
 --   https://en.wikipedia.org/wiki/Kronecker_product
 kroneckerTest :: Test
 kroneckerTest = testCase "Kronecker product (⊗)" $
-    manifest (spl a ⊗ spl b) @?= c
+    toMatrix (spl a ⊗ spl b) @?= c
   where
     a, b, c :: Matrix M Int
     a = matrix [[1, 2],
@@ -89,7 +91,7 @@ kroneckerTest = testCase "Kronecker product (⊗)" $
 --   https://en.wikipedia.org/wiki/Matrix_addition#Direct_sum
 directSumTest :: Test
 directSumTest = testCase "Direct sum (⊕)" $
-    manifest (spl a ⊕ spl b) @?= c
+    toMatrix (spl a ⊕ spl b) @?= c
   where
     a, b, c :: Matrix M Int
     a = matrix [[1, 3, 2],
@@ -107,7 +109,7 @@ dftTests = testGroup "DFT tests"
 
 prop_DFT :: SmallPowerOfTwo -> Property
 prop_DFT (SmallPowerOfTwo n) =
-    manifestComplex (directDFT (2^n)) === manifestComplex (FFT.f (2^n))
+    manifestComplex (directDFT (2^n)) === manifestComplex (toMatrix (FFT.f (2^n)))
   where
     -- | Direct calculation of the DFT matrix.
     directDFT :: Int -> Matrix D (Exp (Complex Double))
@@ -119,7 +121,7 @@ prop_DFT (SmallPowerOfTwo n) =
 
 -- $F_2$
 f2Test :: Test
-f2Test = testCase "F_2" $ manifestComplex (FFT.f 2) @?= manifestComplex f2
+f2Test = testCase "F_2" $ manifestComplex (toMatrix (FFT.f 2)) @?= manifestComplex f2
   where
     f2 :: Matrix M (Exp (Complex Double))
     f2 = matrix [[1,  1],
@@ -127,7 +129,7 @@ f2Test = testCase "F_2" $ manifestComplex (FFT.f 2) @?= manifestComplex f2
 
 -- $F_4$ calculated per "SPL: A Language and Compiler for DSP Algorithms"
 f4Test :: Test
-f4Test = testCase "F_4" $ manifestComplex (FFT.f 4) @?= manifestComplex f4
+f4Test = testCase "F_4" $ manifestComplex (toMatrix (FFT.f 4)) @?= manifestComplex f4
   where
     f4 :: Matrix M (Exp (Complex Double))
     f4 = matrix [[1,  1,  1,  1],
@@ -141,7 +143,7 @@ f4Test = testCase "F_4" $ manifestComplex (FFT.f 4) @?= manifestComplex f4
 -- See also:
 --   https://en.wikipedia.org/wiki/DFT_matrix
 f8Test :: Test
-f8Test = testCase "F_8" $ manifestComplex (FFT.f 8) @?= manifestComplex f8
+f8Test = testCase "F_8" $ manifestComplex (toMatrix (FFT.f 8)) @?= manifestComplex f8
   where
     f8 :: Matrix M (Exp (Complex Double))
     f8 = matrix [[1,  1,  1,  1, 1, 1, 1, 1],

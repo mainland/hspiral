@@ -52,7 +52,7 @@ defaultMainWith config k = do
 
 -- | Generate C code for the given SPL transform.
 codegenC :: String
-         -> Matrix SPL (Exp (Complex Double))
+         -> SPL (Exp (Complex Double))
          -> Spiral ()
 codegenC name e = do
     defs <- evalCg $ codegen name e
