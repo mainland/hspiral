@@ -220,6 +220,7 @@ instance ToCExp (Exp Integer) Int where
     toCExp (IntC x) = CInt (fromIntegral x)
 
 instance ToCExp (Exp Double) Double where
+    toCExp (PiC x)     = CDouble (toRational (fromRational x * pi :: Double))
     toCExp (DoubleC x) = CDouble (toRational x)
 
 instance ToCExp (Exp (Complex Double)) (Complex Double) where

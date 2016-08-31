@@ -36,6 +36,17 @@ data Exp a where
     -- Root of unity, $e^{2 \pi i \frac{k}{n}}$
     RouC :: Rational -> Exp (Complex Double)
 
+    -- Multiple of $\pi$
+    PiC :: Rational -> Exp Double
+
+lower :: Exp a -> a
+lower (IntC x)       = x
+lower (DoubleC x)    = x
+lower (RationalC x)  = x
+lower (ComplexC r i) = lower r :+ lower i
+lower (RouC r)       = cos (lower (PiC (2*r))) :+ sin (lower (PiC (2*r)))
+lower (PiC r)        = pi*fromRational r
+
 deriving instance Eq (Exp a)
 deriving instance Show (Exp a)
 
@@ -103,13 +114,8 @@ fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
 
 -- | Convert a 'Constant' to a 'Complex Double'
 unComplex :: Exp (Complex Double) -> Complex Double
-unComplex (ComplexC (DoubleC r) (DoubleC i)) =
-    r :+ i
-
-unComplex (RouC x) =
-    exp (2*pi*i*fromRational x)
-  where
-    i = 0 :+ 1
+unComplex (ComplexC (DoubleC r) (DoubleC i)) = r :+ i
+unComplex (RouC r) = lower (cos (PiC (2*r))) :+ lower (sin (PiC (2*r)))
 
 -- | A functor whose contents can be converted to a 'Complex Double'
 class ToComplex f where
@@ -213,3 +219,39 @@ instance Num (Exp (Complex Double)) where
     signum  = liftNum Signum signum
 
     fromInteger x = fromComplex (fromInteger x)
+
+instance Fractional (Exp Double) where
+    fromRational = DoubleC . fromRational
+
+    x / y = DoubleC $ lower x / lower y
+
+lift :: (Double -> Double) -> Exp Double -> Exp Double
+lift f = DoubleC . f . lower
+
+instance Floating (Exp Double) where
+    pi = PiC 1
+
+    exp = lift exp
+    log = lift log
+    asin = lift asin
+    acos = lift acos
+    atan = lift atan
+    sinh = lift sinh
+    cosh = lift cosh
+    asinh = lift asinh
+    acosh = lift acosh
+    atanh = lift atanh
+
+    sin (PiC x) = cos (PiC (x - 1 / 2))
+
+    sin x = lift sin x
+
+    cos (PiC x)
+      | x >  1    = cos (PiC (x - 2))
+      | x < -1    = cos (PiC (x + 2))
+      | x == -1   = -1
+      | x == -1/2 = 0
+      | x == 0    = 1
+      | x > 0     = 0
+
+    cos x = lift cos x
