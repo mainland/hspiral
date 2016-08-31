@@ -26,7 +26,7 @@ import Spiral.Backend.C.Types
 import Spiral.Monad
 import Spiral.Shape
 
--- | Type tag for a virtual array.s
+-- | Type tag for a virtual array.
 data V
 
 instance IsArray V sh e where
