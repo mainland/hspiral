@@ -22,7 +22,6 @@ import Spiral.Backend.C.Assign
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Types
-import Spiral.Config
 import Spiral.SPL
 
 foldP :: forall a b r .
@@ -42,9 +41,9 @@ foldP f z xs =
     Z :. n = extent xs
 
     cidx _ =
-        asksConfig maxUnroll >>= go
+        shouldUnroll n >>= go
       where
-        go maxun | n <= maxun = do
+        go True = do
             ces <- mapM (xs !!) [0..n-1]
             return $ foldl f z ces
 

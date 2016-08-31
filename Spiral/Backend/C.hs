@@ -37,7 +37,6 @@ import Spiral.Backend.C.Reduction
 import Spiral.Backend.C.Slice
 import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
-import Spiral.Config
 import Spiral.Exp
 import Spiral.Monad (MonadCg)
 import Spiral.SPL
@@ -148,9 +147,9 @@ codegen name a = do
          -> (Array C DIM1 (CExp a) -> Cg m ())
          -> Cg m (Array CD DIM1 (CExp a))
     comp a x sh@(Z :. n) f =
-        asksConfig maxUnroll >>= go
+        shouldUnroll n >>= go
       where
-        go maxun | n <= maxun =
+        go True =
             cgMVProd a x
 
         go _ = do

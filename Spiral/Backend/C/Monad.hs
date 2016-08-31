@@ -17,6 +17,9 @@ module Spiral.Backend.C.Monad (
     Cg,
     evalCg,
 
+    alwaysUnroll,
+    shouldUnroll,
+
     tell,
     collect,
     collectDefinitions,
@@ -58,6 +61,10 @@ module Spiral.Backend.C.Monad (
 import Control.Monad.Exception (MonadException(..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (MonadTrans(..))
+import Control.Monad.Reader (MonadReader(..),
+                             ReaderT,
+                             asks,
+                             runReaderT)
 import Control.Monad.State (MonadState(..),
                             StateT,
                             execStateT,
@@ -86,6 +93,11 @@ import Spiral.Monad (MonadCg)
 import Spiral.Trace
 import Spiral.Util.Uniq
 
+data CgEnv = CgEnv { unroll :: Bool }
+
+defaultCgEnv :: CgEnv
+defaultCgEnv = CgEnv { unroll = False }
+
 data CgState = CgState
     { -- | Generated code
       code :: Code
@@ -103,24 +115,36 @@ defaultCgState = CgState
     }
 
 -- | The 'Cg' monad transformer.
-newtype Cg m a = Cg { unCg :: StateT CgState m a }
+newtype Cg m a = Cg { unCg :: StateT CgState (ReaderT CgEnv m) a }
     deriving (Functor, Applicative, Monad, MonadIO,
               MonadException,
+              MonadReader CgEnv,
               MonadState CgState,
               MonadUnique,
               MonadTrace,
               MonadConfig)
 
 instance MonadTrans Cg where
-    lift = Cg . lift
+    lift = Cg . lift . lift
 
 instance MonadCg m => MonadCg (Cg m) where
 
 -- | Evaluate a 'Cg' action and return a list of 'C.Definition's.
 evalCg :: Monad m => Cg m () -> m (Seq C.Definition)
 evalCg m = do
-    s <- execStateT (unCg m) defaultCgState
+    s <- runReaderT (execStateT (unCg m) defaultCgState) defaultCgEnv
     return $ (codeDefs . code) s <> (codeFunDefs . code) s
+
+-- | Always unroll loop in the continuation.
+alwaysUnroll :: Monad m => Cg m a -> Cg m a
+alwaysUnroll = local $ \env -> env { unroll = True }
+
+-- | Should we unroll a loop of the given size?
+shouldUnroll :: MonadConfig m => Int -> Cg m Bool
+shouldUnroll n = do
+    always <- asks unroll
+    maxun  <- asksConfig maxUnroll
+    return $ always || n <= maxun
 
 -- | Add generated code.
 tell :: Monad m => Code -> Cg m ()
@@ -348,8 +372,8 @@ cgFor :: MonadCg m
       -> (CExp Int -> Cg m ()) -- ^ Loop body
       -> Cg m ()
 cgFor lo hi k = do
-    maxun <- asksConfig maxUnroll
-    if hi - lo <= maxun
+    should <- shouldUnroll (hi - lo)
+    if should
       then mapM_ k [CInt i | i <- [lo..hi-1::Int]]
       else do
         ci    <- cgVar "i"
