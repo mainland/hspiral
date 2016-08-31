@@ -39,12 +39,13 @@ data Exp a where
     -- Multiple of $\pi$
     PiC :: Rational -> Exp Double
 
+-- | Lower an expression to its constant value.
 lower :: Exp a -> a
 lower (IntC x)       = x
 lower (DoubleC x)    = x
 lower (RationalC x)  = x
 lower (ComplexC r i) = lower r :+ lower i
-lower (RouC r)       = cos (lower (PiC (2*r))) :+ sin (lower (PiC (2*r)))
+lower (RouC r)       = lower (cos (PiC (2*r))) :+ lower (sin (PiC (2*r)))
 lower (PiC r)        = pi*fromRational r
 
 deriving instance Eq (Exp a)
@@ -87,7 +88,7 @@ instance Pretty (Exp a) where
       | r == 0 && i == (-1) = text "-i"
       | r == 0              = ppr i <> char 'i'
       | i == 0              = ppr r
-      | otherwise           = pprComplex (unComplex x)
+      | otherwise           = pprComplex (lower x)
 
     ppr (RouC r)
         | denominator r <= 4 = ppr (toComplex (RouC r))
@@ -112,11 +113,6 @@ instance ExtendedFloat (Exp (Complex Double)) where
 fromComplex :: Complex Double -> Exp (Complex Double)
 fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
 
--- | Convert a 'Constant' to a 'Complex Double'
-unComplex :: Exp (Complex Double) -> Complex Double
-unComplex (ComplexC (DoubleC r) (DoubleC i)) = r :+ i
-unComplex (RouC r) = lower (cos (PiC (2*r))) :+ lower (sin (PiC (2*r)))
-
 -- | A functor whose contents can be converted to a 'Complex Double'
 class ToComplex f where
     toComplex :: f a -> f (Complex Double)
@@ -133,7 +129,7 @@ instance ToComplex Exp where
         | r == 1 % 4 = ComplexC 0 1
         | r == 1 % 2 = ComplexC (-1) 0
         | r == 3 % 4 = ComplexC 0 (-1)
-        | otherwise  = fromComplex (unComplex (RouC r))
+        | otherwise  = fromComplex (lower (RouC r))
 
 instance LiftNum (Exp a) where
     isIntegral x (IntC y)       = y == fromInteger x
@@ -150,7 +146,7 @@ instance LiftNum (Exp a) where
     liftNum_ _  f (IntC x)      = IntC (f x)
     liftNum_ _  f (DoubleC x)   = DoubleC (f x)
     liftNum_ _  f (RationalC x) = RationalC (f x)
-    liftNum_ _  f x@ComplexC{}  = fromComplex (f (unComplex x))
+    liftNum_ _  f x@ComplexC{}  = fromComplex (f (lower x))
     liftNum_ op f c@RouC{}      = liftNum op f (toComplex c)
 
     liftNum2_ Mul _ (RouC x) (RouC y)            = normRootOfUnity $ RouC (x + y)
@@ -163,9 +159,9 @@ instance LiftNum (Exp a) where
     liftNum2_ _  f (IntC x)      (IntC y)      = IntC (f x y)
     liftNum2_ _  f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
     liftNum2_ _  f (RationalC x) (RationalC y) = RationalC (f x y)
-    liftNum2_ _  f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (unComplex x) (unComplex y)
-    liftNum2_ _  f x@ComplexC{}  y@RouC{}      = fromComplex $ f (unComplex x) (unComplex y)
-    liftNum2_ _  f x@RouC{}      y@ComplexC{}  = fromComplex $ f (unComplex x) (unComplex y)
+    liftNum2_ _  f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (lower x) (lower y)
+    liftNum2_ _  f x@ComplexC{}  y@RouC{}      = fromComplex $ f (lower x) (lower y)
+    liftNum2_ _  f x@RouC{}      y@ComplexC{}  = fromComplex $ f (lower x) (lower y)
     liftNum2_ op f x@RouC{}      y@RouC{}      = liftNum2 op f (toComplex x) (toComplex y)
 
 instance Num (Exp Integer) where
