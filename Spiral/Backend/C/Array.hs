@@ -103,7 +103,7 @@ class (ToCShape sh, ToCType e, IsArray r sh (CExp e)) => CArray r sh e where
             -> Cg m ()
     compute a b =
         cgForShape (extent b) $ \ix -> do
-            x <- cindex b ix >>= cacheCExp
+            x <- cindex b ix >>= lookupCExp
             cwrite a ix x
 
 -- | A 'CArray' with mutable values.

@@ -37,6 +37,7 @@ import Spiral.Backend.C.Reduction
 import Spiral.Backend.C.Slice
 import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
+import Spiral.Backend.C.Virtual
 import Spiral.Exp
 import Spiral.Monad (MonadCg)
 import Spiral.SPL
@@ -62,21 +63,22 @@ codegen :: forall a m .
         -> Cg m ()
 codegen name a = do
     traceCg $ text "Compiling:" </> ppr a
-    cgTransform name (extent a) $ \x -> cgSPL a (cdelay x)
+    cgTransform name (extent a) $ \x -> cgSPL a x
   where
-    cgSPL :: forall r . CArray r DIM1 a
+    cgSPL :: forall r1 r2 . (MCArray r1 DIM1 a, MCArray r2 DIM1 a)
           => Matrix SPL (Exp a)
-          -> Vector r (CExp a)
-          -> Cg m (Vector CD (CExp a))
-    cgSPL a@E{} x = do
+          -> Vector r1 (CExp a)
+          -> Vector r2 (CExp a)
+          -> Cg m ()
+    cgSPL a@E{} y x = do
         appendComment $ ppr a
-        cgMVProd a x
+        cgMVProd a x >>= compute y
 
-    cgSPL I{} x =
-        return $ cdelay x
+    cgSPL I{} y x =
+        compute y $ cdelay x
 
-    cgSPL (L mn n) x =
-        return $ cbackpermute (lperm (fromIntegral mn) (fromIntegral n)) x
+    cgSPL (L mn n) y x =
+        compute y $ cbackpermute (lperm (fromIntegral mn) (fromIntegral n)) x
       where
         lperm :: forall m . MonadCg m => Int -> Int -> CExp Int -> Cg m (CExp Int)
         lperm mn n i = do
@@ -86,76 +88,58 @@ codegen name a = do
             cmn = fromIntegral mn
             cn  = fromIntegral n
 
-    cgSPL e@(B K (I m) a) x = do
+    cgSPL e@(B K (I m) a) y x = do
         when (n' /= n) $
             faildoc $ text "Non-square matrix in second argument of ⊗:" </> ppr e
-        comp e x (ix1 (m*n)) $ \t -> do
-          appendComment $ ppr e
-          cgFor 0 m $ \i -> do
-            y <- cgSPL a (slice x (i*toCExp n) 1 n)
-            slice t (i*toCExp n) 1 n .:=. y
+        appendComment $ ppr e
+        cgFor 0 m $ \i ->
+          cgSPL a (slice y (i*toCExp n) 1 n) (slice x (i*toCExp n) 1 n)
       where
         Z :. n :. n' = extent a
 
-    cgSPL e@(B K a (I n)) x = do
+    cgSPL e@(B K a (I n)) y x = do
         when (m' /= m) $
             faildoc $ text "Non-square matrix in first argument of ⊗:" </> ppr e
-        comp e x (ix1 (m*n)) $ \t -> do
-          appendComment $ ppr e
-          cgFor 0 m $ \i -> do
-            y <- cgSPL a (slice x i n m)
-            slice t i n m .:=. y
+        appendComment $ ppr e
+        cgFor 0 m $ \i ->
+          cgSPL a (slice y i n m) (slice x i n m)
       where
        Z :. m :. m' = extent a
 
-    cgSPL e@(B DS a b) x = do
+    cgSPL e@(B DS a b) y x = do
         when (m' /= m) $
             faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
         when (n' /= n) $
             faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
-        comp e x (ix1 (m+n)) $ \t -> do
-            appendComment $ ppr e
-            y1 <- cgSPL a (slice x 0 1 m)
-            slice t 0 1 m .:=. y1
-            y2 <- cgSPL b (slice x (toCExp m) 1 n)
-            slice t (toCExp m) 1 n .:=. y2
+        appendComment $ ppr e
+        cgSPL a (slice y 0 1 m)          (slice x 0 1 m)
+        cgSPL b (slice y (toCExp m) 1 n) (slice x (toCExp m) 1 n)
       where
         Z :. m :. m' = extent a
         Z :. n :. n' = extent b
 
-    cgSPL e@(B P a b) x = do
+    cgSPL e@(B P a b) y x = do
         when (n' /= n) $
             faildoc $ text "Mismatched dimensions in arguments to ×:" </> ppr e
         appendComment $ ppr e
-        t <- cgSPL b x
-        cgSPL a t
+        shouldUnroll n >>= go
       where
         Z :. _m :.  n = extent a
         Z :. n' :. _p = extent b
 
-    cgSPL a x = do
-        traceCg $ text "Falling back to default compilation path:" </> ppr a
-        cgMVProd a x
-
-    -- Compute an SPL transform by doing a direct matrix-vector product if the
-    -- result is small enough to unroll, and otherwise computing the result into
-    -- a temporary.
-    comp :: forall r . CArray r DIM1 a
-         => Matrix SPL (Exp a)
-         -> Vector r (CExp a)
-         -> DIM1
-         -> (Array C DIM1 (CExp a) -> Cg m ())
-         -> Cg m (Array CD DIM1 (CExp a))
-    comp a x sh@(Z :. n) f =
-        shouldUnroll n >>= go
-      where
-        go True =
-            cgMVProd a x
+        go True = do
+            t <- newVirtual (ix1 n) 0
+            cgSPL b t x
+            cgSPL a y t
 
         go _ = do
-            t <- cgTemp (fromFunction sh (const (undefined :: a)))
-            f t
-            return $ cdelay t
+            t <- cgTemp (fromFunction (ix1 n) (const (undefined :: a)))
+            cgSPL b t x
+            cgSPL a y t
+
+    cgSPL a y x = do
+        traceCg $ text "Falling back to default compilation path:" </> ppr a
+        cgMVProd a x >>= compute y
 
 cbackpermute :: forall r a . CArray r DIM1 a
              => (forall m . MonadCg m => CExp Int -> Cg m (CExp Int))
@@ -179,7 +163,7 @@ cgTransform :: forall a m .
                )
             => String                -- ^ The name of the transform
             -> DIM2                  -- ^ The dimensions of the transform
-            -> (Vector C (CExp a) -> Cg m (Vector CD (CExp a))) -- ^ The body of the transform
+            -> (Vector C (CExp a) -> Vector C (CExp a) -> Cg m ()) -- ^ The body of the transform
             -> Cg m ()
 cgTransform name (Z :. m :. n) k = do
    appendTopDef [cedecl|$esc:("#include <complex.h>")|]
@@ -187,10 +171,8 @@ cgTransform name (Z :. m :. n) k = do
    cvout    <- cgVar "out"
    let cin  =  C (ix1 n) [cexp|$id:cvin|]
    let cout =  C (ix1 m) [cexp|$id:cvout|]
-   items <- inNewBlock_ $ do
-            y <- k cin
-            appendComment $ text "Computing output"
-            compute cout y
+   items <- inNewBlock_ $
+            k cout cin
    appendTopFunDef [cedecl|
 void $id:name(const restrict $ty:(toCType (fakeArray cin)) $id:cvin,
               restrict $ty:(toCType (fakeArray cout)) $id:cvout)
