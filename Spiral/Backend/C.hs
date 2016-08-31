@@ -65,8 +65,9 @@ codegen name a = do
     traceCg $ text "Compiling:" </> ppr a
     cgTransform name (extent a) $ \x -> cgSPL a (cdelay x)
   where
-    cgSPL :: Matrix SPL (Exp a)
-          -> Vector CD (CExp a)
+    cgSPL :: forall r . CArray r DIM1 a
+          => Matrix SPL (Exp a)
+          -> Vector r (CExp a)
           -> Cg m (Vector CD (CExp a))
     cgSPL a@E{} x = do
         appendComment $ ppr a
@@ -92,7 +93,7 @@ codegen name a = do
         comp e x (ix1 (m*n)) $ \t -> do
           appendComment $ ppr e
           cgFor 0 m $ \i -> do
-            y <- cgSPL a (dslice x (i*toCExp n) 1 n)
+            y <- cgSPL a (slice x (i*toCExp n) 1 n)
             slice t (i*toCExp n) 1 n .:=. y
       where
         Z :. n :. n' = extent a
@@ -103,7 +104,7 @@ codegen name a = do
         comp e x (ix1 (m*n)) $ \t -> do
           appendComment $ ppr e
           cgFor 0 m $ \i -> do
-            y <- cgSPL a (dslice x i n m)
+            y <- cgSPL a (slice x i n m)
             slice t i n m .:=. y
       where
        Z :. m :. m' = extent a
@@ -115,9 +116,9 @@ codegen name a = do
             faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
         comp e x (ix1 (m+n)) $ \t -> do
             appendComment $ ppr e
-            y1 <- cgSPL a (dslice x 0 1 m)
+            y1 <- cgSPL a (slice x 0 1 m)
             slice t 0 1 m .:=. y1
-            y2 <- cgSPL b (dslice x (toCExp m) 1 n)
+            y2 <- cgSPL b (slice x (toCExp m) 1 n)
             slice t (toCExp m) 1 n .:=. y2
       where
         Z :. m :. m' = extent a
@@ -140,11 +141,12 @@ codegen name a = do
     -- Compute an SPL transform by doing a direct matrix-vector product if the
     -- result is small enough to unroll, and otherwise computing the result into
     -- a temporary.
-    comp :: Matrix SPL (Exp a)
-        -> Vector CD (CExp a)
-        -> DIM1
-        -> (Array C DIM1 (CExp a) -> Cg m ())
-        -> Cg m (Array CD DIM1 (CExp a))
+    comp :: forall r . CArray r DIM1 a
+         => Matrix SPL (Exp a)
+         -> Vector r (CExp a)
+         -> DIM1
+         -> (Array C DIM1 (CExp a) -> Cg m ())
+         -> Cg m (Array CD DIM1 (CExp a))
     comp a x sh@(Z :. n) f =
         asksConfig maxUnroll >>= go
       where
@@ -155,15 +157,6 @@ codegen name a = do
             t <- cgTemp (fromFunction sh (const (undefined :: a)))
             f t
             return $ cdelay t
-
--- | Create a slice and delay it
-dslice :: (CTemp a (CExp a), CArray r DIM1 a)
-       => Array r DIM1 (CExp a)
-       -> CExp Int
-       -> Int
-       -> Int
-       -> Array CD DIM1 (CExp a)
-dslice a b s len = cdelay $ S a b s len
 
 cbackpermute :: forall r a . CArray r DIM1 a
              => (forall m . MonadCg m => CExp Int -> Cg m (CExp Int))
