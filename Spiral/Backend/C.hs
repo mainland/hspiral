@@ -38,6 +38,7 @@ import Spiral.Backend.C.Slice
 import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
 import Spiral.Backend.C.Virtual
+import Spiral.Config
 import Spiral.Exp
 import Spiral.Monad (MonadCg)
 import Spiral.SPL
@@ -71,7 +72,8 @@ codegen name a = do
           -> Vector r2 (CExp a)
           -> Cg m ()
     cgSPL a@E{} y x = do
-        appendComment $ ppr a
+        whenDynFlag GenComments $
+            appendComment $ ppr a
         cgMVProd a x >>= compute y
 
     cgSPL I{} y x =
@@ -91,7 +93,8 @@ codegen name a = do
     cgSPL e@(B K (I m) a) y x = do
         when (n' /= n) $
             faildoc $ text "Non-square matrix in second argument of ⊗:" </> ppr e
-        appendComment $ ppr e
+        whenDynFlag GenComments $
+            appendComment $ ppr e
         cgFor 0 m $ \i ->
           cgSPL a (slice y (i*toCExp n) 1 n) (slice x (i*toCExp n) 1 n)
       where
@@ -100,7 +103,8 @@ codegen name a = do
     cgSPL e@(B K a (I n)) y x = do
         when (m' /= m) $
             faildoc $ text "Non-square matrix in first argument of ⊗:" </> ppr e
-        appendComment $ ppr e
+        whenDynFlag GenComments $
+            appendComment $ ppr e
         cgFor 0 n $ \i ->
           cgSPL a (slice y i n m) (slice x i n m)
       where
@@ -111,7 +115,8 @@ codegen name a = do
             faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
         when (n' /= n) $
             faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
-        appendComment $ ppr e
+        whenDynFlag GenComments $
+            appendComment $ ppr e
         cgSPL a (slice y 0 1 m)          (slice x 0 1 m)
         cgSPL b (slice y (toCExp m) 1 n) (slice x (toCExp m) 1 n)
       where
@@ -121,7 +126,8 @@ codegen name a = do
     cgSPL e@(B P a b) y x = do
         when (n' /= n) $
             faildoc $ text "Mismatched dimensions in arguments to ×:" </> ppr e
-        appendComment $ ppr e
+        whenDynFlag GenComments $
+            appendComment $ ppr e
         shouldUnroll n >>= go
       where
         Z :. _m :.  n = extent a

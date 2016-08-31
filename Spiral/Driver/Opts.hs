@@ -156,7 +156,7 @@ fOpts =
         _          -> fail "argument to -fmax-unroll must be an integer"
 
 dFlags :: [(DynFlag, String, String)]
-dFlags = []
+dFlags = [(GenComments, "gen-comments", "add comments in generated code")]
 
 dTraceFlags :: [(TraceFlag, String, String)]
 dTraceFlags = [(TraceCg, "cg", "trace code generation")]

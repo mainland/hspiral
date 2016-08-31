@@ -56,6 +56,7 @@ data ModeFlag = Help
 data DynFlag = Quiet
              | LinePragmas
              | UseComplex
+             | GenComments
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data TraceFlag = TraceCg
