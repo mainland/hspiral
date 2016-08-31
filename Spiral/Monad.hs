@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Module      :  Spiral.Monad
@@ -16,6 +17,8 @@ module Spiral.Monad (
 
 import Control.Monad.Exception (MonadException(..))
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Primitive (PrimMonad(..),
+                                RealWorld)
 import Control.Monad.Ref (MonadRef(..))
 import Control.Monad.Reader (MonadReader(..),
                              ReaderT,
@@ -47,6 +50,10 @@ newtype Spiral a = Spiral { unSpiral :: ReaderT SpiralEnv IO a }
 runSpiral :: Spiral a -> IO a
 runSpiral m = defaultSpiralEnv >>= runReaderT (unSpiral m)
 
+instance PrimMonad Spiral where
+    type PrimState Spiral = RealWorld
+    primitive = Spiral . primitive
+
 instance MonadConfig Spiral where
     askConfig     = asks config
     localConfig f = local (\env -> env { config = f (config env) })
@@ -63,6 +70,12 @@ instance MonadUnique Spiral where
         u' `seq` writeRef r u'
         return $ Uniq u
 
-class (MonadConfig m, MonadUnique m, MonadTrace m) => MonadCg m where
+class ( PrimMonad m
+      , PrimState m ~ RealWorld
+      , MonadRef IORef m
+      , MonadConfig m
+      , MonadUnique m
+      , MonadTrace m
+      ) => MonadCg m where
 
 instance MonadCg Spiral where

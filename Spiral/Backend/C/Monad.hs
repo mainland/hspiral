@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -60,7 +61,8 @@ module Spiral.Backend.C.Monad (
 
 import Control.Monad.Exception (MonadException(..))
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans.Class (MonadTrans(..))
+import Control.Monad.Primitive (PrimMonad(..))
+import Control.Monad.Ref (MonadRef(..))
 import Control.Monad.Reader (MonadReader(..),
                              ReaderT,
                              asks,
@@ -70,8 +72,10 @@ import Control.Monad.State (MonadState(..),
                             execStateT,
                             gets,
                             modify)
+import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.Complex
 import Data.Foldable (toList)
+import Data.IORef (IORef)
 import Data.Loc (noLoc)
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -126,6 +130,12 @@ newtype Cg m a = Cg { unCg :: StateT CgState (ReaderT CgEnv m) a }
 
 instance MonadTrans Cg where
     lift = Cg . lift . lift
+
+deriving instance MonadRef IORef m => MonadRef IORef (Cg m)
+
+instance PrimMonad m => PrimMonad (Cg m) where
+    type PrimState (Cg m) = PrimState m
+    primitive = Cg . primitive
 
 instance MonadCg m => MonadCg (Cg m) where
 

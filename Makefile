@@ -18,6 +18,7 @@ GHCFLAGS += \
 	-package language-c-quote \
 	-package mainland-pretty \
 	-package mtl \
+	-package primitive \
 	-package ref-fd \
 	-package srcloc \
 	-package test-framework \
