@@ -101,7 +101,7 @@ codegen name a = do
         when (m' /= m) $
             faildoc $ text "Non-square matrix in first argument of ⊗:" </> ppr e
         appendComment $ ppr e
-        cgFor 0 m $ \i ->
+        cgFor 0 n $ \i ->
           cgSPL a (slice y i n m) (slice x i n m)
       where
        Z :. m :. m' = extent a
