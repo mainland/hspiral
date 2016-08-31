@@ -166,19 +166,35 @@ cgTransform :: forall a m .
             -> (Vector C (CExp a) -> Vector C (CExp a) -> Cg m ()) -- ^ The body of the transform
             -> Cg m ()
 cgTransform name (Z :. m :. n) k = do
-   appendTopDef [cedecl|$esc:("#include <complex.h>")|]
-   cvin     <- cgVar "in"
-   cvout    <- cgVar "out"
-   let cin  =  C (ix1 n) [cexp|$id:cvin|]
-   let cout =  C (ix1 m) [cexp|$id:cvout|]
-   items <- inNewBlock_ $
-            k cout cin
-   appendTopFunDef [cedecl|
-void $id:name(const restrict $ty:(toCType (fakeArray cin)) $id:cvin,
-              restrict $ty:(toCType (fakeArray cout)) $id:cvout)
+     appendTopDef [cedecl|$esc:("#include <complex.h>")|]
+     cvin     <- cgVar "in"
+     cvout    <- cgVar "out"
+     let cin  =  C (ix1 n) [cexp|$id:cvin|]
+     let cout =  C (ix1 m) [cexp|$id:cvout|]
+     items <- inNewBlock_ $
+              k cout cin
+     appendTopFunDef [cedecl|
+void $id:name(const $ty:(restrict (toCType (fakeArray cin))) $id:cvin,
+              $ty:(restrict (toCType (fakeArray cout))) $id:cvout)
 {
 $items:items
 }|]
+  where
+    restrict :: C.Type -> C.Type
+    restrict (C.Type dspec decl s) =
+        C.Type dspec (restrictDecl decl) s
+      where
+        restrictDecl :: C.Decl -> C.Decl
+        restrictDecl (C.Ptr quals d s) =
+            C.Ptr (C.Trestrict s:quals) (restrictDecl d) s
+
+        restrictDecl (C.Array quals sz d s) =
+            C.Array (C.Trestrict s:quals) sz (restrictDecl d) s
+
+        restrictDecl d =
+            d
+
+    restrict ty = ty
 
 fakeArray :: (Shape sh, IsArray r sh (CExp a))
           => Array r sh (CExp a)
