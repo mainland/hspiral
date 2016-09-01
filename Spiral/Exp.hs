@@ -12,7 +12,9 @@
 module Spiral.Exp (
     Exp(..),
 
-    flatten
+    flatten,
+
+    rootOfUnity
   ) where
 
 import Data.Complex
@@ -22,7 +24,6 @@ import Data.Ratio ((%),
 import Test.QuickCheck
 import Text.PrettyPrint.Mainland hiding (flatten)
 
-import Spiral.ExtendedFloat
 import Spiral.Util.Lift
 
 -- | Representation of scalar constants.
@@ -102,35 +103,37 @@ instance Pretty (Exp a) where
       where
         appPrec1 = 6
 
-instance ExtendedFloat (Exp (Complex Double)) where
-    rootOfUnity = RouC
-
-    normRootOfUnity (RouC x) = RouC ((n `rem` d) % d)
-      where
-        n = numerator x
-        d = denominator x
-
-    normRootOfUnity x = x
-
 -- | Convert a 'Complex Double' to a 'Constant'
 fromComplex :: Complex Double -> Exp (Complex Double)
 fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
 
+-- | Normalize an expression's representation.
+normalize :: Exp a -> Exp a
+normalize e@(RouC r)
+    | r > 1 || r < -1 = normalize (RouC ((n `rem` d) % d))
+    | r < 0           = normalize (RouC (1 + r))
+    | r == 0          = ComplexC 1 0
+    | r == 1 % 4      = ComplexC 0 1
+    | r == 1 % 2      = ComplexC (-1) 0
+    | r == 3 % 4      = ComplexC 0 (-1)
+    | otherwise       = e
+  where
+    n, d :: Integer
+    n = numerator r
+    d = denominator r
+
+normalize e =
+    e
+
 -- | Flatten a constant's representation.
 flatten :: Exp a -> Exp a
-flatten (RouC r)
-    | r < 0      = flatten (RouC (1 + r))
-    | r == 0     = ComplexC 1 0
-    | r == 1 % 4 = ComplexC 0 1
-    | r == 1 % 2 = ComplexC (-1) 0
-    | r == 3 % 4 = ComplexC 0 (-1)
-    | otherwise  = fromComplex (lower (RouC r))
+flatten (RouC r) = fromComplex (lower (normalize (RouC r)))
+flatten (PiC r)  = DoubleC (fromRational r * pi)
+flatten e        = e
 
-flatten (PiC r) =
-    DoubleC (fromRational r * pi)
-
-flatten e =
-    e
+-- | Return $e^{2 \pi i \frac{k}{n}$
+rootOfUnity :: Rational -> Exp (Complex Double)
+rootOfUnity = normalize . RouC
 
 instance LiftNum (Exp a) where
     isIntegral x (IntC y)       = y == fromInteger x
@@ -150,7 +153,7 @@ instance LiftNum (Exp a) where
     liftNum_ _  f x@ComplexC{}  = fromComplex (f (lower x))
     liftNum_ op f c             = liftNum op f (flatten c)
 
-    liftNum2_ Mul _ (RouC x) (RouC y)            = normRootOfUnity $ RouC (x + y)
+    liftNum2_ Mul _ (RouC x) (RouC y)            = normalize $ RouC (x + y)
     liftNum2_ Mul f (RouC x) (ComplexC 1      0) = liftNum2 Mul f (RouC x) (RouC 0)
     liftNum2_ Mul f (RouC x) (ComplexC (-1)   0) = liftNum2 Mul f (RouC x) (RouC (1 % 2))
     liftNum2_ Mul f (RouC x) (ComplexC 0      1) = liftNum2 Mul f (RouC x) (RouC (1 % 4))

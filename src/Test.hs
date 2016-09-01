@@ -20,7 +20,6 @@ import Test.HUnit ((@?=))
 import Test.QuickCheck
 
 import Spiral.Exp
-import Spiral.ExtendedFloat
 import qualified Spiral.FFT as FFT
 import Spiral.SPL
 
@@ -116,7 +115,7 @@ prop_DFT (SmallPowerOfTwo n) =
       where
         f (Z :. i :. j) = w^(i*j)
 
-        w = omega n
+        w = FFT.omega n
 
 -- $F_2$
 f2Test :: Test
@@ -156,4 +155,4 @@ f8Test = testCase "F_8" $ manifestComplex (FFT.f 8) @?= manifestComplex f8
       where
         i = ComplexC 0 1
 
-        w = omega (8 :: Int)
+        w = FFT.omega (8 :: Int)
