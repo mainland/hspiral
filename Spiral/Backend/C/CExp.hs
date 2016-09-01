@@ -85,98 +85,88 @@ instance ToExp (CExp a) where
     toExp (CExp ce)   = const ce
     toExp (CInit _)   = error "ToExp CExp: cannot convert CInit to a C expression"
 
-    toExp (CComplex ce1 ce2)
-      | isZero ce1 && isZero ce2   = const [cexp|0|]
-      | isZero ce1 && isOne ce2    = const [cexp|I|]
-      | isZero ce1 && isNegOne ce2 = const [cexp|-I|]
-      | isZero ce1                 = const [cexp|$ce2 * I|]
-      | isZero ce2                 = toExp ce1
-      | otherwise                  = const [cexp|$ce1 + $ce2 * I|]
+    toExp (CComplex 0 0)     = const [cexp|0|]
+    toExp (CComplex 0 1)     = const [cexp|I|]
+    toExp (CComplex 0 (-1))  = const [cexp|-I|]
+    toExp (CComplex 0 ce2)   = const [cexp|$ce2 * I|]
+    toExp (CComplex ce1 0)   = toExp ce1
+    toExp (CComplex ce1 ce2) = const [cexp|$ce1 + $ce2 * I|]
 
 instance ToInitializer (CExp a) where
     toInitializer (CInit cinit) = cinit
     toInitializer ce            = [cinit|$ce|]
 
 instance LiftNum (CExp a) where
-    isIntegral x (CInt y)                 = y == fromInteger x
-    isIntegral x (CDouble y)              = y == fromInteger x
-    isIntegral x (CComplex r i)           = isIntegral x r && isZero i
-    isIntegral x (CExp [cexp|$int:y|])    = y == fromInteger x
-    isIntegral x (CExp [cexp|$double:y|]) = y == fromInteger x
-    isIntegral _ _                        = False
+    liftNum _ f (CInt x)    = CInt (f x)
+    liftNum _ f (CDouble x) = CDouble (f x)
 
-    liftNum_ _ f (CInt x)    = CInt (f x)
-    liftNum_ _ f (CDouble x) = CDouble (f x)
+    liftNum Neg _ (CComplex cr ci)    = CComplex (-cr) (-ci)
+    liftNum Neg _ (CExp [cexp|-$ce|]) = CExp ce
 
-    liftNum_ Neg _ (CComplex cr ci) =
-        CComplex (-cr) (-ci)
+    liftNum Neg    _ ce  = CExp [cexp|-$ce|]
+    liftNum Abs    _ _ce = error "LiftNum CExp: cannot lift abs"
+    liftNum Signum _ ce  = CExp [cexp|$ce == 0 ? 0 : ($ce > 0 ? 1 : -1)|]
 
-    liftNum_ Neg _ (CExp [cexp|-$ce|]) = CExp ce
+    liftNum2 _ f (CInt x)    (CInt y)    = CInt (f x y)
+    liftNum2 _ f (CDouble x) (CDouble y) = CDouble (f x y)
 
-    liftNum_ Neg    _ ce  = CExp [cexp|-$ce|]
-    liftNum_ Abs    _ _ce = error "LiftNum CExp: cannot lift abs"
-    liftNum_ Signum _ ce  = CExp [cexp|$ce == 0 ? 0 : ($ce > 0 ? 1 : -1)|]
-
-    liftNum2_ _ f (CInt x)    (CInt y)    = CInt (f x y)
-    liftNum2_ _ f (CDouble x) (CDouble y) = CDouble (f x y)
-
-    liftNum2_ Add _ (CComplex a b) (CComplex c d) =
+    liftNum2 Add _ (CComplex a b) (CComplex c d) =
         CComplex (a + c) (b + d)
 
-    liftNum2_ Sub _ (CComplex a b) (CComplex c d) =
+    liftNum2 Sub _ (CComplex a b) (CComplex c d) =
         CComplex (a - c) (b - d)
 
-    liftNum2_ Mul _ (CComplex a b) (CComplex c d) =
+    liftNum2 Mul _ (CComplex a b) (CComplex c d) =
         CComplex (a*c - b*d) (b*c + a*d)
 
-    liftNum2_ Add _ ce1 (CExp [cexp|-$ce2|]) = CExp [cexp|$ce1 - $ce2|]
+    liftNum2 Add _ ce1 (CExp [cexp|-$ce2|]) = CExp [cexp|$ce1 - $ce2|]
 
-    liftNum2_ Sub _ ce1 (CExp [cexp|-$ce2|]) = CExp [cexp|$ce1 + $ce2|]
+    liftNum2 Sub _ ce1 (CExp [cexp|-$ce2|]) = CExp [cexp|$ce1 + $ce2|]
 
-    liftNum2_ Add _ ce1 ce2 = CExp [cexp|$ce1 + $ce2|]
-    liftNum2_ Sub _ ce1 ce2 = CExp [cexp|$ce1 - $ce2|]
-    liftNum2_ Mul _ ce1 ce2 = CExp [cexp|$ce1 * $ce2|]
-    liftNum2_ Div _ ce1 ce2 = CExp [cexp|$ce1 / $ce2|]
+    liftNum2 Add _ ce1 ce2 = CExp [cexp|$ce1 + $ce2|]
+    liftNum2 Sub _ ce1 ce2 = CExp [cexp|$ce1 - $ce2|]
+    liftNum2 Mul _ ce1 ce2 = CExp [cexp|$ce1 * $ce2|]
+    liftNum2 Div _ ce1 ce2 = CExp [cexp|$ce1 / $ce2|]
 
 instance Num (CExp Int) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs ce@CInt{} = liftNum Abs abs ce
+    abs ce@CInt{} = liftNumOpt Abs abs ce
     abs ce        = CExp [cexp|abs($ce)|]
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = CInt . fromIntegral
 
 instance Num (CExp Double) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs ce@CDouble{} = liftNum Abs abs ce
+    abs ce@CDouble{} = liftNumOpt Abs abs ce
     abs ce           = CExp [cexp|fabs($ce)|]
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = CDouble . fromInteger
 
 instance Num (CExp (Complex Double)) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs ce@CComplex{} = liftNum Abs abs ce
+    abs ce@CComplex{} = liftNumOpt Abs abs ce
     abs ce            = CExp [cexp|cabs($ce)|]
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger x = CComplex (CDouble (fromInteger x)) 0
 

@@ -1,8 +1,10 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      :  Spiral.Exp
@@ -21,10 +23,8 @@ module Spiral.Exp (
     flatten,
 
     LiftNum(..),
-
-    isZero,
-    isOne,
-    isNegOne,
+    liftNumOpt,
+    liftNum2Opt,
 
     rootOfUnity,
 
@@ -116,13 +116,13 @@ instance Pretty (Const a) where
                char '/' <>
                ppr (denominator r)
 
-pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
-pprComplex (r :+ 0) = ppr r
-pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
-
     ppr (PiC r) = pprPrec appPrec1 r <+> ppr "pi"
       where
         appPrec1 = 6
+
+pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
+pprComplex (r :+ 0) = ppr r
+pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
 
 -- | Convert a 'Complex Double' to a 'Constant'
 fromComplex :: Complex Double -> Const (Complex Double)
@@ -182,156 +182,149 @@ instance Pretty (Exp a) where
     ppr (ConstE c) = ppr c
     ppr (VarE v)   = ppr v
 
--- | Test for 0
-isZero :: LiftNum a => a -> Bool
-isZero = isIntegral 0
-
--- | Test for 1
-isOne :: LiftNum a => a -> Bool
-isOne = isIntegral 1
-
--- | Test for -1
-isNegOne :: LiftNum a => a -> Bool
-isNegOne = isIntegral (-1)
-
 -- | Class to lift 'Num' operators.
 class LiftNum b where
-    isIntegral :: (forall a . Integral a => a) -> b -> Bool
-
+    -- | Lift a unary operation on 'Num' to the type 'b'
     liftNum :: Unop -> (forall a . Num a => a -> a) -> b -> b
-    liftNum Neg _ x | isZero x = x
 
-    liftNum op f x = liftNum_ op f x
-
-    liftNum_ :: Unop -> (forall a . Num a => a -> a) -> b -> b
-
+    -- | Lift a binary operation on 'Num' to the type 'b
     liftNum2 :: Binop -> (forall a . Num a => a -> a -> a) -> b -> b -> b
-    liftNum2 Add _ x y | isZero x = y
-                       | isZero y = x
 
-    liftNum2 Sub _ x y | isZero x = liftNum Neg negate y
-                       | isZero y = x
+-- | "Optimizing" version of 'liftNum'.
+liftNumOpt :: (Ord b, Num b, LiftNum b)
+           => Unop
+           -> (forall a . Num a => a -> a)
+           -> b
+           -> b
+liftNumOpt Neg _ 0 = 0
 
-    liftNum2 Mul _ x y | isZero x   = x
-                       | isZero y   = y
-                       | isOne x    = y
-                       | isNegOne x = liftNum Neg negate y
-                       | isOne y    = x
-                       | isNegOne y = liftNum Neg negate x
+liftNumOpt op f x = liftNum op f x
 
-    liftNum2 op f x y = liftNum2_ op f x y
+-- | "Optimizing" version of 'liftNum2'.
+liftNum2Opt :: (Eq b, Num b, LiftNum b)
+            => Binop
+            -> (forall a . Num a => a -> a -> a)
+            -> b
+            -> b
+            -> b
+liftNum2Opt Add _ x 0 = x
+liftNum2Opt Add _ 0 x = x
 
-    liftNum2_ :: Binop -> (forall a . Num a => a -> a -> a) -> b -> b -> b
+liftNum2Opt Sub _ 0 x = negate x
+liftNum2Opt Sub _ x 0 = x
+
+liftNum2Opt Mul _ 0    _    = 0
+liftNum2Opt Mul _ _    0    = 0
+liftNum2Opt Mul _ x    1    = x
+liftNum2Opt Mul _ 1    x    = x
+liftNum2Opt Mul _ x    (-1) = -x
+liftNum2Opt Mul _ (-1) x    = -x
+
+liftNum2Opt op f x y = liftNum2 op f x y
 
 instance LiftNum (Const a) where
-    isIntegral x (IntC y)       = y == fromInteger x
-    isIntegral x (DoubleC y)    = y == fromInteger x
-    isIntegral x (RationalC y)  = y == fromInteger x
-    isIntegral x (ComplexC y i) = y == fromInteger x && isZero i
-    isIntegral x (RouC y)
-      | y == 1                  = fromInteger x == (1 :: Integer)
-      | y == 1 % 2              = fromInteger x == (-1 :: Integer)
-    isIntegral _ _              = False
+    liftNum Neg _ (RouC r) = RouC (r + 1 % 2)
 
-    liftNum_ Neg _ (RouC r) = RouC (r + 1 % 2)
+    liftNum _  f (IntC x)      = IntC (f x)
+    liftNum _  f (IntegerC x)  = IntegerC (f x)
+    liftNum _  f (DoubleC x)   = DoubleC (f x)
+    liftNum _  f (RationalC x) = RationalC (f x)
+    liftNum _  f x@ComplexC{}  = fromComplex (f (lower x))
+    liftNum op f c             = liftNum op f (flatten c)
 
-    liftNum_ _  f (IntC x)      = IntC (f x)
-    liftNum_ _  f (DoubleC x)   = DoubleC (f x)
-    liftNum_ _  f (RationalC x) = RationalC (f x)
-    liftNum_ _  f x@ComplexC{}  = fromComplex (f (lower x))
-    liftNum_ op f c             = liftNum op f (flatten c)
+    liftNum2 Mul _ (RouC x) (RouC y)            = normalize $ RouC (x + y)
+    liftNum2 Mul f (RouC x) (ComplexC 1      0) = liftNum2Opt Mul f (RouC x) (RouC 0)
+    liftNum2 Mul f (RouC x) (ComplexC (-1)   0) = liftNum2Opt Mul f (RouC x) (RouC (1 % 2))
+    liftNum2 Mul f (RouC x) (ComplexC 0      1) = liftNum2Opt Mul f (RouC x) (RouC (1 % 4))
+    liftNum2 Mul f (RouC x) (ComplexC 0   (-1)) = liftNum2Opt Mul f (RouC x) (RouC (3 % 4))
+    liftNum2 Mul f x        y@RouC{}            = liftNum2Opt Mul f y x
 
-    liftNum2_ Mul _ (RouC x) (RouC y)            = normalize $ RouC (x + y)
-    liftNum2_ Mul f (RouC x) (ComplexC 1      0) = liftNum2 Mul f (RouC x) (RouC 0)
-    liftNum2_ Mul f (RouC x) (ComplexC (-1)   0) = liftNum2 Mul f (RouC x) (RouC (1 % 2))
-    liftNum2_ Mul f (RouC x) (ComplexC 0      1) = liftNum2 Mul f (RouC x) (RouC (1 % 4))
-    liftNum2_ Mul f (RouC x) (ComplexC 0   (-1)) = liftNum2 Mul f (RouC x) (RouC (3 % 4))
-    liftNum2_ Mul f x        y@RouC{}            = liftNum2 Mul f y x
+    liftNum2 _  f (IntC x)      (IntC y)      = IntC (f x y)
+    liftNum2 _  f (IntegerC x)  (IntegerC y)  = IntegerC (f x y)
+    liftNum2 _  f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
+    liftNum2 _  f (RationalC x) (RationalC y) = RationalC (f x y)
+    liftNum2 _  f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (lower x) (lower y)
+    liftNum2 op f x             y             = liftNum2 op f (flatten x) (flatten y)
 
-    liftNum2_ _  f (IntC x)      (IntC y)      = IntC (f x y)
-    liftNum2_ _  f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
-    liftNum2_ _  f (RationalC x) (RationalC y) = RationalC (f x y)
-    liftNum2_ _  f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (lower x) (lower y)
-    liftNum2_ op f x             y             = liftNum2 op f (flatten x) (flatten y)
+--- XXX Need UndecidableInstances for this...but we *must* call
+--- liftNumOpt/liftNum2Opt on constants to ensure they are properly simplified.
+--- The other option would be to forgo the Const instance and push it into the
+--- Exp instance.
+instance (Num (Const a), LiftNum (Const a)) => LiftNum (Exp a) where
+    liftNum op f (ConstE c) =
+        ConstE $ liftNumOpt op f c
 
-instance LiftNum (Exp a) where
-    isIntegral x (ConstE y) = isIntegral x y
-    isIntegral _ _          = False
-
-    liftNum_ op f (ConstE c) =
-        ConstE $ liftNum_ op f c
-
-    liftNum_ op _ _  =
+    liftNum op _ _  =
       errordoc $ text "liftNum (Exp a): cannot lift" <+> (text . show) op
 
-    liftNum2_ op f (ConstE c1) (ConstE c2) =
-        ConstE $ liftNum2_ op f c1 c2
+    liftNum2 op f (ConstE c1) (ConstE c2) =
+        ConstE $ liftNum2Opt op f c1 c2
 
-    liftNum2_ op _ _ _ =
+    liftNum2 op _ _ _ =
         errordoc $ text "liftNum (Exp a): cannot lift" <+> (text . show) op
 
 instance Num (Const Int) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = IntC . fromInteger
 
 instance Num (Const Integer) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = IntegerC
 
 instance Num (Const Double) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger x = DoubleC (fromInteger x)
 
 instance Num (Const Rational) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger x = RationalC (fromInteger x)
 
 instance Num (Const (Complex Double)) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger x = fromComplex (fromInteger x)
 
