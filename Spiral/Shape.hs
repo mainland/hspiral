@@ -12,6 +12,7 @@
 
 module Spiral.Shape (
     Shape(..),
+    ExpShape(..),
 
     Z(..),
     (:.)(..),
@@ -25,8 +26,12 @@ module Spiral.Shape (
 
 import Spiral.Exp
 
+-- | Things we can convert to a list of expression indices.
+class ExpShape sh where
+    listOfExpShape :: sh -> [Exp Int]
+
 -- | Array shapes
-class Eq sh => Shape sh where
+class (Eq sh, ExpShape (ExpShapeOf sh)) => Shape sh where
     -- | The corresponding expression shape.
     type ExpShapeOf sh
 
@@ -74,6 +79,9 @@ class Eq sh => Shape sh where
 data Z = Z
   deriving (Show, Read, Eq, Ord)
 
+instance ExpShape Z where
+    listOfExpShape Z = []
+
 instance Shape Z where
     type ExpShapeOf Z = Z
 
@@ -107,6 +115,9 @@ infixl 3 :.
 
 data (:.) tail head = tail :. head
   deriving (Eq, Ord, Show)
+
+instance ExpShape sh => ExpShape (sh :. Exp Int) where
+    listOfExpShape (sh :. ei) = ei : listOfExpShape sh
 
 instance Shape sh => Shape (sh :. Int) where
     type ExpShapeOf (sh :. Int) = ExpShapeOf sh :. Exp Int
