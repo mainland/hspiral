@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
@@ -6,6 +7,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      :  Spiral.Backend.C.CExp
@@ -216,16 +218,20 @@ instance ToCExp Double Double where
 instance ToCExp (CExp a) a where
     toCExp ce = ce
 
-instance ToCExp (Exp Int) Int where
+instance ToCExp (Const Int) Int where
     toCExp (IntC x) = CInt x
 
-instance ToCExp (Exp Integer) Int where
+instance ToCExp (Const Integer) Int where
     toCExp (IntegerC x) = CInt (fromIntegral x)
 
-instance ToCExp (Exp Double) Double where
+instance ToCExp (Const Double) Double where
     toCExp (PiC x)     = CDouble (toRational (fromRational x * pi :: Double))
     toCExp (DoubleC x) = CDouble (toRational x)
 
-instance ToCExp (Exp (Complex Double)) (Complex Double) where
+instance ToCExp (Const (Complex Double)) (Complex Double) where
     toCExp (ComplexC e1 e2) = CComplex (toCExp e1) (toCExp e2)
     toCExp e@RouC{}         = toCExp (flatten e)
+
+-- XXX Need UndecidableInstances for this one :(
+instance ToCExp (Const a) a => ToCExp (Exp a) a where
+    toCExp (ConstE c) = toCExp c

@@ -10,11 +10,15 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Exp (
+    Const(..),
     Exp(..),
 
+    fromComplex,
     flatten,
 
-    rootOfUnity
+    rootOfUnity,
+    intE,
+    complexE
   ) where
 
 import Data.Complex
@@ -26,22 +30,24 @@ import Text.PrettyPrint.Mainland hiding (flatten)
 
 import Spiral.Util.Lift
 
--- | Representation of scalar constants.
-data Exp a where
-    IntC      :: Int -> Exp Int
-    IntegerC  :: Integer -> Exp Integer
-    DoubleC   :: Double -> Exp Double
-    RationalC :: Rational -> Exp Rational
-    ComplexC  :: Exp Double -> Exp Double -> Exp (Complex Double)
+-- | Representation of scalar expressions.
+data Const a where
+    IntC      :: Int -> Const Int
+    IntegerC  :: Integer -> Const Integer
+    DoubleC   :: Double -> Const Double
+    RationalC :: Rational -> Const Rational
+    ComplexC  :: Const Double -> Const Double -> Const (Complex Double)
 
     -- Root of unity, $e^{2 \pi i \frac{k}{n}}$
-    RouC :: Rational -> Exp (Complex Double)
+    RouC :: Rational -> Const (Complex Double)
 
     -- Multiple of $\pi$
-    PiC :: Rational -> Exp Double
+    PiC :: Rational -> Const Double
 
--- | Lower an expression to its constant value.
-lower :: Exp a -> a
+deriving instance Eq (Const a)
+deriving instance Show (Const a)
+
+lower :: Const a -> a
 lower (IntC x)       = x
 lower (IntegerC x)   = x
 lower (DoubleC x)    = x
@@ -50,10 +56,7 @@ lower (ComplexC r i) = lower r :+ lower i
 lower (RouC r)       = lower (cos (PiC (2*r))) :+ lower (sin (PiC (2*r)))
 lower (PiC r)        = pi*fromRational r
 
-deriving instance Eq (Exp a)
-deriving instance Show (Exp a)
-
-instance Ord (Exp a) where
+instance Ord (Const a) where
     compare x y =
         case (flatten x, flatten y) of
             (IntC x, IntC y)                 -> compare x y
@@ -63,27 +66,22 @@ instance Ord (Exp a) where
             (ComplexC r1 i1, ComplexC r2 i2) -> compare (r1, i1) (r2, i2)
             _                                -> error "can't happen"
 
-instance Arbitrary (Exp Int) where
+instance Arbitrary (Const Int) where
     arbitrary = IntC <$> arbitrary
 
-instance Arbitrary (Exp Integer) where
+instance Arbitrary (Const Integer) where
     arbitrary = IntegerC <$> arbitrary
 
-instance Arbitrary (Exp Double) where
+instance Arbitrary (Const Double) where
     arbitrary = DoubleC <$> arbitrary
 
-instance Arbitrary (Exp Rational) where
+instance Arbitrary (Const Rational) where
     arbitrary = RationalC <$> arbitrary
 
-instance Arbitrary (Exp (Complex Double)) where
+instance Arbitrary (Const (Complex Double)) where
     arbitrary = ComplexC <$> arbitrary <*> arbitrary
 
--- Orphan instance...
-pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
-pprComplex (r :+ 0) = ppr r
-pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
-
-instance Pretty (Exp a) where
+instance Pretty (Const a) where
     ppr (IntC x)      = ppr x
     ppr (IntegerC x)  = ppr x
     ppr (DoubleC x)   = ppr x
@@ -111,38 +109,54 @@ instance Pretty (Exp a) where
         appPrec1 = 6
 
 -- | Convert a 'Complex Double' to a 'Constant'
-fromComplex :: Complex Double -> Exp (Complex Double)
+fromComplex :: Complex Double -> Const (Complex Double)
 fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
 
 -- | Normalize an expression's representation.
-normalize :: Exp a -> Exp a
-normalize e@(RouC r)
+normalize :: Const a -> Const a
+normalize c@(RouC r)
     | r > 1 || r < -1 = normalize (RouC ((n `rem` d) % d))
     | r < 0           = normalize (RouC (1 + r))
     | r == 0          = ComplexC 1 0
     | r == 1 % 4      = ComplexC 0 1
     | r == 1 % 2      = ComplexC (-1) 0
     | r == 3 % 4      = ComplexC 0 (-1)
-    | otherwise       = e
+    | otherwise       = c
   where
     n, d :: Integer
     n = numerator r
     d = denominator r
 
-normalize e =
-    e
+normalize c =
+    c
 
 -- | Flatten a constant's representation.
-flatten :: Exp a -> Exp a
+flatten :: Const a -> Const a
 flatten (RouC r) = fromComplex (lower (normalize (RouC r)))
 flatten (PiC r)  = DoubleC (fromRational r * pi)
 flatten e        = e
 
 -- | Return $e^{2 \pi i \frac{k}{n}$
 rootOfUnity :: Rational -> Exp (Complex Double)
-rootOfUnity = normalize . RouC
+rootOfUnity = ConstE . normalize . RouC
 
-instance LiftNum (Exp a) where
+-- | Representation of scalar constants.
+data Exp a where
+    ConstE :: Const a -> Exp a
+
+deriving instance Eq (Exp a)
+deriving instance Ord (Exp a)
+deriving instance Show (Exp a)
+
+-- Orphan instance...
+pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
+pprComplex (r :+ 0) = ppr r
+pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
+
+instance Pretty (Exp a) where
+    ppr (ConstE c) = ppr c
+
+instance LiftNum (Const a) where
     isIntegral x (IntC y)       = y == fromInteger x
     isIntegral x (DoubleC y)    = y == fromInteger x
     isIntegral x (RationalC y)  = y == fromInteger x
@@ -173,7 +187,16 @@ instance LiftNum (Exp a) where
     liftNum2_ _  f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (lower x) (lower y)
     liftNum2_ op f x             y             = liftNum2 op f (flatten x) (flatten y)
 
-instance Num (Exp Int) where
+instance LiftNum (Exp a) where
+    isIntegral x (ConstE y) = isIntegral x y
+
+    liftNum_ op f (ConstE c) =
+        ConstE $ liftNum_ op f c
+
+    liftNum2_ op f (ConstE c1) (ConstE c2) =
+        ConstE $ liftNum2_ op f c1 c2
+
+instance Num (Const Int) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
     (*) = liftNum2 Mul (*)
@@ -186,7 +209,7 @@ instance Num (Exp Int) where
 
     fromInteger = IntC . fromInteger
 
-instance Num (Exp Integer) where
+instance Num (Const Integer) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
     (*) = liftNum2 Mul (*)
@@ -199,7 +222,7 @@ instance Num (Exp Integer) where
 
     fromInteger = IntegerC
 
-instance Num (Exp Double) where
+instance Num (Const Double) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
     (*) = liftNum2 Mul (*)
@@ -212,7 +235,7 @@ instance Num (Exp Double) where
 
     fromInteger x = DoubleC (fromInteger x)
 
-instance Num (Exp Rational) where
+instance Num (Const Rational) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
     (*) = liftNum2 Mul (*)
@@ -225,7 +248,7 @@ instance Num (Exp Rational) where
 
     fromInteger x = RationalC (fromInteger x)
 
-instance Num (Exp (Complex Double)) where
+instance Num (Const (Complex Double)) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
     (*) = liftNum2 Mul (*)
@@ -238,15 +261,15 @@ instance Num (Exp (Complex Double)) where
 
     fromInteger x = fromComplex (fromInteger x)
 
-instance Fractional (Exp Double) where
+instance Fractional (Const Double) where
     fromRational = DoubleC . fromRational
 
     x / y = DoubleC $ lower x / lower y
 
-lift :: (Double -> Double) -> Exp Double -> Exp Double
+lift :: (Double -> Double) -> Const Double -> Const Double
 lift f = DoubleC . f . lower
 
-instance Floating (Exp Double) where
+instance Floating (Const Double) where
     pi = PiC 1
 
     exp = lift exp
@@ -273,3 +296,74 @@ instance Floating (Exp Double) where
       | x > 0     = 0
 
     cos x = lift cos x
+
+instance Num (Exp Int) where
+    (+) = liftNum2 Add (+)
+    (-) = liftNum2 Sub (-)
+    (*) = liftNum2 Mul (*)
+
+    abs = liftNum Abs abs
+
+    negate = liftNum Neg negate
+
+    signum  = liftNum Signum signum
+
+    fromInteger = ConstE . IntC . fromInteger
+
+instance Num (Exp Integer) where
+    (+) = liftNum2 Add (+)
+    (-) = liftNum2 Sub (-)
+    (*) = liftNum2 Mul (*)
+
+    abs = liftNum Abs abs
+
+    negate = liftNum Neg negate
+
+    signum  = liftNum Signum signum
+
+    fromInteger = ConstE . IntegerC
+
+instance Num (Exp Double) where
+    (+) = liftNum2 Add (+)
+    (-) = liftNum2 Sub (-)
+    (*) = liftNum2 Mul (*)
+
+    abs = liftNum Abs abs
+
+    negate = liftNum Neg negate
+
+    signum  = liftNum Signum signum
+
+    fromInteger = ConstE . DoubleC . fromInteger
+
+instance Num (Exp Rational) where
+    (+) = liftNum2 Add (+)
+    (-) = liftNum2 Sub (-)
+    (*) = liftNum2 Mul (*)
+
+    abs = liftNum Abs abs
+
+    negate = liftNum Neg negate
+
+    signum  = liftNum Signum signum
+
+    fromInteger = ConstE . RationalC . fromInteger
+
+instance Num (Exp (Complex Double)) where
+    (+) = liftNum2 Add (+)
+    (-) = liftNum2 Sub (-)
+    (*) = liftNum2 Mul (*)
+
+    abs = liftNum Abs abs
+
+    negate = liftNum Neg negate
+
+    signum  = liftNum Signum signum
+
+    fromInteger x = complexE (fromInteger x)
+
+intE :: Int -> Exp Int
+intE = ConstE . IntC
+
+complexE :: Complex Double -> Exp (Complex Double)
+complexE (r :+ i) = ConstE $ ComplexC (DoubleC r) (DoubleC i)

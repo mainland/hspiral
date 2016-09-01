@@ -40,15 +40,21 @@ instance Arbitrary SmallPowerOfTwo where
 newtype RootOfUnity = RootOfUnity (Exp (Complex Double))
 
 instance Arbitrary RootOfUnity where
-    arbitrary = (RootOfUnity . RouC) <$> arbitrary
+    arbitrary = (RootOfUnity . ConstE . RouC) <$> arbitrary
 
-    shrink (RootOfUnity (RouC r)) = [RootOfUnity (RouC r') | r' <- shrink r]
-    shrink _                      = []
+    shrink (RootOfUnity (ConstE (RouC r))) =
+        [RootOfUnity (ConstE (RouC r')) | r' <- shrink r]
+
+    shrink _ =
+        []
 
 manifestComplex :: (IndexedArray r DIM2 (Exp (Complex Double)))
                 => Matrix r (Exp (Complex Double))
                 -> Matrix M (Exp (Complex Double))
-manifestComplex = fmap flatten . manifest
+manifestComplex = fmap f . manifest
+  where
+    f :: Exp a -> Exp a
+    f (ConstE c) = ConstE (flatten c)
 
 main :: IO ()
 main = defaultMain tests
@@ -137,7 +143,8 @@ f4Test = testCase "F_4" $ manifestComplex (toMatrix (FFT.f 4)) @?= manifestCompl
                  [1, -1,  1, -1],
                  [1,  i, -1, -i]]
       where
-        i = ComplexC 0 1
+        i :: Exp (Complex Double)
+        i = complexE (0 :+ 1)
 
 -- $F_8$ calculated per "SPL: A Language and Compiler for DSP Algorithms"
 -- See also:
@@ -155,6 +162,6 @@ f8Test = testCase "F_8" $ manifestComplex (toMatrix (FFT.f 8)) @?= manifestCompl
                  [1, i, -1, -i, 1, i, -1, -i],
                  [1, i*w, i, -w, -1, -i*w, -i, w]]
       where
-        i = ComplexC 0 1
+        i = complexE (0 :+ 1)
 
         w = FFT.omega (8 :: Int)
