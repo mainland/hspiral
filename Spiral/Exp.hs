@@ -36,7 +36,7 @@ import Data.Complex
 import Data.Ratio ((%),
                    denominator,
                    numerator)
-import Test.QuickCheck
+import Test.QuickCheck (Arbitrary(..))
 import Text.PrettyPrint.Mainland hiding (flatten)
 
 type Var = String

@@ -17,7 +17,11 @@ import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
 import Test.HUnit ((@?=))
-import Test.QuickCheck
+import Test.QuickCheck ((===),
+                        Arbitrary(..),
+                        Gen,
+                        Property,
+                        choose)
 
 import Spiral.Array
 import Spiral.Exp
