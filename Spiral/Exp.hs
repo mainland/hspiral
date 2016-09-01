@@ -469,6 +469,27 @@ instance Num (Exp (Complex Double)) where
 
     fromInteger x = complexE (fromInteger x)
 
+instance Enum (Exp Int) where
+    toEnum n = intE (fromIntegral n)
+
+    fromEnum (ConstE (IntC i)) = fromIntegral i
+    fromEnum _                 = error "Enum Exp: fromEnum not implemented"
+
+instance Real (Exp Int) where
+    toRational (ConstE (IntC i)) = toRational i
+    toRational _                 = error "Real Exp: toRational not implemented"
+
+instance Integral (Exp Int) where
+    ConstE (IntC x) `quotRem` ConstE (IntC y) = (intE q, intE r)
+      where
+        (q, r) = x `quotRem` y
+
+    x `quotRem` y =
+        (BinopE Div x y, BinopE Rem x y)
+
+    toInteger (ConstE (IntC i)) = fromIntegral i
+    toInteger _                 = error "Integral CExp: fromInteger not implemented"
+
 intE :: Int -> Exp Int
 intE = ConstE . IntC
 
