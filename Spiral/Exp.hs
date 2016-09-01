@@ -2,7 +2,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 
 -- |
 -- Module      :  Spiral.Exp
@@ -52,13 +51,13 @@ deriving instance Eq (Exp a)
 deriving instance Show (Exp a)
 
 instance Ord (Exp a) where
-    compare (IntC x)         (IntC y)         = compare x y
-    compare (DoubleC x)      (DoubleC y)      = compare x y
-    compare (RationalC x)    (RationalC y)    = compare x y
-    compare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
-    compare (RouC x)         (RouC y)         = compare x y
-    compare ComplexC{}       RouC{}           = LT
-    compare RouC{}           ComplexC{}       = GT
+    compare x y =
+        case (flatten x, flatten y) of
+            (IntC x, IntC y)                 -> compare x y
+            (DoubleC x, DoubleC y)           -> compare x y
+            (RationalC x, RationalC y)       -> compare x y
+            (ComplexC r1 i1, ComplexC r2 i2) -> compare (r1, i1) (r2, i2)
+            _                                -> error "can't happen"
 
 instance Arbitrary (Exp Integer) where
     arbitrary = IntC <$> arbitrary
@@ -99,6 +98,10 @@ instance Pretty (Exp a) where
                                char '/' <>
                                ppr (denominator r)
 
+    ppr (PiC r) = pprPrec appPrec1 r <+> ppr "pi"
+      where
+        appPrec1 = 6
+
 instance ExtendedFloat (Exp (Complex Double)) where
     rootOfUnity = RouC
 
@@ -115,9 +118,6 @@ fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
 
 -- | Flatten a constant's representation.
 flatten :: Exp a -> Exp a
-flatten e@ComplexC{} =
-    e
-
 flatten (RouC r)
     | r < 0      = flatten (RouC (1 + r))
     | r == 0     = ComplexC 1 0
@@ -125,6 +125,12 @@ flatten (RouC r)
     | r == 1 % 2 = ComplexC (-1) 0
     | r == 3 % 4 = ComplexC 0 (-1)
     | otherwise  = fromComplex (lower (RouC r))
+
+flatten (PiC r) =
+    DoubleC (fromRational r * pi)
+
+flatten e =
+    e
 
 instance LiftNum (Exp a) where
     isIntegral x (IntC y)       = y == fromInteger x
@@ -142,7 +148,7 @@ instance LiftNum (Exp a) where
     liftNum_ _  f (DoubleC x)   = DoubleC (f x)
     liftNum_ _  f (RationalC x) = RationalC (f x)
     liftNum_ _  f x@ComplexC{}  = fromComplex (f (lower x))
-    liftNum_ op f c@RouC{}      = liftNum op f (flatten c)
+    liftNum_ op f c             = liftNum op f (flatten c)
 
     liftNum2_ Mul _ (RouC x) (RouC y)            = normRootOfUnity $ RouC (x + y)
     liftNum2_ Mul f (RouC x) (ComplexC 1      0) = liftNum2 Mul f (RouC x) (RouC 0)
@@ -155,9 +161,7 @@ instance LiftNum (Exp a) where
     liftNum2_ _  f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
     liftNum2_ _  f (RationalC x) (RationalC y) = RationalC (f x y)
     liftNum2_ _  f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (lower x) (lower y)
-    liftNum2_ _  f x@ComplexC{}  y@RouC{}      = fromComplex $ f (lower x) (lower y)
-    liftNum2_ _  f x@RouC{}      y@ComplexC{}  = fromComplex $ f (lower x) (lower y)
-    liftNum2_ op f x@RouC{}      y@RouC{}      = liftNum2 op f (flatten x) (flatten y)
+    liftNum2_ op f x             y             = liftNum2 op f (flatten x) (flatten y)
 
 instance Num (Exp Integer) where
     (+) = liftNum2 Add (+)
