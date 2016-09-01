@@ -39,6 +39,8 @@ import Data.Ratio ((%),
 import Test.QuickCheck (Arbitrary(..))
 import Text.PrettyPrint.Mainland hiding (flatten)
 
+import Spiral.Util.Pretty
+
 type Var = String
 
 -- | Representation of scalar expressions.
@@ -160,6 +162,8 @@ rootOfUnity = ConstE . normalize . RouC
 data Exp a where
     ConstE :: Const a -> Exp a
     VarE   :: Var -> Exp a
+    UnopE  :: Unop -> Exp a -> Exp a
+    BinopE :: Binop -> Exp a -> Exp a -> Exp a
 
 deriving instance Eq (Exp a)
 deriving instance Ord (Exp a)
@@ -176,11 +180,43 @@ data Binop = Add
            | Sub
            | Mul
            | Div
+           | Rem
   deriving (Eq, Ord, Show, Enum)
 
+instance HasFixity Unop where
+    fixity Neg    = infixr_ 10
+    fixity Abs    = infixr_ 10
+    fixity Signum = infixr_ 10
+
+instance HasFixity Binop where
+    fixity Add  = infixl_ 8
+    fixity Sub  = infixl_ 8
+    fixity Mul  = infixl_ 9
+    fixity Div  = infixl_ 9
+    fixity Rem  = infixl_ 9
+
+instance Pretty Unop where
+    ppr Neg    = text "-"
+    ppr Abs    = text "abs" <> space
+    ppr Signum = text "signum" <> space
+
+instance Pretty Binop where
+    ppr Add = text "+"
+    ppr Sub = text "-"
+    ppr Mul = text "*"
+    ppr Div = text "/"
+    ppr Rem = text "%"
+
 instance Pretty (Exp a) where
-    ppr (ConstE c) = ppr c
-    ppr (VarE v)   = ppr v
+    pprPrec p (ConstE c) = pprPrec p c
+    pprPrec p (VarE v)   = pprPrec p v
+
+    pprPrec p (UnopE op e) =
+        parensIf (p > precOf op) $
+        ppr op <> pprPrec (precOf op) e
+
+    pprPrec p (BinopE op e1 e2) =
+        infixop p op e1 e2
 
 -- | Class to lift 'Num' operators.
 class LiftNum b where

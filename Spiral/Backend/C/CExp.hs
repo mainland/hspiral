@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
@@ -7,7 +6,6 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      :  Spiral.Backend.C.CExp
@@ -127,6 +125,7 @@ instance LiftNum (CExp a) where
     liftNum2 Sub _ ce1 ce2 = CExp [cexp|$ce1 - $ce2|]
     liftNum2 Mul _ ce1 ce2 = CExp [cexp|$ce1 * $ce2|]
     liftNum2 Div _ ce1 ce2 = CExp [cexp|$ce1 / $ce2|]
+    liftNum2 Rem _ ce1 ce2 = CExp [cexp|$ce1 % $ce2|]
 
 instance Num (CExp Int) where
     (+) = liftNum2Opt Add (+)
@@ -194,6 +193,20 @@ instance Integral (CExp Int) where
     toInteger (CInt i) = fromIntegral i
     toInteger _        = error "Integral CExp: fromInteger not implemented"
 
+instance Fractional (CExp Double) where
+    fromRational = CDouble . fromRational
+
+    CDouble x / CDouble y = CDouble (x / y)
+    ce1 / ce2 = CExp [cexp|$ce1 / $ce2|]
+
+instance Fractional (CExp (Complex Double)) where
+    fromRational x = CComplex (fromRational x) 0
+
+    CComplex a b / CComplex c d =
+        CComplex ((a*c + b*d) / (c*c + d*d)) ((b*c + a*d) / (c*c + d*d))
+
+    ce1 / ce2 = CExp [cexp|$ce1 / $ce2|]
+
 -- | Compile a value to a C expression.
 class ToCExp a b | a -> b where
     toCExp :: a -> CExp b
@@ -221,7 +234,62 @@ instance ToCExp (Const (Complex Double)) (Complex Double) where
     toCExp (ComplexC e1 e2) = CComplex (toCExp e1) (toCExp e2)
     toCExp e@RouC{}         = toCExp (flatten e)
 
--- XXX Need UndecidableInstances for this one :(
-instance ToCExp (Const a) a => ToCExp (Exp a) a where
+instance ToCExp (Exp Int) Int where
     toCExp (ConstE c) = toCExp c
     toCExp (VarE v)   = CExp [cexp|$id:v|]
+
+    toCExp (UnopE op e) =
+        go op (toCExp e)
+      where
+        go Neg ce    = -ce
+        go Abs ce    = abs ce
+        go Signum ce = signum ce
+
+    toCExp (BinopE op e1 e2) =
+        go op (toCExp e1) (toCExp e2)
+      where
+        go Add ce1 ce2 = ce1 + ce2
+        go Sub ce1 ce2 = ce1 - ce2
+        go Mul ce1 ce2 = ce1 * ce2
+        go Div ce1 ce2 = ce1 `div` ce2
+        go Rem ce1 ce2 = ce1 `rem` ce2
+
+instance ToCExp (Exp Double) Double where
+    toCExp (ConstE c) = toCExp c
+    toCExp (VarE v)   = CExp [cexp|$id:v|]
+
+    toCExp (UnopE op e) =
+        go op (toCExp e)
+      where
+        go Neg ce    = -ce
+        go Abs ce    = abs ce
+        go Signum ce = signum ce
+
+    toCExp (BinopE op e1 e2) =
+        go op (toCExp e1) (toCExp e2)
+      where
+        go Add ce1 ce2 = ce1 + ce2
+        go Sub ce1 ce2 = ce1 - ce2
+        go Mul ce1 ce2 = ce1 * ce2
+        go Div ce1 ce2 = ce1 / ce2
+        go Rem _ _ = error "can't happen"
+
+instance ToCExp (Exp (Complex Double)) (Complex Double) where
+    toCExp (ConstE c) = toCExp c
+    toCExp (VarE v)   = CExp [cexp|$id:v|]
+
+    toCExp (UnopE op e) =
+        go op (toCExp e)
+      where
+        go Neg ce    = -ce
+        go Abs ce    = abs ce
+        go Signum ce = signum ce
+
+    toCExp (BinopE op e1 e2) =
+        go op (toCExp e1) (toCExp e2)
+      where
+        go Add ce1 ce2 = ce1 + ce2
+        go Sub ce1 ce2 = ce1 - ce2
+        go Mul ce1 ce2 = ce1 * ce2
+        go Div ce1 ce2 = ce1 / ce2
+        go Rem _ _ = error "can't happen"
