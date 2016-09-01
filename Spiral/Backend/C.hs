@@ -229,7 +229,7 @@ cgMatrix :: forall r a .
             , ToCExp (Exp a) a
             , ToCType a
             , ToCType (Array D DIM2 a)
-            , IndexedArray r DIM2 (Exp a)
+            , IArray r DIM2 (Exp a)
             , CArray C DIM2 a
             )
          => Matrix r (Exp a)
@@ -241,7 +241,7 @@ cgMatrix a = fromCFunction sh cidx
 
     cidx :: forall m . MonadCg m => CShapeOf DIM2 -> Cg m (CExp a)
     cidx (Z :. CInt i :. CInt j) =
-        return $ toCExp (index a (ix2 i j))
+        return $ toCExp (a ! (i, j))
 
     cidx ix = do
       ce <- cacheConst matInit [cty|static const $ty:ctau |]
@@ -273,7 +273,7 @@ cgMVProd :: forall r1 r2 a m .
             , ToCType (Array D DIM2 a)
             , CTemp a (CExp a)
             , CAssign (CExp a) (CExp a)
-            , IndexedArray r1 DIM2 (Exp a)
+            , IArray r1 DIM2 (Exp a)
             , CArray       r2 DIM1 a
             , CArray C DIM2 a
             , MonadCg m

@@ -52,7 +52,7 @@ instance Arbitrary RootOfUnity where
     shrink _ =
         []
 
-manifestComplex :: (IndexedArray r DIM2 (Exp (Complex Double)))
+manifestComplex :: (IArray r DIM2 (Exp (Complex Double)))
                 => Matrix r (Exp (Complex Double))
                 -> Matrix M (Exp (Complex Double))
 manifestComplex = fmap f . manifest

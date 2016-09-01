@@ -1,5 +1,7 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 -- |
@@ -21,8 +23,13 @@ module Spiral.Shape (
     ix2
   ) where
 
+import Spiral.Exp
+
 -- | Array shapes
 class Eq sh => Shape sh where
+    -- | The corresponding expression shape.
+    type ExpShapeOf sh
+
     -- | Get the number of dimensions in a shape.
     rank :: sh -> Int
 
@@ -57,11 +64,19 @@ class Eq sh => Shape sh where
               -> Int -- ^ Index into linear representation.
               -> sh
 
+    -- | Convert a shape to its corresponding expression shape.
+    toExpShape :: sh -> ExpShapeOf sh
+
+    -- | Convert an expression shape to its corresponding shape.
+    fromExpShape :: Monad m => ExpShapeOf sh -> m sh
+
 -- | An index of dimension zero
 data Z = Z
   deriving (Show, Read, Eq, Ord)
 
 instance Shape Z where
+    type ExpShapeOf Z = Z
+
     rank _ = 0
 
     zeroDim = Z
@@ -83,6 +98,10 @@ instance Shape Z where
 
     fromIndex _ _ = Z
 
+    toExpShape sh = sh
+
+    fromExpShape = return
+
 -- | Our index type, used for both shapes and indices.
 infixl 3 :.
 
@@ -90,6 +109,8 @@ data (:.) tail head = tail :. head
   deriving (Eq, Ord, Show)
 
 instance Shape sh => Shape (sh :. Int) where
+    type ExpShapeOf (sh :. Int) = ExpShapeOf sh :. Exp Int
+
     rank _ = rank (undefined :: sh) + 1
 
     zeroDim = zeroDim :. 0
@@ -118,6 +139,14 @@ instance Shape sh => Shape (sh :. Int) where
         fromIndex ds q :. r
       where
         (q, r) = n `quotRem` d
+
+    toExpShape (sh :. i) = toExpShape sh :. intE (fromIntegral i)
+
+    fromExpShape (sh :. ConstE (IntC i)) =
+        (:.) <$> fromExpShape sh <*> pure (fromIntegral i)
+
+    fromExpShape _ =
+        fail "fromExpShape: non-literal shape"
 
 -- | 0-d (scalar) shape.
 type DIM0 = Z

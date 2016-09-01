@@ -33,7 +33,7 @@ import Spiral.Util.Pretty
 -- transformed vector.
 data SPL a where
     -- An "embedded" array with an unknown representation.
-    E :: (IndexedArray r DIM2 e, Pretty (Array r DIM2 e))
+    E :: (IArray r DIM2 e, Pretty (Array r DIM2 e))
       => Array r DIM2 e
       -> SPL e
 
@@ -53,7 +53,7 @@ data SPL a where
     Prod :: SPL e -> SPL e -> SPL e
 
 -- | Embed any 'Array' as an SPL term.
-spl :: (IndexedArray r DIM2 e, Pretty (Array r DIM2 e))
+spl :: (IArray r DIM2 e, Pretty (Array r DIM2 e))
     => Array r DIM2 e
     -> SPL e
 spl = E

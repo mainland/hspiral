@@ -133,12 +133,18 @@ instance CArray r DIM2 e => CIndex r DIM2 (CExp Int, CExp Int) e where
 -- | Type tag for a manifest C array.
 data C
 
-instance IsArray C sh (CExp e) where
+instance (Shape sh, IndexC e) => IsArray C sh (CExp e) where
     -- | A manifest C array. An array with the type tag 'C' is guaranteed to
     -- have contiguously-allocated storage, so it can be efficiently indexed.
     data Array C sh (CExp e) = C sh C.Exp
 
     extent (C sh _) = sh
+
+instance (Shape sh, IndexC e) => IArray C sh (CExp e) where
+    index (C _ ce) i = cidx ce (map toCExp (listOfShape i))
+
+class IndexC a where
+    cidx :: (Num e, C.ToExp e) => C.Exp -> [e] -> CExp a
 
 mkIdx :: forall e . C.ToExp e => C.Exp -> [e] -> C.Exp
 mkIdx = foldr cidx
@@ -156,20 +162,26 @@ mkComplexIdx ce [] =
 mkComplexIdx ce (ci:cis) =
     (mkIdx ce (2*ci:cis), mkIdx ce (2*ci+1:cis))
 
-instance IndexedArray C sh (CExp Int) where
-    index (C _ ce) i = CExp $ mkIdx ce (listOfShape i)
+instance IndexC Int where
+    cidx ce es = CExp $ mkIdx ce es
 
-instance IndexedArray C sh (CExp Double) where
-    index (C _ ce) i = CExp $ mkIdx ce (listOfShape i)
+instance IndexC Double where
+    cidx ce es = CExp $ mkIdx ce es
 
-instance IndexedArray C sh (CExp (Complex Double)) where
-    index (C _ ce) i | useComplexType =
-        CExp $ mkIdx ce (listOfShape i)
+instance IndexC (Complex Double) where
+    cidx ce es | useComplexType = CExp $ mkIdx ce es
 
-    index (C _ ce) i =
-        CComplex (CExp cr) (CExp ci)
+    cidx ce [] = CComplex cre cim
       where
-        (cr, ci) = mkComplexIdx ce (listOfShape i)
+        cre, cim :: CExp Double
+        cre = CExp [cexp|$ce[0]|]
+        cim = CExp [cexp|$ce[0]|]
+
+    cidx ce (e:es) = CComplex cre cim
+      where
+        cre, cim :: CExp Double
+        cre = CExp $ mkIdx ce (2*e:es)
+        cim = CExp $ mkIdx ce (2*e+1:es)
 
 instance ToCShape sh => CArray C sh Int where
     cindex (C _ ce) i = return $ CExp $ mkIdx ce (listOfCShape i)

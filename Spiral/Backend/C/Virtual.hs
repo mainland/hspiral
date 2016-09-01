@@ -29,7 +29,7 @@ import Spiral.Shape
 -- | Type tag for a virtual array.
 data V
 
-instance IsArray V sh e where
+instance Shape sh => IsArray V sh e where
     -- | A matrix whose entries are manifest.
     data Array V sh e = V sh (MV.IOVector e)
 

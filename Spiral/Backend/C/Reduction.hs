@@ -17,7 +17,7 @@ import Prelude hiding ((!!))
 
 import Language.C.Pretty ()
 
-import Spiral.Array
+import Spiral.Array hiding ((!!))
 import Spiral.Backend.C.Array
 import Spiral.Backend.C.Assign
 import Spiral.Backend.C.CExp
