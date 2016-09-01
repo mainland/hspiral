@@ -99,21 +99,26 @@ instance Pretty (Const a) where
     ppr (RationalC x) = ppr x
 
     ppr x@(ComplexC r i)
-      | r == 0 && i == 0    = char '0'
-      | r == 0 && i == 1    = char 'i'
-      | r == 0 && i == (-1) = text "-i"
-      | r == 0              = ppr i <> char 'i'
-      | i == 0              = ppr r
-      | otherwise           = pprComplex (lower x)
+        | r == 0 && i == 0    = char '0'
+        | r == 0 && i == 1    = char 'i'
+        | r == 0 && i == (-1) = text "-i"
+        | r == 0              = ppr i <> char 'i'
+        | i == 0              = ppr r
+        | otherwise           = pprComplex (lower x)
 
     ppr (RouC r)
         | denominator r <= 4 = ppr (flatten (RouC r))
         | r < 0              = text "exp" <> parens (char '-' <> go (negate r))
         | otherwise          = text "exp" <> parens (go r)
       where
-      go r = text "2*pi*i*" <> ppr (numerator r) <>
-                               char '/' <>
-                               ppr (denominator r)
+        go r = text "2*pi*i*" <>
+               ppr (numerator r) <>
+               char '/' <>
+               ppr (denominator r)
+
+pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
+pprComplex (r :+ 0) = ppr r
+pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
 
     ppr (PiC r) = pprPrec appPrec1 r <+> ppr "pi"
       where
@@ -172,11 +177,6 @@ data Binop = Add
            | Mul
            | Div
   deriving (Eq, Ord, Show, Enum)
-
--- Orphan instance...
-pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
-pprComplex (r :+ 0) = ppr r
-pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
 
 instance Pretty (Exp a) where
     ppr (ConstE c) = ppr c
