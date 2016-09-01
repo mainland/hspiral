@@ -55,6 +55,7 @@ manifestComplex = fmap f . manifest
   where
     f :: Exp a -> Exp a
     f (ConstE c) = ConstE (flatten c)
+    f e          = e
 
 main :: IO ()
 main = defaultMain tests

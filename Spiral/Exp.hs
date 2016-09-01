@@ -10,6 +10,7 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Exp (
+    Var,
     Const(..),
     Exp(..),
 
@@ -29,6 +30,8 @@ import Test.QuickCheck
 import Text.PrettyPrint.Mainland hiding (flatten)
 
 import Spiral.Util.Lift
+
+type Var = String
 
 -- | Representation of scalar expressions.
 data Const a where
@@ -143,6 +146,7 @@ rootOfUnity = ConstE . normalize . RouC
 -- | Representation of scalar constants.
 data Exp a where
     ConstE :: Const a -> Exp a
+    VarE   :: Var -> Exp a
 
 deriving instance Eq (Exp a)
 deriving instance Ord (Exp a)
@@ -155,6 +159,7 @@ pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
 
 instance Pretty (Exp a) where
     ppr (ConstE c) = ppr c
+    ppr (VarE v)   = ppr v
 
 instance LiftNum (Const a) where
     isIntegral x (IntC y)       = y == fromInteger x
@@ -189,12 +194,19 @@ instance LiftNum (Const a) where
 
 instance LiftNum (Exp a) where
     isIntegral x (ConstE y) = isIntegral x y
+    isIntegral _ _          = False
 
     liftNum_ op f (ConstE c) =
         ConstE $ liftNum_ op f c
 
+    liftNum_ op _ _  =
+      errordoc $ text "liftNum (Exp a): cannot lift" <+> (text . show) op
+
     liftNum2_ op f (ConstE c1) (ConstE c2) =
         ConstE $ liftNum2_ op f c1 c2
+
+    liftNum2_ op _ _ _ =
+        errordoc $ text "liftNum (Exp a): cannot lift" <+> (text . show) op
 
 instance Num (Const Int) where
     (+) = liftNum2 Add (+)

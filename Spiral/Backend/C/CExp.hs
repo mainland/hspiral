@@ -235,3 +235,4 @@ instance ToCExp (Const (Complex Double)) (Complex Double) where
 -- XXX Need UndecidableInstances for this one :(
 instance ToCExp (Const a) a => ToCExp (Exp a) a where
     toCExp (ConstE c) = toCExp c
+    toCExp (VarE v)   = CExp [cexp|$id:v|]
