@@ -43,6 +43,12 @@ SRC = \
 	Spiral.hs \
 	Spiral/Array.hs \
 	Spiral/Array/Base.hs \
+	Spiral/Array/Operators/IndexSpace.hs \
+	Spiral/Array/Operators/Mapping.hs \
+	Spiral/Array/Operators/Reduction.hs \
+	Spiral/Array/Program.hs \
+	Spiral/Array/Repr/Slice.hs \
+	Spiral/Array/Repr/Virtual.hs \
 	Spiral/Array/Shape.hs \
 	Spiral/Backend/C.hs \
 	Spiral/Backend/C/Array.hs \
@@ -64,6 +70,7 @@ SRC = \
 	Spiral/Exp.hs \
 	Spiral/FFT.hs \
 	Spiral/SPL.hs \
+	Spiral/SPL/Run.hs \
 	Spiral/Util/Pretty.hs \
 	Spiral/Util/Trace.hs \
 	Spiral/Util/Uniq.hs

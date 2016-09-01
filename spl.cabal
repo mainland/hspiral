@@ -24,6 +24,12 @@ library
     Spiral
     Spiral.Array
     Spiral.Array.Base
+    Spiral.Array.Operators.IndexSpace
+    Spiral.Array.Operators.Mapping
+    Spiral.Array.Operators.Reduction
+    Spiral.Array.Program
+    Spiral.Array.Repr.Slice
+    Spiral.Array.Repr.Virtual
     Spiral.Array.Shape
     Spiral.Backend.C
     Spiral.Backend.C.Array
@@ -42,6 +48,7 @@ library
     Spiral.Exp
     Spiral.FFT
     Spiral.SPL
+    Spiral.SPL.Run
 
   other-modules:
     Spiral.Driver.Globals

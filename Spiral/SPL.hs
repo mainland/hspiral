@@ -14,6 +14,7 @@
 module Spiral.SPL (
     SPL(..),
     spl,
+    lperm,
     splExtent,
     toMatrix,
 
@@ -56,6 +57,10 @@ spl :: (IArray r DIM2 e, Pretty (Array r DIM2 e))
     => Array r DIM2 e
     -> SPL e
 spl = E
+
+-- | The /inverse/ permutation $L^{mn}_n$. Useful for 'backpermute'.
+lperm :: Integral a => a -> a -> a -> a
+lperm mn n i = i*n `mod` mn + i*n `div` mn
 
 splExtent :: SPL a -> DIM2
 splExtent (E a)     = extent a

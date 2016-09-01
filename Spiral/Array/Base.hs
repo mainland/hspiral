@@ -36,7 +36,9 @@ module Spiral.Array.Base (
     DS,
     fromSFunction,
     toSFunction,
-    sdelay
+    sdelay,
+
+    coerceSymbolic
   ) where
 
 import qualified Data.Vector as V
@@ -240,3 +242,21 @@ sdelay :: (Shape sh, SArray r sh e)
        => Array r sh e
        -> Array DS sh e
 sdelay a = DS (extent a) (indexS a)
+
+-- | Coerce an 'IArray' to an array that can be index symbolically. This is only
+-- safe if we know that the array will only be indexed by constant
+-- expressions.
+coerceSymbolic :: forall r sh a .
+                  ( Shape sh
+                  , IArray r sh (Exp a)
+                  )
+               => Array r sh (Exp a)
+               -> Array DS sh (Exp a)
+coerceSymbolic x = fromSFunction (extent x) f
+  where
+    f :: ExpShapeOf sh -> Exp a
+    f eix = index x (shapeOfList (map unExp (listOfExpShape eix)))
+
+    unExp :: Exp Int -> Int
+    unExp (ConstE (IntC i)) = i
+    unExp _                 = error "coerceSymbolic: non-constant"
