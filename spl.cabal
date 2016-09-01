@@ -47,7 +47,6 @@ library
     Spiral.Driver.Opts
     Spiral.Globals
     Spiral.Monad
-    Spiral.Util.Lift
     Spiral.Util.Pretty
     Spiral.Util.Uniq
 

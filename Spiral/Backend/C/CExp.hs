@@ -28,7 +28,6 @@ import Text.PrettyPrint.Mainland hiding (flatten)
 
 import Spiral.Backend.C.Util
 import Spiral.Exp
-import Spiral.Util.Lift
 
 -- | A compiled C expression.
 data CExp a where

@@ -64,7 +64,6 @@ SRC = \
 	Spiral/SPL.hs \
 	Spiral/Shape.hs \
 	Spiral/Trace.hs \
-	Spiral/Util/Lift.hs \
 	Spiral/Util/Pretty.hs \
 	Spiral/Util/Uniq.hs
 
