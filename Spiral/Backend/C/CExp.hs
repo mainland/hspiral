@@ -25,8 +25,8 @@ import Language.C.Quote.C
 import Text.PrettyPrint.Mainland hiding (flatten)
 
 import Spiral.Backend.C.Util
+import Spiral.Driver.Globals
 import Spiral.Exp
-import Spiral.Globals
 
 -- | A compiled C expression.
 data CExp a where

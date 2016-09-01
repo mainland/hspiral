@@ -21,8 +21,8 @@ import Language.C.Quote.C
 import Spiral.Backend.C.Array
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
-import Spiral.Globals
-import Spiral.Monad (MonadCg)
+import Spiral.Driver.Globals
+import Spiral.Driver.Monad (MonadCg)
 
 class CAssign a b where
     -- | Compile an assignment.

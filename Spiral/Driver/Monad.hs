@@ -3,12 +3,12 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Module      :  Spiral.Monad
+-- Module      :  Spiral.Driver.Monad
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module Spiral.Monad (
+module Spiral.Driver.Monad (
     Spiral,
     runSpiral,
 
@@ -26,8 +26,8 @@ import Control.Monad.Reader (MonadReader(..),
                              runReaderT)
 import Data.IORef (IORef)
 
-import Spiral.Config
-import Spiral.Trace
+import Spiral.Driver.Config
+import Spiral.Util.Trace
 import Spiral.Util.Uniq
 
 data SpiralEnv = SpiralEnv

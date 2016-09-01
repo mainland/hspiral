@@ -26,7 +26,6 @@ import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
-import Spiral.Shape
 import Spiral.Util.Pretty
 
 -- | An SPL transform. The type index is the type of the scalar values in the

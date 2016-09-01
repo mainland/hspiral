@@ -31,7 +31,7 @@ import Text.PrettyPrint.Mainland
 
 import Spiral
 import Spiral.Backend.C
-import Spiral.Config
+import Spiral.Driver.Config
 import Spiral.Driver.Opts
 import Spiral.Exp
 import Spiral.SPL

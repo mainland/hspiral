@@ -23,6 +23,8 @@ library
   exposed-modules:
     Spiral
     Spiral.Array
+    Spiral.Array.Base
+    Spiral.Array.Shape
     Spiral.Backend.C
     Spiral.Backend.C.Array
     Spiral.Backend.C.Assign
@@ -35,19 +37,18 @@ library
     Spiral.Backend.C.Types
     Spiral.Backend.C.Util
     Spiral.Backend.C.Virtual
-    Spiral.Config
     Spiral.Driver
+    Spiral.Driver.Config
     Spiral.Exp
     Spiral.FFT
     Spiral.SPL
-    Spiral.Shape
-    Spiral.Trace
 
   other-modules:
+    Spiral.Driver.Globals
+    Spiral.Driver.Monad
     Spiral.Driver.Opts
-    Spiral.Globals
-    Spiral.Monad
     Spiral.Util.Pretty
+    Spiral.Util.Trace
     Spiral.Util.Uniq
 
   build-depends:

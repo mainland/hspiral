@@ -27,7 +27,6 @@ import Spiral.Array
 import Spiral.Exp
 import qualified Spiral.FFT as FFT
 import Spiral.SPL
-import Spiral.Shape
 
 -- | A small number
 newtype SmallPowerOfTwo = SmallPowerOfTwo Int

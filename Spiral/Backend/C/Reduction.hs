@@ -23,7 +23,6 @@ import Spiral.Backend.C.Assign
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Types
-import Spiral.Shape
 
 foldP :: forall a b r .
          ( ToCType a

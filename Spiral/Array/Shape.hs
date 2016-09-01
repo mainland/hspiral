@@ -5,12 +5,12 @@
 {-# LANGUAGE TypeOperators #-}
 
 -- |
--- Module      :  Spiral.Shape
+-- Module      :  Spiral.Array.Shape
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module Spiral.Shape (
+module Spiral.Array.Shape (
     Shape(..),
     ExpShape(..),
 

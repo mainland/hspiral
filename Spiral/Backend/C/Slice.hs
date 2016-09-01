@@ -22,7 +22,6 @@ import Text.PrettyPrint.Mainland
 import Spiral.Array
 import Spiral.Backend.C.Array
 import Spiral.Backend.C.CExp
-import Spiral.Shape
 
 -- | Type tag for a vector slice.
 data S r

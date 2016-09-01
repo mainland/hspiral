@@ -20,7 +20,6 @@ import Data.Ratio
 import Spiral.Array
 import Spiral.Exp
 import Spiral.SPL
-import Spiral.Shape
 
 -- | $e^{\frac{-2 \pi i}{n}$
 omega :: Integral a => a -> Exp (Complex Double)

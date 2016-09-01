@@ -23,8 +23,7 @@ import Spiral.Array
 import Spiral.Backend.C.Array
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Types
-import Spiral.Monad
-import Spiral.Shape
+import Spiral.Driver.Monad
 
 -- | Type tag for a virtual array.
 data V

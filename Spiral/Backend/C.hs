@@ -39,12 +39,11 @@ import Spiral.Backend.C.Slice
 import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
 import Spiral.Backend.C.Virtual
-import Spiral.Config
+import Spiral.Driver.Config
+import Spiral.Driver.Monad (MonadCg)
 import Spiral.Exp
-import Spiral.Monad (MonadCg)
 import Spiral.SPL
-import Spiral.Shape
-import Spiral.Trace
+import Spiral.Util.Trace
 
 -- | Generate code for an SPL transform.
 codegen :: forall a m .

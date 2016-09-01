@@ -19,8 +19,7 @@ import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 
 import Spiral.Array
-import Spiral.Globals
-import Spiral.Shape
+import Spiral.Driver.Globals
 
 -- | Compile a value to a C type.
 class ToCType a where

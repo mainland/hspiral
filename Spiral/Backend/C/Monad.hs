@@ -91,10 +91,10 @@ import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
 import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
-import Spiral.Config
-import Spiral.Globals
-import Spiral.Monad (MonadCg)
-import Spiral.Trace
+import Spiral.Driver.Config
+import Spiral.Driver.Globals
+import Spiral.Driver.Monad (MonadCg)
+import Spiral.Util.Trace
 import Spiral.Util.Uniq
 
 data CgEnv = CgEnv { unroll :: Bool }

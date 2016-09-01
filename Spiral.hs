@@ -11,6 +11,6 @@ module Spiral (
     codegen
   ) where
 
-import Spiral.Monad (Spiral,
-                     runSpiral)
+import Spiral.Driver.Monad (Spiral,
+                            runSpiral)
 import Spiral.Backend.C (codegen)

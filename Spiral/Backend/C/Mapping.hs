@@ -20,8 +20,7 @@ import Spiral.Array
 import Spiral.Backend.C.Array
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
-import Spiral.Monad (MonadCg)
-import Spiral.Shape
+import Spiral.Driver.Monad (MonadCg)
 
 zipWithP :: forall r1 r2 sh a b c .
             ( CTemp a (CExp a)

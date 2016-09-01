@@ -44,9 +44,8 @@ import Spiral.Array
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Types
-import Spiral.Globals
-import Spiral.Monad (MonadCg)
-import Spiral.Shape
+import Spiral.Driver.Globals
+import Spiral.Driver.Monad (MonadCg)
 
 class CShape sh where
     listOfCShape :: sh -> [CExp Int]

@@ -3,12 +3,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
--- Module      :  Spiral.Trace
+-- Module      :  Spiral.Util.Trace
 -- Copyright   :  (c) 2014-2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@cs.drexel.edu
 
-module Spiral.Trace (
+module Spiral.Util.Trace (
     MonadTrace(..),
 
     traceNest,
@@ -39,7 +39,7 @@ import System.IO (hPutStrLn,
 import System.IO.Unsafe (unsafePerformIO)
 import Text.PrettyPrint.Mainland
 
-import Spiral.Config
+import Spiral.Driver.Config
 
 class MonadConfig m => MonadTrace m where
     askTraceDepth   :: m Int

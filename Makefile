@@ -42,6 +42,8 @@ endif
 SRC = \
 	Spiral.hs \
 	Spiral/Array.hs \
+	Spiral/Array/Base.hs \
+	Spiral/Array/Shape.hs \
 	Spiral/Backend/C.hs \
 	Spiral/Backend/C/Array.hs \
 	Spiral/Backend/C/Assign.hs \
@@ -54,17 +56,16 @@ SRC = \
 	Spiral/Backend/C/Types.hs \
 	Spiral/Backend/C/Util.hs \
 	Spiral/Backend/C/Virtual.hs \
-	Spiral/Config.hs \
 	Spiral/Driver.hs \
+	Spiral/Driver/Config.hs \
+	Spiral/Driver/Globals.hs \
+	Spiral/Driver/Monad.hs \
 	Spiral/Driver/Opts.hs \
 	Spiral/Exp.hs \
 	Spiral/FFT.hs \
-	Spiral/Globals.hs \
-	Spiral/Monad.hs \
 	Spiral/SPL.hs \
-	Spiral/Shape.hs \
-	Spiral/Trace.hs \
 	Spiral/Util/Pretty.hs \
+	Spiral/Util/Trace.hs \
 	Spiral/Util/Uniq.hs
 
 #
