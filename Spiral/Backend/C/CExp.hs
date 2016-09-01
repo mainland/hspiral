@@ -26,6 +26,7 @@ import Text.PrettyPrint.Mainland hiding (flatten)
 
 import Spiral.Backend.C.Util
 import Spiral.Exp
+import Spiral.Globals
 
 -- | A compiled C expression.
 data CExp a where
@@ -254,6 +255,13 @@ instance ToCExp (Exp Int) Int where
         go Div ce1 ce2 = ce1 `div` ce2
         go Rem ce1 ce2 = ce1 `rem` ce2
 
+    toCExp (IdxE v es) = mkIdx v es
+
+mkIdx :: Var -> [Exp Int] -> CExp a
+mkIdx v es = CExp $ foldr (cidx . toCExp) [cexp|$id:v|] es
+  where
+    cidx ci ce = [cexp|$ce[$ci]|]
+
 instance ToCExp (Exp Double) Double where
     toCExp (ConstE c) = toCExp c
     toCExp (VarE v)   = CExp [cexp|$id:v|]
@@ -274,6 +282,8 @@ instance ToCExp (Exp Double) Double where
         go Div ce1 ce2 = ce1 / ce2
         go Rem _ _ = error "can't happen"
 
+    toCExp (IdxE v es) = mkIdx v es
+
 instance ToCExp (Exp (Complex Double)) (Complex Double) where
     toCExp (ConstE c) = toCExp c
     toCExp (VarE v)   = CExp [cexp|$id:v|]
@@ -293,3 +303,10 @@ instance ToCExp (Exp (Complex Double)) (Complex Double) where
         go Mul ce1 ce2 = ce1 * ce2
         go Div ce1 ce2 = ce1 / ce2
         go Rem _ _ = error "can't happen"
+
+    toCExp (IdxE v es) | useComplexType = mkIdx v es
+                       | otherwise      = mkComplexIdx v es
+
+mkComplexIdx :: Var -> [Exp Int] -> CExp (Complex Double)
+mkComplexIdx ce []       = CComplex (CExp [cexp|$ce[0]|]) (CExp [cexp|$ce[1]|])
+mkComplexIdx ce (ci:cis) = CComplex (mkIdx ce (2*ci:cis)) (mkIdx ce (2*ci+1:cis))

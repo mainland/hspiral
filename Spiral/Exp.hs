@@ -164,6 +164,7 @@ data Exp a where
     VarE   :: Var -> Exp a
     UnopE  :: Unop -> Exp a -> Exp a
     BinopE :: Binop -> Exp a -> Exp a -> Exp a
+    IdxE   :: Var -> [Exp Int] -> Exp a
 
 deriving instance Eq (Exp a)
 deriving instance Ord (Exp a)
@@ -217,6 +218,9 @@ instance Pretty (Exp a) where
 
     pprPrec p (BinopE op e1 e2) =
         infixop p op e1 e2
+
+    pprPrec _ (IdxE ev eis) =
+        ppr ev <> mconcat [brackets (ppr ei) | ei <- eis]
 
 -- | Class to lift 'Num' operators.
 class LiftNum b where
