@@ -51,17 +51,10 @@ SRC = \
 	Spiral/Array/Repr/Virtual.hs \
 	Spiral/Array/Shape.hs \
 	Spiral/Backend/C.hs \
-	Spiral/Backend/C/Array.hs \
-	Spiral/Backend/C/Assign.hs \
 	Spiral/Backend/C/CExp.hs \
 	Spiral/Backend/C/Code.hs \
-	Spiral/Backend/C/Mapping.hs \
 	Spiral/Backend/C/Monad.hs \
-	Spiral/Backend/C/Reduction.hs \
-	Spiral/Backend/C/Slice.hs \
-	Spiral/Backend/C/Types.hs \
 	Spiral/Backend/C/Util.hs \
-	Spiral/Backend/C/Virtual.hs \
 	Spiral/Driver.hs \
 	Spiral/Driver/Config.hs \
 	Spiral/Driver/Globals.hs \

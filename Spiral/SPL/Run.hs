@@ -29,6 +29,7 @@ infix 4 .<-.
 a .<-. f = f a
 
 runSPL :: ( MonadP m
+          , Typed a
           , Num (Exp a)
           , SArray r1 DIM1 (Exp a)
           , MArray r2 DIM1 (Exp a)
@@ -42,10 +43,10 @@ runSPL e@E{} x y = do
     mvP (toMatrix e) x y
 
 runSPL I{} x y =
-    y .:=. x
+    computeP y x
 
 runSPL (L mn n) x y =
-    y .:=. backpermute (lperm (fromIntegral mn) (fromIntegral n)) x
+    computeP y $ backpermute (lperm (fromIntegral mn) (fromIntegral n)) x
 
 runSPL e@(Kron (I m) a) x y | n' == n = do
     comment $ ppr e
@@ -85,7 +86,7 @@ runSPL e@(Prod a b) x y | n' == n = do
         runSPL a (coerceSymbolic t') y
 
     go _ = do
-        t <- newC (ix1 n)
+        t <- newArray (ix1 n)
         runSPL b x t
         runSPL a t y
 

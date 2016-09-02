@@ -10,9 +10,7 @@
 
 module Spiral.Driver.Monad (
     Spiral,
-    runSpiral,
-
-    MonadCg
+    runSpiral
   ) where
 
 import Control.Monad.Exception (MonadException(..))
@@ -69,13 +67,3 @@ instance MonadUnique Spiral where
         let u' = u + 1
         u' `seq` writeRef r u'
         return $ Uniq u
-
-class ( PrimMonad m
-      , PrimState m ~ RealWorld
-      , MonadRef IORef m
-      , MonadConfig m
-      , MonadUnique m
-      , MonadTrace m
-      ) => MonadCg m where
-
-instance MonadCg Spiral where

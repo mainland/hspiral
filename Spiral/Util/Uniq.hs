@@ -95,6 +95,15 @@ class Gensym a where
     -- | Ensure the symbol is unique
     uniquify :: MonadUnique m => a -> m a
 
+instance Gensym String where
+    gensymAt s _ = do
+        Uniq u <- newUnique
+        return $ s ++ "__" ++ show u
+
+    uniquify s = do
+        Uniq u <- newUnique
+        return $ s ++ "__" ++ show u
+
 instance Gensym C.Id where
     gensymAt s l = do
         Uniq u <- newUnique

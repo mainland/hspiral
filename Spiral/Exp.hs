@@ -19,6 +19,9 @@ module Spiral.Exp (
     Unop(..),
     Binop(..),
 
+    Type(..),
+    Typed(..),
+
     fromComplex,
     flatten,
 
@@ -180,8 +183,9 @@ data Unop = Neg
 data Binop = Add
            | Sub
            | Mul
-           | Div
+           | Quot
            | Rem
+           | Div
   deriving (Eq, Ord, Show, Enum)
 
 instance HasFixity Unop where
@@ -193,8 +197,9 @@ instance HasFixity Binop where
     fixity Add  = infixl_ 8
     fixity Sub  = infixl_ 8
     fixity Mul  = infixl_ 9
-    fixity Div  = infixl_ 9
+    fixity Quot = infixl_ 9
     fixity Rem  = infixl_ 9
+    fixity Div  = infixl_ 9
 
 instance Pretty Unop where
     ppr Neg    = text "-"
@@ -202,11 +207,12 @@ instance Pretty Unop where
     ppr Signum = text "signum" <> space
 
 instance Pretty Binop where
-    ppr Add = text "+"
-    ppr Sub = text "-"
-    ppr Mul = text "*"
-    ppr Div = text "/"
-    ppr Rem = text "%"
+    ppr Add  = text "+"
+    ppr Sub  = text "-"
+    ppr Mul  = text "*"
+    ppr Quot = text "`div`"
+    ppr Rem  = text "`mod`"
+    ppr Div  = text "/"
 
 instance Pretty (Exp a) where
     pprPrec p (ConstE c) = pprPrec p c
@@ -221,6 +227,28 @@ instance Pretty (Exp a) where
 
     pprPrec _ (IdxE ev eis) =
         ppr ev <> mconcat [brackets (ppr ei) | ei <- eis]
+
+-- | Representation of types.
+data Type = IntT
+          | IntegerT
+          | DoubleT
+          | ComplexT Type
+  deriving (Eq, Ord, Show)
+
+class Typed a where
+    typeOf :: a -> Type
+
+instance Typed Int where
+    typeOf _ = IntT
+
+instance Typed Integer where
+    typeOf _ = IntegerT
+
+instance Typed Double where
+    typeOf _ = DoubleT
+
+instance Typed a => Typed (Complex a) where
+    typeOf _ = ComplexT (typeOf (undefined :: a))
 
 -- | Class to lift 'Num' operators.
 class LiftNum b where
@@ -294,14 +322,12 @@ instance (Num (Const a), LiftNum (Const a)) => LiftNum (Exp a) where
     liftNum op f (ConstE c) =
         ConstE $ liftNumOpt op f c
 
-    liftNum op _ _  =
-      errordoc $ text "liftNum (Exp a): cannot lift" <+> (text . show) op
+    liftNum op _ e  = UnopE op e
 
     liftNum2 op f (ConstE c1) (ConstE c2) =
         ConstE $ liftNum2Opt op f c1 c2
 
-    liftNum2 op _ _ _ =
-        errordoc $ text "liftNum (Exp a): cannot lift" <+> (text . show) op
+    liftNum2 op _ e1 e2 = BinopE op e1 e2
 
 instance Num (Const Int) where
     (+) = liftNum2Opt Add (+)
@@ -485,7 +511,7 @@ instance Integral (Exp Int) where
         (q, r) = x `quotRem` y
 
     x `quotRem` y =
-        (BinopE Div x y, BinopE Rem x y)
+        (BinopE Quot x y, BinopE Rem x y)
 
     toInteger (ConstE (IntC i)) = fromIntegral i
     toInteger _                 = error "Integral CExp: fromInteger not implemented"

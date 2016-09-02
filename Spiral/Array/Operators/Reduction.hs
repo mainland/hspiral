@@ -19,8 +19,8 @@ import Spiral.Array
 import Spiral.Array.Program
 import Spiral.Exp
 
-foldP :: ( SArray r DIM1 (Exp a)
-         , Assign (Exp b) (Exp b)
+foldP :: ( Typed b
+         , SArray r DIM1 (Exp a)
          , MonadP m
          )
       => (Exp b -> Exp a -> Exp b)
@@ -43,8 +43,8 @@ foldP f z xs =
         return temp
 
 sumP :: ( Num (Exp a)
+        , Typed a
         , SArray r DIM1 (Exp a)
-        , Assign (Exp a) (Exp a)
         , MonadP m
         )
       => Array r DIM1 (Exp a)

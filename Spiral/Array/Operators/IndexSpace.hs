@@ -47,7 +47,7 @@ row a i = fromSFunction (Z :. n) g
 mvP :: forall r1 r2 r3 a m .
        ( MonadP m
        , Num (Exp a)
-       , Assign (Exp a) (Exp a)
+       , Typed a
        , IArray r1 DIM2 (Exp a)
        , SArray r2 DIM1 (Exp a)
        , MArray r3 DIM1 (Exp a)
@@ -64,12 +64,12 @@ mvP a x y = do
     Z :. n'     = extent x
     Z :. m :. n = extent a
 
-    go :: forall m . (MonadP m, MArray r3 DIM1 (Exp a))
+    go :: (MonadP m, MArray r3 DIM1 (Exp a))
        => Vector r3 (Exp a)
        -> Bool
        -> m ()
     go y True =
-        y .:=. fromSFunction (Z :. m) f
+        computeP y (fromSFunction (Z :. m) f)
       where
         f (Z :. i) = sum (map (t !!) [0..n-1])
           where
