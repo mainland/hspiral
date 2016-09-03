@@ -21,6 +21,7 @@ GHCFLAGS += \
 	-package primitive \
 	-package ref-fd \
 	-package srcloc \
+	-package symbol \
 	-package test-framework \
 	-package test-framework-hunit \
 	-package test-framework-quickcheck2 \
@@ -64,6 +65,7 @@ SRC = \
 	Spiral/FFT.hs \
 	Spiral/SPL.hs \
 	Spiral/SPL/Run.hs \
+	Spiral/Util/Name.hs \
 	Spiral/Util/Pretty.hs \
 	Spiral/Util/Trace.hs \
 	Spiral/Util/Uniq.hs

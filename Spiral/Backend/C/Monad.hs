@@ -491,9 +491,11 @@ instance MonadCg m => MonadP (Cg m) where
              => sh
              -> Cg m (Array C sh (Exp a))
     newArray sh = do
-        ct@(C.Id vt _) <- cgVar "v"
-        appendDecl [cdecl|$ty:ctau $id:ct;|]
-        return $ C sh vt
+        v      <- gensym "v"
+        let cv =  CExp [cexp|$id:v|]
+        insertVar v cv
+        appendDecl [cdecl|$ty:ctau $id:v;|]
+        return $ C sh v
       where
         ctau :: C.Type
         ctau = cgArrayType (typeOf (undefined :: a)) sh
@@ -512,7 +514,9 @@ instance MonadCg m => MonadP (Cg m) where
                 -> Cg m (Matrix C (Exp a))
     cacheMatrix a = do
         cess <- traverse (traverse cgExp) ess
-        [cexp|$id:t|] <- cacheConst (cgMat cess) [cty|static const $ty:ctau |]
+        t  <- gensym "t"
+        ct <- cacheConst (cgMat cess) [cty|static const $ty:ctau |]
+        insertVar t (CExp ct)
         return $ C sh t
       where
         sh = extent a
@@ -596,8 +600,8 @@ mkIdx v es = do
     cidx ci ce = [cexp|$ce[$ci]|]
 
 mkComplexIdx :: MonadCg m => Var -> [Exp Int] -> Cg m CExp
-mkComplexIdx ce []       = return $ CComplex (CExp [cexp|$ce[0]|]) (CExp [cexp|$ce[1]|])
-mkComplexIdx ce (ci:cis) = CComplex <$> mkIdx ce (2*ci:cis) <*> mkIdx ce (2*ci+1:cis)
+mkComplexIdx cv []       = return $ CComplex (CExp [cexp|$id:cv[0]|]) (CExp [cexp|$id:cv[1]|])
+mkComplexIdx cv (ci:cis) = CComplex <$> mkIdx cv (2*ci:cis) <*> mkIdx cv (2*ci+1:cis)
 
 -- | Compile a type.
 cgType :: Type -> C.Type
