@@ -90,5 +90,26 @@ dftgen : examples/DFTGen.hs $(SRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
+dftgen.prof : dftgen
+	@mkdir -p obj
+	$(_QUIET)$(GHC) $(GHCFLAGS) --make examples/DFTGen.hs -odir obj -hidir obj \
+		-prof -auto-all -caf-all -osuf p_o -hisuf p_hi -hcsuf p_hc -o $@
+
 dist/build/autogen/cabal_macros.h :
 	cabal build
+
+#
+# Profiling
+#
+
+%.ps : %.hp
+	hp2ps -c $^ >$@
+
+%.pdf : %.ps
+	ps2pdf $^ $@
+
+%.folded : %.prof
+	cat $^ | ghc-prof-flamegraph >$@
+
+%.svg : %.folded
+	cat $^ | flamegraph.pl >$@
