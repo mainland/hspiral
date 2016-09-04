@@ -15,11 +15,15 @@ module Spiral.Array.Operators.Reduction (
 
 import Prelude hiding ((!!))
 
+import Control.Monad (foldM)
+
 import Spiral.Array
 import Spiral.Array.Program
 import Spiral.Exp
 
-foldP :: ( Typed b
+foldP :: forall a b r m .
+         ( Typed a
+         , Typed b
          , SArray r DIM1 (Exp a)
          , MonadP m
          )
@@ -32,8 +36,16 @@ foldP f z xs =
   where
     Z :. n = extent xs
 
-    go True =
-        return $ foldl f z (map (xs !!) [0..n-1])
+    go True = do
+        es <- mapM idx [0..n-1]
+        foldM g z es
+      where
+        idx :: Int -> m (Exp a)
+        idx i = cache e
+          where
+            e = xs !! i
+
+        g e1 e2 = cache (f e1 e2)
 
     go _ = do
         temp <- tempP
