@@ -340,32 +340,16 @@ cacheConst cinits ctau = do
 
 -- | Cache a 'CExp'. This generates a local binding for the value of the 'CExp'.
 cacheCExp :: forall m . MonadCg m => Type -> CExp -> Cg m CExp
-cacheCExp tau ce0 = do
+cacheCExp tau ce0 | shouldCacheCExp ce0 = do
     maybe_ce <- gets (Map.lookup ce0 . cexpCache)
     case maybe_ce of
       Just ce -> return ce
       Nothing -> go ce0
   where
-    go :: CExp -> Cg m CExp
-    go ce@CInt{} =
-        return ce
-
-    go ce@CDouble{} =
-        return ce
-
-    go ce@(CComplex CDouble{} CDouble{}) =
-        return ce
-
     go (CComplex cr ci) | not useComplexType = do
         cr' <- cacheCExp DoubleT cr
         ci' <- cacheCExp DoubleT ci
         return $ CComplex cr' ci'
-
-    go ce@(CExp [cexp|$id:_|]) =
-        return ce
-
-    go ce@(CExp [cexp|-$id:_|]) =
-        return ce
 
     go (CExp [cexp|$ce1 * $double:x - $ce2 * $double:y|]) | y < 0 =
         cacheCExp tau (CExp [cexp|$ce1 * $double:x + $ce2 * $double:(-y)|])
@@ -406,14 +390,26 @@ cacheCExp tau ce0 = do
 
     go ce = do
         ctemp <- cgTemp tau Nothing
+        -- cgAssign will modify the cache
         cgAssign tau ctemp ce
-        insertCachedCExp ce ctemp
         return ctemp
 
     epsDiff :: forall a . (Ord a, Fractional a) => a -> a -> Bool
     epsDiff x y = abs (x - y) < eps
       where
         eps = 1e-15
+
+cacheCExp _ ce =
+    return ce
+
+-- | Retunr 'True' if a 'CExp' is worth caching.
+shouldCacheCExp :: CExp -> Bool
+shouldCacheCExp CInt{}                = False
+shouldCacheCExp CDouble{}             = False
+shouldCacheCExp (CComplex ce1 ce2)    = shouldCacheCExp ce1 || shouldCacheCExp ce2
+shouldCacheCExp (CExp [cexp|$id:_|])  = False
+shouldCacheCExp (CExp [cexp|-$id:_|]) = False
+shouldCacheCExp _                     = True
 
 -- | @'insertCachedCExp' ce1 ce2@ adds @ce2@ as the cached version of @ce1@.
 insertCachedCExp :: forall m . MonadCg m
@@ -508,6 +504,18 @@ instance MonadCg m => MonadP (Cg m) where
       where
         tau :: Type
         tau = typeOf (undefined :: a)
+
+    cache e@ConstE{} =
+        return e
+
+    cache e@VarE{} =
+        return e
+
+    cache e = do
+        t  <- gensym "t"
+        ce <- cgCacheExp e
+        insertVar t ce
+        return $ VarE t
 
     cacheMatrix :: forall r a . (Typed a, Num (Exp a), IArray r DIM2 (Exp a))
                 => Matrix r (Exp a)

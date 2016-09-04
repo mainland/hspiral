@@ -71,6 +71,10 @@ class ( PrimMonad m
     -- | Assign one expression to another.
     assignP :: Typed a => Exp a -> Exp a -> m ()
 
+    -- | Cache the given expression. This serves as a hint that it will be used
+    -- more than once.
+    cache :: Typed a => Exp a -> m (Exp a)
+
     -- | Create a new concrete array of the given shape.
     newArray :: (Shape sh, Typed a)
              => sh
