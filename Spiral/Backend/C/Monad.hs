@@ -536,7 +536,14 @@ instance MonadCg m => MonadP (Cg m) where
         ess = toLists $ manifest a
 
         cgRow :: [CExp] -> C.Initializer
-        cgRow ces = [cinit|{ $inits:(map toInitializer ces) }|]
+        cgRow ces = [cinit|{ $inits:(concatMap cgElem ces) }|]
+          where
+            cgElem :: CExp -> [C.Initializer]
+            cgElem (CComplex ce1 ce2) | not useComplexType =
+                [toInitializer ce1, toInitializer ce2]
+
+            cgElem ce =
+                [toInitializer ce]
 
         cgMat :: [[CExp]] -> C.Initializer
         cgMat cess = [cinit|{ $inits:(map cgRow cess) }|]
