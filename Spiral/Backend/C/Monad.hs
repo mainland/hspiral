@@ -124,18 +124,18 @@ data CgState = CgState
       code :: Code
     , -- | Compiled variables
       vars :: Map Var CExp
-    , -- | Cached constants
-      constCache :: Map C.Initializer C.Exp
-    , -- | Cached expressions
-      expCache :: Map CExp CExp
+    , -- | Cached compiler constants
+      cinitCache :: Map C.Initializer C.Exp
+    , -- | Cached compiled expressions
+      cexpCache :: Map CExp CExp
     }
 
 defaultCgState :: CgState
 defaultCgState = CgState
     { code       = mempty
     , vars       = mempty
-    , constCache = mempty
-    , expCache   = mempty
+    , cinitCache = mempty
+    , cexpCache  = mempty
     }
 
 -- | The 'Cg' monad transformer.
@@ -329,19 +329,19 @@ cacheConst :: MonadUnique m
            -> C.Type
            -> Cg m C.Exp
 cacheConst cinits ctau = do
-    maybe_ce <- gets (Map.lookup cinits . constCache)
+    maybe_ce <- gets (Map.lookup cinits . cinitCache)
     case maybe_ce of
       Just ce -> return ce
       Nothing -> do ctemp  <- cgVar "m"
                     let ce =  [cexp|$id:ctemp|]
                     appendTopDecl [cdecl|$ty:ctau $id:ctemp = $init:cinits;|]
-                    modify $ \s -> s { constCache = Map.insert cinits ce (constCache s) }
+                    modify $ \s -> s { cinitCache = Map.insert cinits ce (cinitCache s) }
                     return ce
 
 -- | Cache a 'CExp'. This generates a local binding for the value of the 'CExp'.
 cacheCExp :: forall m . MonadCg m => Type -> CExp -> Cg m CExp
 cacheCExp tau ce0 = do
-    maybe_ce <- gets (Map.lookup ce0 . expCache)
+    maybe_ce <- gets (Map.lookup ce0 . cexpCache)
     case maybe_ce of
       Just ce -> return ce
       Nothing -> go ce0
@@ -421,14 +421,14 @@ insertCachedCExp :: forall m . MonadCg m
                  -> CExp
                  -> Cg m ()
 insertCachedCExp ce1 ce2 =
-    modify $ \s -> s { expCache = Map.insert ce1 ce2 (expCache s) }
+    modify $ \s -> s { cexpCache = Map.insert ce1 ce2 (cexpCache s) }
 
 -- | Look up the cached C expression corresponding to a 'CExp'. If the 'CExp'
 -- has not been cached, we return it without caching it.
 lookupCExp :: forall m . MonadCg m
            => CExp -> Cg m CExp
 lookupCExp ce = do
-    maybe_ce' <- gets (Map.lookup ce . expCache)
+    maybe_ce' <- gets (Map.lookup ce . cexpCache)
     case maybe_ce' of
       Just ce' -> return ce'
       Nothing  -> return ce
