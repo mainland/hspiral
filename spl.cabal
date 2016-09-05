@@ -39,6 +39,7 @@ library
     Spiral.Driver
     Spiral.Driver.Config
     Spiral.Exp
+    Spiral.ExtendedFloat
     Spiral.FFT
     Spiral.SPL
     Spiral.SPL.Run

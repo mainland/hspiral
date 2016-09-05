@@ -62,6 +62,7 @@ SRC = \
 	Spiral/Driver/Monad.hs \
 	Spiral/Driver/Opts.hs \
 	Spiral/Exp.hs \
+	Spiral/ExtendedFloat.hs \
 	Spiral/FFT.hs \
 	Spiral/SPL.hs \
 	Spiral/SPL/Run.hs \

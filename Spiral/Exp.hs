@@ -46,6 +46,7 @@ import Language.C.Quote (ToIdent(..))
 import Test.QuickCheck (Arbitrary(..))
 import Text.PrettyPrint.Mainland hiding (flatten)
 
+import Spiral.ExtendedFloat
 import Spiral.Util.Name
 import Spiral.Util.Pretty
 import Spiral.Util.Uniq
@@ -150,6 +151,9 @@ instance Pretty (Const a) where
       where
         appPrec1 = 6
 
+instance ExtendedFloat (Const (Complex Double)) where
+    rootOfUnity = normalize . RouC
+
 pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
 pprComplex (r :+ 0) = ppr r
 pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
@@ -182,10 +186,6 @@ flatten (RouC r) = fromComplex (lower (normalize (RouC r)))
 flatten (PiC r)  = DoubleC (fromRational r * pi)
 flatten e        = e
 
--- | Return $e^{2 \pi i \frac{k}{n}$
-rootOfUnity :: Rational -> Exp (Complex Double)
-rootOfUnity = ConstE . normalize . RouC
-
 -- | Representation of scalar constants.
 data Exp a where
     ConstE :: Const a -> Exp a
@@ -197,6 +197,9 @@ data Exp a where
 deriving instance Eq (Exp a)
 deriving instance Ord (Exp a)
 deriving instance Show (Exp a)
+
+instance ExtendedFloat (Exp (Complex Double)) where
+    rootOfUnity = ConstE . rootOfUnity
 
 -- | Unary operators
 data Unop = Neg

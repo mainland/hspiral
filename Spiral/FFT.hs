@@ -15,15 +15,11 @@ module Spiral.FFT (
   ) where
 
 import Data.Complex
-import Data.Ratio
 
 import Spiral.Array
 import Spiral.Exp
+import Spiral.ExtendedFloat
 import Spiral.SPL
-
--- | $e^{\frac{-2 \pi i}{n}$
-omega :: Integral a => a -> Exp (Complex Double)
-omega n = rootOfUnity (-1 % fromIntegral n)
 
 -- | The $W_m(\omega_n)$ matrix
 w :: Int -> Int -> SPL (Exp (Complex Double))
