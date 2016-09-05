@@ -14,6 +14,7 @@
 module Spiral.SPL (
     SPL(..),
     spl,
+    lperm,
     splExtent,
     toMatrix,
 
@@ -26,14 +27,13 @@ import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
-import Spiral.Shape
 import Spiral.Util.Pretty
 
 -- | An SPL transform. The type index is the type of the scalar values in the
 -- transformed vector.
 data SPL a where
     -- An "embedded" array with an unknown representation.
-    E :: (IndexedArray r DIM2 e, Pretty (Array r DIM2 e))
+    E :: (IArray r DIM2 e, Pretty (Array r DIM2 e))
       => Array r DIM2 e
       -> SPL e
 
@@ -53,10 +53,14 @@ data SPL a where
     Prod :: SPL e -> SPL e -> SPL e
 
 -- | Embed any 'Array' as an SPL term.
-spl :: (IndexedArray r DIM2 e, Pretty (Array r DIM2 e))
+spl :: (IArray r DIM2 e, Pretty (Array r DIM2 e))
     => Array r DIM2 e
     -> SPL e
 spl = E
+
+-- | The /inverse/ permutation $L^{mn}_n$. Useful for 'backpermute'.
+lperm :: Integral a => a -> a -> a -> a
+lperm mn n i = i*n `mod` mn + i*n `div` mn
 
 splExtent :: SPL a -> DIM2
 splExtent (E a)     = extent a

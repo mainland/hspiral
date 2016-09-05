@@ -23,32 +23,33 @@ library
   exposed-modules:
     Spiral
     Spiral.Array
+    Spiral.Array.Base
+    Spiral.Array.Operators.IndexSpace
+    Spiral.Array.Operators.Mapping
+    Spiral.Array.Operators.Reduction
+    Spiral.Array.Program
+    Spiral.Array.Repr.Slice
+    Spiral.Array.Repr.Virtual
+    Spiral.Array.Shape
     Spiral.Backend.C
-    Spiral.Backend.C.Array
-    Spiral.Backend.C.Assign
     Spiral.Backend.C.CExp
     Spiral.Backend.C.Code
-    Spiral.Backend.C.Mapping
     Spiral.Backend.C.Monad
-    Spiral.Backend.C.Reduction
-    Spiral.Backend.C.Slice
-    Spiral.Backend.C.Types
     Spiral.Backend.C.Util
-    Spiral.Backend.C.Virtual
-    Spiral.Config
     Spiral.Driver
+    Spiral.Driver.Config
     Spiral.Exp
     Spiral.FFT
     Spiral.SPL
-    Spiral.Shape
-    Spiral.Trace
+    Spiral.SPL.Run
 
   other-modules:
+    Spiral.Driver.Globals
+    Spiral.Driver.Monad
     Spiral.Driver.Opts
-    Spiral.Globals
-    Spiral.Monad
-    Spiral.Util.Lift
+    Spiral.Util.Name
     Spiral.Util.Pretty
+    Spiral.Util.Trace
     Spiral.Util.Uniq
 
   build-depends:
@@ -63,6 +64,7 @@ library
     primitive              >= 0.6      && < 0.7,
     ref-fd                 >= 0.3      && < 0.5,
     srcloc                 >= 0.5      && < 0.6,
+    symbol                 >= 0.2.4    && < 0.3,
     text                   >= 1.1      && < 1.3,
     transformers           >= 0.2      && < 0.6,
     vector                 >= 0.11     && < 0.12,

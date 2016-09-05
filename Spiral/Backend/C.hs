@@ -22,291 +22,62 @@ module Spiral.Backend.C (
 
 import Prelude hiding ((!!))
 
-import Control.Monad (when)
+import Data.String
 import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
-import Spiral.Backend.C.Array
-import Spiral.Backend.C.Assign
+import qualified Spiral.Array.Program as P
 import Spiral.Backend.C.CExp
-import Spiral.Backend.C.Mapping
 import Spiral.Backend.C.Monad
-import Spiral.Backend.C.Reduction
-import Spiral.Backend.C.Slice
-import Spiral.Backend.C.Types
-import Spiral.Backend.C.Util
-import Spiral.Backend.C.Virtual
-import Spiral.Config
 import Spiral.Exp
-import Spiral.Monad (MonadCg)
 import Spiral.SPL
-import Spiral.Shape
-import Spiral.Trace
+import Spiral.SPL.Run
+import Spiral.Util.Trace
 
 -- | Generate code for an SPL transform.
-codegen :: forall a m .
-           ( Num (Exp a)
-           , Num (CExp a)
-           , ToCExp (Exp a) a
-           , ToCType (Array D DIM1 a)
-           , ToCType (Array D DIM2 a)
-           , CTemp a (CExp a)
-           , CAssign (CExp a) (CExp a)
-           , MCArray C DIM1 a
-           , CArray C DIM2 a
-           , MonadCg m
-           )
+codegen :: forall a m . (Num (Exp a), Typed a, MonadCg m)
         => String
         -> SPL (Exp a)
         -> Cg m ()
 codegen name a = do
     traceCg $ text "Compiling:" </> ppr a
-    cgTransform name (splExtent a) $ \x -> cgSPL a x
-
-cgSPL :: forall r1 r2 a m .
-         ( Num (Exp a)
-         , Num (CExp a)
-         , ToCExp (Exp a) a
-         , ToCType (Array D DIM1 a)
-         , ToCType (Array D DIM2 a)
-         , CTemp a (CExp a)
-         , CAssign (CExp a) (CExp a)
-         , MCArray r1 DIM1 a
-         , MCArray r2 DIM1 a
-         , MCArray C DIM1 a
-         , CArray C DIM2 a
-         , MonadCg m
-         )
-      => SPL (Exp a)
-      -> Vector r1 (CExp a)
-      -> Vector r2 (CExp a)
-      -> Cg m ()
-cgSPL a@E{} y x = do
-    whenDynFlag GenComments $
-        appendComment $ ppr a
-    cgMVProd (toMatrix a) x >>= compute y
-
-cgSPL I{} y x =
-    compute y $ cdelay x
-
-cgSPL (L mn n) y x =
-    compute y $ cbackpermute (lperm (fromIntegral mn) (fromIntegral n)) x
-  where
-    lperm :: forall m . MonadCg m => Int -> Int -> CExp Int -> Cg m (CExp Int)
-    lperm mn n i = do
-        cin <- cacheCExp $ i*cn
-        (+) <$> cacheCExp (cin `mod` cmn) <*> cacheCExp (cin `div` cmn)
-      where
-        cmn = fromIntegral mn
-        cn  = fromIntegral n
-
-cgSPL e@(Kron (I m) a) y x = do
-    when (n' /= n) $
-        faildoc $ text "Non-square matrix in second argument of ⊗:" </> ppr e
-    whenDynFlag GenComments $
-        appendComment $ ppr e
-    cgFor 0 m $ \i ->
-      cgSPL a (slice y (i*toCExp n) 1 n) (slice x (i*toCExp n) 1 n)
-  where
-    Z :. n :. n' = splExtent a
-
-cgSPL e@(Kron a (I n)) y x = do
-    when (m' /= m) $
-        faildoc $ text "Non-square matrix in first argument of ⊗:" </> ppr e
-    whenDynFlag GenComments $
-        appendComment $ ppr e
-    cgFor 0 n $ \i ->
-      cgSPL a (slice y i n m) (slice x i n m)
-  where
-   Z :. m :. m' = splExtent a
-
-cgSPL e@(DSum a b) y x = do
-    when (m' /= m) $
-        faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
-    when (n' /= n) $
-        faildoc $ text "Non-square matrix in first argument of ⊕:" </> ppr e
-    whenDynFlag GenComments $
-        appendComment $ ppr e
-    cgSPL a (slice y 0 1 m)          (slice x 0 1 m)
-    cgSPL b (slice y (toCExp m) 1 n) (slice x (toCExp m) 1 n)
-  where
-    Z :. m :. m' = splExtent a
-    Z :. n :. n' = splExtent b
-
-cgSPL e@(Prod a b) y x = do
-    when (n' /= n) $
-        faildoc $ text "Mismatched dimensions in arguments to ×:" </> ppr e
-    whenDynFlag GenComments $
-        appendComment $ ppr e
-    shouldUnroll n >>= go
-  where
-    Z :. _m :.  n = splExtent a
-    Z :. n' :. _p = splExtent b
-
-    go True = do
-        t <- newVirtual (ix1 n) 0
-        cgSPL b t x
-        cgSPL a y t
-
-    go _ = do
-        t <- cgTemp (fromFunction (ix1 n) (const (undefined :: a)))
-        cgSPL b t x
-        cgSPL a y t
-
-cgSPL a y x = do
-    traceCg $ text "Falling back to default compilation path:" </> ppr a
-    cgMVProd (toMatrix a) x >>= compute y
-
-cbackpermute :: forall r a . CArray r DIM1 a
-             => (forall m . MonadCg m => CExp Int -> Cg m (CExp Int))
-             -> Vector r (CExp a)
-             -> Vector CD (CExp a)
-cbackpermute f v = fromCFunction (extent v) g
-  where
-    g :: MonadCg m => CShapeOf DIM1 -> Cg m (CExp a)
-    g (Z :. ci) = do
-        ci' <- f ci
-        cindex v (Z :. ci')
-
--- | Set up code generator to compile a transform. The continuation is
--- called with the input vector and output vector.
-cgTransform :: forall a m .
-               ( MonadCg m
-               , ToCType a
-               , ToCType (Array D DIM1 a)
-               , CTemp a (CExp a)
-               , MCArray C DIM1 a
-               )
-            => String                -- ^ The name of the transform
-            -> DIM2                  -- ^ The dimensions of the transform
-            -> (Vector C (CExp a) -> Vector C (CExp a) -> Cg m ()) -- ^ The body of the transform
-            -> Cg m ()
-cgTransform name (Z :. m :. n) k = do
-     appendTopDef [cedecl|$esc:("#include <complex.h>")|]
-     cvin     <- cgVar "in"
-     cvout    <- cgVar "out"
-     let cin  =  C (ix1 n) [cexp|$id:cvin|]
-     let cout =  C (ix1 m) [cexp|$id:cvout|]
-     items <- inNewBlock_ $
-              k cout cin
-     appendTopFunDef [cedecl|
-void $id:name(const $ty:(restrict (toCType (fakeArray cin))) $id:cvin,
-              $ty:(restrict (toCType (fakeArray cout))) $id:cvout)
+    appendTopDef [cedecl|$esc:("#include <complex.h>")|]
+    let cin :: C.Id  = fromString "in"
+    let cout :: C.Id = fromString "out"
+    let vin          = fromString "in"
+    let vout         = fromString "out"
+    extendVars [(vin, CExp [cexp|$id:cin|]), (vout, CExp [cexp|$id:cout|])] $ do
+      let x =  P.C (ix1 n) vin
+      let y =  P.C (ix1 m) vout
+      items <- inNewBlock_ $
+               runSPL a x y
+      appendTopFunDef [cedecl|
+void $id:name(const $ty:(restrict (cgArrayType tau (ix1 n))) $id:cin,
+             $ty:(restrict (cgArrayType tau (ix1 m))) $id:cout)
 {
 $items:items
 }|]
-  where
-    restrict :: C.Type -> C.Type
-    restrict (C.Type dspec decl s) =
-        C.Type dspec (restrictDecl decl) s
-      where
-        restrictDecl :: C.Decl -> C.Decl
-        restrictDecl (C.Ptr quals d s) =
-            C.Ptr (C.Trestrict s:quals) (restrictDecl d) s
+   where
+     Z :. m :. n = splExtent a
 
-        restrictDecl (C.Array quals sz d s) =
-            C.Array (C.Trestrict s:quals) sz (restrictDecl d) s
+     tau :: Type
+     tau = typeOf (undefined :: a)
 
-        restrictDecl d =
-            d
+     restrict :: C.Type -> C.Type
+     restrict (C.Type dspec decl s) =
+         C.Type dspec (restrictDecl decl) s
+       where
+         restrictDecl :: C.Decl -> C.Decl
+         restrictDecl (C.Ptr quals d s) =
+             C.Ptr (C.Trestrict s:quals) (restrictDecl d) s
 
-    restrict ty = ty
+         restrictDecl (C.Array quals sz d s) =
+             C.Array (C.Trestrict s:quals) sz (restrictDecl d) s
 
-fakeArray :: (Shape sh, IsArray r sh (CExp a))
-          => Array r sh (CExp a)
-          -> Array D sh a
-fakeArray x = fromFunction (extent x) (const (undefined :: a))
+         restrictDecl d =
+             d
 
--- | Cache a matrix. This generates code for the entire matrix, but the
--- generated code is only used when we index into the matrix
--- symbolically---otherwise we use the elements of the source matrix directly.
-cgMatrix :: forall r a .
-            ( Num (Exp a)
-            , Num (CExp a)
-            , ToCExp (Exp a) a
-            , ToCType a
-            , ToCType (Array D DIM2 a)
-            , IndexedArray r DIM2 (Exp a)
-            , CArray C DIM2 a
-            )
-         => Matrix r (Exp a)
-         -> Matrix CD (CExp a)
-cgMatrix a = fromCFunction sh cidx
-  where
-    sh :: DIM2
-    sh = extent a
-
-    cidx :: forall m . MonadCg m => CShapeOf DIM2 -> Cg m (CExp a)
-    cidx (Z :. CInt i :. CInt j) =
-        return $ toCExp (index a (ix2 i j))
-
-    cidx ix = do
-      ce <- cacheConst matInit [cty|static const $ty:ctau |]
-      let m :: Matrix C (CExp a)
-          m = C sh ce
-      cindex m ix
-
-    b :: Matrix M (CExp a)
-    b = fmap toCExp (manifest a)
-
-    ess :: [[CExp a]]
-    ess = toLists b
-
-    cgRow :: [CExp a] -> C.Initializer
-    cgRow es = [cinit|{ $inits:(map toInitializer es) }|]
-
-    matInit :: C.Initializer
-    matInit = [cinit|{ $inits:(map cgRow ess) }|]
-
-    ctau :: C.Type
-    ctau = toCType (fromFunction sh (const (undefined :: a)))
-
--- | Compile a matrix-vector product @y = A*x@.
-cgMVProd :: forall r1 r2 a m .
-            ( Num (Exp a)
-            , Num (CExp a)
-            , ToCExp (Exp a) a
-            , ToCType a
-            , ToCType (Array D DIM2 a)
-            , CTemp a (CExp a)
-            , CAssign (CExp a) (CExp a)
-            , IndexedArray r1 DIM2 (Exp a)
-            , CArray       r2 DIM1 a
-            , CArray C DIM2 a
-            , MonadCg m
-            )
-         => Matrix r1 (Exp a)         -- ^ The matrix @A@
-         -> Vector r2 (CExp a)        -- ^ The vector @x@
-         -> Cg m (Vector CD (CExp a)) -- ^ The vector @y@
-cgMVProd a x = do
-    when (n' /= n) $
-      faildoc $ text "cgMVProd: mismatched dimensions in input. Expected" <+> ppr n <+> text "but got" <+> ppr n'
-    return $ fromCFunction (Z :. m) f
-  where
-    Z :. n'     = extent x
-    Z :. m :. n = extent a
-
-    a' :: Matrix CD (CExp a)
-    a' = cgMatrix a
-
-    f :: forall m . MonadCg m => CShapeOf DIM1 -> Cg m (CExp a)
-    f (Z :. ci) =
-        cindex (sumP $ x *^ ai) Z
-      where
-        ai = crow a' ci
-
--- | Extract a row of a C array.
-crow :: forall r a . (CTemp a (CExp a), CArray r DIM2 a)
-     => Matrix r (CExp a)
-     -> CExp Int
-     -> Vector CD (CExp a)
-crow a ci = fromCFunction (Z :. n) cidx'
-  where
-    cidx :: forall m . MonadCg m => CShapeOf DIM2 -> Cg m (CExp a)
-    (Z :. _m :. n, cidx) = toCFunction (cdelay a)
-
-    cidx' :: MonadCg m => CShapeOf DIM1 -> Cg m (CExp a)
-    cidx' (Z :. cj) = cidx (Z :. ci :. cj)
+     restrict ty = ty

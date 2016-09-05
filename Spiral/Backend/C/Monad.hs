@@ -1,12 +1,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      :  Spiral.Backend.C.Monad
@@ -15,11 +17,10 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Backend.C.Monad (
+    MonadCg,
+
     Cg,
     evalCg,
-
-    alwaysUnroll,
-    shouldUnroll,
 
     tell,
     collect,
@@ -50,18 +51,22 @@ module Spiral.Backend.C.Monad (
 
     cacheConst,
     cacheCExp,
+    insertCachedCExp,
     lookupCExp,
 
-    cgVar,
-    cgFor,
+    extendVars,
+    insertVar,
+    lookupVar,
 
-    cgRawTemp,
-    CTemp(..)
+    cgType,
+    cgArrayType,
+    cgExp
   ) where
 
 import Control.Monad.Exception (MonadException(..))
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Primitive (PrimMonad(..))
+import Control.Monad.Primitive (PrimMonad(..),
+                                RealWorld)
 import Control.Monad.Ref (MonadRef(..))
 import Control.Monad.Reader (MonadReader(..),
                              ReaderT,
@@ -73,9 +78,9 @@ import Control.Monad.State (MonadState(..),
                             gets,
                             modify)
 import Control.Monad.Trans.Class (MonadTrans(..))
-import Data.Complex
 import Data.Foldable (toList)
 import Data.IORef (IORef)
+import Data.List (foldl')
 import Data.Loc (noLoc)
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -83,19 +88,31 @@ import Data.Monoid
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Language.C.Pretty ()
-import qualified Language.C.Syntax as C
+import qualified Language.C.Quote as C
 import Language.C.Quote.C
-import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland hiding (flatten)
 
+import Spiral.Array
+import Spiral.Array.Program
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
-import Spiral.Backend.C.Types
 import Spiral.Backend.C.Util
-import Spiral.Config
-import Spiral.Globals
-import Spiral.Monad (MonadCg)
-import Spiral.Trace
+import Spiral.Driver.Config
+import Spiral.Driver.Globals
+import Spiral.Driver.Monad (Spiral)
+import Spiral.Exp
+import Spiral.Util.Trace
 import Spiral.Util.Uniq
+
+class ( PrimMonad m
+      , PrimState m ~ RealWorld
+      , MonadRef IORef m
+      , MonadConfig m
+      , MonadUnique m
+      , MonadTrace m
+      ) => MonadCg m where
+
+instance MonadCg Spiral where
 
 data CgEnv = CgEnv { unroll :: Bool }
 
@@ -105,17 +122,20 @@ defaultCgEnv = CgEnv { unroll = False }
 data CgState = CgState
     { -- | Generated code
       code :: Code
-    , -- | Cached constants
-      constCache :: Map C.Initializer C.Exp
-    , -- | Cached expressions
-      expCache :: Map C.Exp C.Exp
+    , -- | Compiled variables
+      vars :: Map Var CExp
+    , -- | Cached compiler constants
+      cinitCache :: Map C.Initializer C.Exp
+    , -- | Cached compiled expressions
+      cexpCache :: Map CExp CExp
     }
 
 defaultCgState :: CgState
 defaultCgState = CgState
     { code       = mempty
-    , constCache = mempty
-    , expCache   = mempty
+    , vars       = mempty
+    , cinitCache = mempty
+    , cexpCache  = mempty
     }
 
 -- | The 'Cg' monad transformer.
@@ -144,17 +164,6 @@ evalCg :: Monad m => Cg m () -> m (Seq C.Definition)
 evalCg m = do
     s <- runReaderT (execStateT (unCg m) defaultCgState) defaultCgEnv
     return $ (codeDefs . code) s <> (codeFunDefs . code) s
-
--- | Always unroll loop in the continuation.
-alwaysUnroll :: Monad m => Cg m a -> Cg m a
-alwaysUnroll = local $ \env -> env { unroll = True }
-
--- | Should we unroll a loop of the given size?
-shouldUnroll :: MonadConfig m => Int -> Cg m Bool
-shouldUnroll n = do
-    always <- asks unroll
-    maxun  <- asksConfig maxUnroll
-    return $ always || n <= maxun
 
 -- | Add generated code.
 tell :: Monad m => Code -> Cg m ()
@@ -286,95 +295,103 @@ formatComment doc =
     pretty 80 $ group $
     text "/*" <+> align doc </> text "*/"
 
+extendVars :: MonadCg m
+           => [(Var, CExp)]
+           -> Cg m a
+           -> Cg m a
+extendVars vces m = do
+    old_vars <- gets vars
+    modify $ \s -> s { vars = foldl' insert (vars s) vces }
+    x <- m
+    modify $ \s -> s { vars = old_vars }
+    return x
+  where
+    insert :: Ord k => Map k v -> (k, v) -> Map k v
+    insert mp (k, v) = Map.insert k v mp
+
+insertVar :: MonadCg m
+          => Var
+          -> CExp
+          -> Cg m ()
+insertVar v ce =
+    modify $ \s -> s { vars = Map.insert v ce (vars s) }
+
+lookupVar :: MonadCg m => Var -> Cg m CExp
+lookupVar v = do
+    maybe_ce <- gets (Map.lookup v . vars)
+    case maybe_ce of
+      Nothing -> faildoc $ text "Unbound variable:" <+> ppr v
+      Just ce -> return ce
+
+-- | Cache the value of a constant.
 cacheConst :: MonadUnique m
            => C.Initializer
            -> C.Type
            -> Cg m C.Exp
 cacheConst cinits ctau = do
-    maybe_ce <- gets (Map.lookup cinits . constCache)
+    maybe_ce <- gets (Map.lookup cinits . cinitCache)
     case maybe_ce of
       Just ce -> return ce
       Nothing -> do ctemp  <- cgVar "m"
                     let ce =  [cexp|$id:ctemp|]
                     appendTopDecl [cdecl|$ty:ctau $id:ctemp = $init:cinits;|]
-                    modify $ \s -> s { constCache = Map.insert cinits ce (constCache s) }
+                    modify $ \s -> s { cinitCache = Map.insert cinits ce (cinitCache s) }
                     return ce
 
 -- | Cache a 'CExp'. This generates a local binding for the value of the 'CExp'.
-cacheCExp :: forall a m . (ToCType a, CTemp a (CExp a), MonadCg m)
-          => CExp a
-          -> Cg m (CExp a)
-cacheCExp e0 = do
-    maybe_ce' <- gets (Map.lookup ce . expCache)
-    case maybe_ce' of
-      Just ce' -> return $ CExp ce'
-      Nothing  -> go e0
+cacheCExp :: forall m . MonadCg m => Type -> CExp -> Cg m CExp
+cacheCExp tau ce0 | shouldCacheCExp ce0 = do
+    maybe_ce <- gets (Map.lookup ce0 . cexpCache)
+    case maybe_ce of
+      Just ce -> return ce
+      Nothing -> go ce0
   where
-    ce :: C.Exp
-    ce = toExp e0 noLoc
-
-    go :: CExp a -> Cg m (CExp a)
-    go ce@CInt{} =
-        return ce
-
-    go ce@CDouble{} =
-        return ce
-
-    go ce@(CComplex CDouble{} CDouble{}) =
-        return ce
-
     go (CComplex cr ci) | not useComplexType = do
-        cr' <- cacheCExp cr
-        ci' <- cacheCExp ci
+        cr' <- cacheCExp DoubleT cr
+        ci' <- cacheCExp DoubleT ci
         return $ CComplex cr' ci'
 
-    go ce@(CExp [cexp|$id:_|]) =
-        return ce
-
-    go ce@(CExp [cexp|-$id:_|]) =
-        return ce
-
     go (CExp [cexp|$ce1 * $double:x - $ce2 * $double:y|]) | y < 0 =
-        go (CExp [cexp|$ce1 * $double:x + $ce2 * $double:(-y)|])
+        cacheCExp tau (CExp [cexp|$ce1 * $double:x + $ce2 * $double:(-y)|])
 
     go (CExp [cexp|$ce1 * $double:x + $ce2 * $double:y|]) | y < 0 =
-        go (CExp [cexp|$ce1 * $double:x - $ce2 * $double:(-y)|])
+        cacheCExp tau (CExp [cexp|$ce1 * $double:x - $ce2 * $double:(-y)|])
 
     go (CExp [cexp|$ce1 * $double:x + $ce2 * $double:y|]) | epsDiff x y = do
-        ce12 <- go e12
-        go (CExp [cexp|$double:x * $ce12|])
+        ce12 <- cacheCExp tau e12
+        cacheCExp tau (CExp [cexp|$double:x * $ce12|])
       where
-        e12 :: CExp a
+        e12 :: CExp
         e12 = CExp [cexp|$ce1 + $ce2|]
 
     go (CExp [cexp|$ce1 * $double:x - $ce2 * $double:y|]) | epsDiff x y = do
-        ce12 <- go e12
-        go (CExp [cexp|$double:x * $ce12|])
+        ce12 <- cacheCExp tau e12
+        cacheCExp tau (CExp [cexp|$double:x * $ce12|])
       where
-        e12 :: CExp a
+        e12 :: CExp
         e12 = CExp [cexp|$ce1 - $ce2|]
 
     go (CExp [cexp|-$ce1 - $ce2|]) = do
-        ce1' <- lookupCExp (CExp [cexp|-$ce1|] :: CExp a)
-        ce2' <- lookupCExp (CExp [cexp|-$ce2|] :: CExp a)
+        ce1' <- lookupCExp (CExp [cexp|-$ce1|])
+        ce2' <- lookupCExp (CExp [cexp|-$ce2|])
         case (ce1', ce2') of
           (CExp [cexp|$id:_|], CExp [cexp|$id:_|]) ->
               return $ CExp [cexp|$ce1' + $ce2'|]
           _ -> do
-              ce' <- cacheCExp e'
+              ce' <- cacheCExp tau e'
               return $ CExp [cexp|-$ce'|]
       where
-        e' :: CExp a
+        e' :: CExp
         e' = CExp [cexp|$ce1 + $ce2|]
 
     go (CInit ini) = do
-        ce <- cacheConst ini (toCType (undefined :: a))
+        ce <- cacheConst ini (cgType tau)
         return $ CExp ce
 
-    go e = do
-        ctemp <- cgTemp (undefined :: a)
-        appendStm [cstm|$ctemp = $e;|]
-        modify $ \s -> s { expCache = Map.insert ce [cexp|$ctemp|] (expCache s) }
+    go ce = do
+        ctemp <- cgTemp tau Nothing
+        -- cgAssign will modify the cache
+        cgAssign tau ctemp ce
         return ctemp
 
     epsDiff :: forall a . (Ord a, Fractional a) => a -> a -> Bool
@@ -382,62 +399,245 @@ cacheCExp e0 = do
       where
         eps = 1e-15
 
+cacheCExp _ ce =
+    return ce
+
+-- | Retunr 'True' if a 'CExp' is worth caching.
+shouldCacheCExp :: CExp -> Bool
+shouldCacheCExp CInt{}                = False
+shouldCacheCExp CDouble{}             = False
+shouldCacheCExp (CComplex ce1 ce2)    = shouldCacheCExp ce1 || shouldCacheCExp ce2
+shouldCacheCExp (CExp [cexp|$id:_|])  = False
+shouldCacheCExp (CExp [cexp|-$id:_|]) = False
+shouldCacheCExp _                     = True
+
+-- | @'insertCachedCExp' ce1 ce2@ adds @ce2@ as the cached version of @ce1@.
+insertCachedCExp :: forall m . MonadCg m
+                 => CExp
+                 -> CExp
+                 -> Cg m ()
+insertCachedCExp ce1 ce2 =
+    modify $ \s -> s { cexpCache = Map.insert ce1 ce2 (cexpCache s) }
+
 -- | Look up the cached C expression corresponding to a 'CExp'. If the 'CExp'
 -- has not been cached, we return it without caching it.
-lookupCExp :: forall a m . (ToCType a, MonadUnique m)
-           => CExp a
-           -> Cg m (CExp a)
-lookupCExp e = do
-    maybe_ce' <- gets (Map.lookup ce . expCache)
+lookupCExp :: forall m . MonadCg m
+           => CExp -> Cg m CExp
+lookupCExp ce = do
+    maybe_ce' <- gets (Map.lookup ce . cexpCache)
     case maybe_ce' of
-      Just ce' -> return $ CExp ce'
-      Nothing  -> return e
-  where
-    ce :: C.Exp
-    ce = toExp e noLoc
+      Just ce' -> return ce'
+      Nothing  -> return ce
 
 -- | Generate a unique C identifier name using the given prefix.
 cgVar :: MonadUnique m => String -> Cg m C.Id
 cgVar = gensym
 
--- | Generate code for a loop with the given start and end.
-cgFor :: MonadCg m
-      => Int                   -- ^ Initial value
-      -> Int                   -- ^ Upper bound (non-inclusive)
-      -> (CExp Int -> Cg m ()) -- ^ Loop body
-      -> Cg m ()
-cgFor lo hi k = do
-    should <- shouldUnroll (hi - lo)
-    if should
-      then mapM_ k [CInt i | i <- [lo..hi-1::Int]]
-      else do
-        ci    <- cgVar "i"
-        items <- inNewBlock_ $ k (CExp [cexp|$id:ci|])
-        appendStm [cstm|for (int $id:ci = $int:lo; $id:ci < $int:hi; ++$id:ci) $stm:(toStm items)|]
+-- | Generate code to allocate a temporary value. A name for the temporary is
+-- optionally provided.
+cgTemp :: MonadCg m => Type -> Maybe Var -> Cg m CExp
+cgTemp (ComplexT DoubleT) _ | not useComplexType = do
+    ct1 <- cgTemp DoubleT Nothing
+    ct2 <- cgTemp DoubleT Nothing
+    return $ CComplex ct1 ct2
 
--- | Type-directed generation of temporary variables.
-class CTemp a b | a -> b where
-    -- | Generate a temporary variable.
-    cgTemp :: MonadCg m => a -> Cg m b
+cgTemp tau maybe_v = do
+    ct <- case maybe_v of
+            Nothing -> cgVar "t"
+            Just v  -> return $ C.toIdent v noLoc
+    appendDecl [cdecl|$ty:(cgType tau) $id:ct;|]
+    return $ CExp [cexp|$id:ct|]
 
-cgRawTemp :: (ToCType a, MonadCg m) => a -> Cg m C.Exp
-cgRawTemp a = do
-    t <- cgVar "t"
-    appendDecl [cdecl|$ty:ctau $id:t;|]
-    return [cexp|$id:t|]
+instance MonadCg m => MonadP (Cg m) where
+    -- | Always unroll loop in the continuation.
+    alwaysUnroll = local $ \env -> env { unroll = True }
+
+    -- | Should we unroll a loop of the given size?
+    shouldUnroll n = do
+        always <- asks unroll
+        maxun  <- asksConfig maxUnroll
+        return $ always || n <= maxun
+
+    comment doc =
+        whenDynFlag GenComments $
+            appendComment doc
+
+    forP lo hi k = do
+        should <- shouldUnroll (hi - lo)
+        if should
+          then mapM_ k [intE i | i <- [lo..hi-1::Int]]
+          else do
+            i <- gensym "i"
+            items <- inNewBlock_ $
+                     extendVars [(i, CExp [cexp|$id:i|])] $
+                     k (VarE i)
+            appendStm [cstm|for (int $id:i = $int:lo; $id:i < $int:hi; ++$id:i) $stm:(toStm items)|]
+
+    tempP :: forall a . Typed a => Cg m (Exp a)
+    tempP = do
+        t  <- gensym "t"
+        ct <- cgTemp tau (Just t)
+        insertVar t ct
+        return $ VarE t
+      where
+        tau :: Type
+        tau = typeOf (undefined :: a)
+
+    newArray :: forall sh a . (Shape sh, Typed a)
+             => sh
+             -> Cg m (Array C sh (Exp a))
+    newArray sh = do
+        v      <- gensym "v"
+        let cv =  CExp [cexp|$id:v|]
+        insertVar v cv
+        appendDecl [cdecl|$ty:ctau $id:v;|]
+        return $ C sh v
+      where
+        ctau :: C.Type
+        ctau = cgArrayType (typeOf (undefined :: a)) sh
+
+    assignP :: forall a . Typed a => Exp a -> Exp a -> Cg m ()
+    assignP e1 e2 = do
+        ce1 <- cgExp e1
+        ce2 <- cgExp e2
+        cgAssign tau ce1 ce2
+      where
+        tau :: Type
+        tau = typeOf (undefined :: a)
+
+    cache e@ConstE{} =
+        return e
+
+    cache e@VarE{} =
+        return e
+
+    cache e = do
+        t  <- gensym "t"
+        ce <- cgCacheExp e
+        insertVar t ce
+        return $ VarE t
+
+    cacheMatrix :: forall r a . (Typed a, Num (Exp a), IArray r DIM2 (Exp a))
+                => Matrix r (Exp a)
+                -> Cg m (Matrix C (Exp a))
+    cacheMatrix a = do
+        cess <- traverse (traverse cgExp) ess
+        t  <- gensym "t"
+        ct <- cacheConst (cgMat cess) [cty|static const $ty:ctau |]
+        insertVar t (CExp ct)
+        return $ C sh t
+      where
+        sh = extent a
+
+        ctau :: C.Type
+        ctau = cgArrayType (ComplexT DoubleT) sh
+
+        ess :: [[Exp a]]
+        ess = toLists $ manifest a
+
+        cgRow :: [CExp] -> C.Initializer
+        cgRow ces = [cinit|{ $inits:(concatMap cgElem ces) }|]
+          where
+            cgElem :: CExp -> [C.Initializer]
+            cgElem (CComplex ce1 ce2) | not useComplexType =
+                [toInitializer ce1, toInitializer ce2]
+
+            cgElem ce =
+                [toInitializer ce]
+
+        cgMat :: [[CExp]] -> C.Initializer
+        cgMat cess = [cinit|{ $inits:(map cgRow cess) }|]
+
+-- | Compile an assignment.
+cgAssign :: MonadCg m => Type -> CExp -> CExp -> Cg m ()
+cgAssign (ComplexT DoubleT) ce1 ce2 | not useComplexType = do
+    insertCachedCExp cr2 cr1
+    insertCachedCExp ci2 ci1
+    appendStm [cstm|$cr1 = $cr2;|]
+    appendStm [cstm|$ci1 = $ci2;|]
   where
-    ctau :: C.Type
-    ctau = toCType a
+    (cr1, ci1) = unComplex ce1
+    (cr2, ci2) = unComplex ce2
 
-instance CTemp Int (CExp Int) where
-    cgTemp x = CExp <$> cgRawTemp x
+cgAssign _ ce1 ce2 = do
+    insertCachedCExp ce2 ce1
+    appendStm [cstm|$ce1 = $ce2;|]
 
-instance CTemp Double (CExp Double) where
-    cgTemp x = CExp <$> cgRawTemp x
+-- | Compiled a value of type 'Const a'.
+cgConst :: Const a -> CExp
+cgConst (IntC x)         = CInt x
+cgConst (IntegerC x)     = CInt (fromIntegral x)
+cgConst (RationalC x)    = CDouble x
+cgConst (DoubleC x)      = CDouble (toRational x)
+cgConst (ComplexC e1 e2) = CComplex (cgConst e1) (cgConst e2)
+cgConst (PiC x)          = CDouble (toRational (fromRational x * pi :: Double))
+cgConst e@RouC{}         = cgConst (flatten e)
 
-instance CTemp (Complex Double) (CExp (Complex Double)) where
-    cgTemp x | useComplexType =
-        CExp <$> cgRawTemp x
+-- | Compile an 'Exp a' and cache the result. If we try to compile the same
+-- expression again, we will re-use the cached value.
+cgCacheExp :: forall a m . Typed a => MonadCg m => Exp a -> Cg m CExp
+cgCacheExp e = cgExp e >>= cacheCExp (typeOf (undefined :: a))
 
-    cgTemp _ =
-        CComplex <$> cgTemp (undefined :: Double) <*> cgTemp (undefined :: Double)
+-- | Compile an 'Exp a'.
+cgExp :: forall a m . (Typed a, MonadCg m) => Exp a -> Cg m CExp
+cgExp (ConstE c) = return $ cgConst c
+cgExp (VarE v)   = lookupVar v
+
+cgExp (UnopE op e) =
+    cgCacheExp e >>= go op
+  where
+    go Neg ce    = return $ -ce
+    go Abs ce    = return $ abs ce
+    go Signum ce = return $ signum ce
+
+cgExp (BinopE op e1 e2) = do
+    ce1 <- cgCacheExp e1
+    ce2 <- cgCacheExp e2
+    go op ce1 ce2
+  where
+    go Add  ce1 ce2 = return $ ce1 + ce2
+    go Sub  ce1 ce2 = return $ ce1 - ce2
+    go Mul  ce1 ce2 = return $ ce1 * ce2
+    go Quot ce1 ce2 = return $ ce1 `quot` ce2
+    go Rem  ce1 ce2 = return $ ce1 `rem` ce2
+    go Div  _   _   = fail "Can't happen"
+
+cgExp (IdxE v es) =
+    case typeOf (undefined :: a) of
+      ComplexT DoubleT | useComplexType -> mkIdx v es
+      _                                 -> mkComplexIdx v es
+
+mkIdx :: MonadCg m => Var -> [Exp Int] -> Cg m CExp
+mkIdx v es = do
+    ces <- mapM cgCacheExp es
+    return $ CExp $ foldr cidx [cexp|$id:v|] ces
+  where
+    cidx ci ce = [cexp|$ce[$ci]|]
+
+mkComplexIdx :: MonadCg m => Var -> [Exp Int] -> Cg m CExp
+mkComplexIdx cv []       = return $ CComplex (CExp [cexp|$id:cv[0]|]) (CExp [cexp|$id:cv[1]|])
+mkComplexIdx cv (ci:cis) = CComplex <$> mkIdx cv (2*ci:cis) <*> mkIdx cv (2*ci+1:cis)
+
+-- | Compile a type.
+cgType :: Type -> C.Type
+cgType IntT     = [cty|int|]
+cgType IntegerT = [cty|int|]
+cgType DoubleT  = [cty|double|]
+
+cgType (ComplexT DoubleT)
+    | useComplexType = [cty|double _Complex|]
+    | otherwise      = error "Cannot convert complex double to C type"
+
+cgType tau@ComplexT{} = errordoc $ text "Illegal type:" <+> (text . show) tau
+
+-- | Compile an array type.
+cgArrayType :: forall sh . Shape sh => Type -> sh -> C.Type
+cgArrayType (ComplexT DoubleT) sh | not useComplexType =
+    case listOfShape sh of
+      n:sh0 -> cgArrayType DoubleT (shapeOfList (2*n:sh0) :: sh)
+      _     -> error "zero-dimensional array of Complex Double"
+
+cgArrayType tau sh = foldl cidx (cgType tau) (listOfShape sh)
+  where
+    cidx :: C.Type -> Int -> C.Type
+    cidx ctau i = [cty|$ty:ctau[static $int:i]|]
