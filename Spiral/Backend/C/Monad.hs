@@ -613,6 +613,17 @@ cgExp (IdxE v es) =
       ComplexT DoubleT | useComplexType -> mkIdx v es
       _                                 -> mkComplexIdx v es
 
+cgExp (ComplexE er ei) =
+    CComplex <$> cgExp er <*> cgExp ei
+
+cgExp (ReE e) = do
+    (cr, _ci) <- unComplex <$> cgExp e
+    return cr
+
+cgExp (ImE e) = do
+    (_cr, ci) <- unComplex <$> cgExp e
+    return ci
+
 mkIdx :: MonadCg m => Var -> [Exp Int] -> Cg m CExp
 mkIdx v es = do
     ces <- mapM cgCacheExp es

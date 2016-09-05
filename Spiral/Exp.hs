@@ -33,7 +33,8 @@ module Spiral.Exp (
     rootOfUnity,
 
     intE,
-    complexE
+    complexE,
+    unComplexE
   ) where
 
 import Data.Complex
@@ -192,6 +193,10 @@ data Exp a where
     BinopE :: Binop -> Exp a -> Exp a -> Exp a
     IdxE   :: Var -> [Exp Int] -> Exp a
 
+    ComplexE :: (Typed a, Num (Exp a)) => Exp a -> Exp a -> Exp (Complex a)
+    ReE :: Exp (Complex a) -> Exp a
+    ImE :: Exp (Complex a) -> Exp a
+
 deriving instance Eq (Exp a)
 deriving instance Ord (Exp a)
 deriving instance Show (Exp a)
@@ -253,6 +258,18 @@ instance Pretty (Exp a) where
 
     pprPrec _ (IdxE ev eis) =
         ppr ev <> mconcat [brackets (ppr ei) | ei <- eis]
+
+    pprPrec p (ComplexE er ei) =
+        parensIf (p > addPrec) $
+        pprComplex (er :+ ei)
+
+    pprPrec p (ReE e) =
+        parensIf (p > appPrec) $
+        text "re" <+> pprPrec appPrec1 e
+
+    pprPrec p (ImE e) =
+        parensIf (p > appPrec) $
+        text "im" <+> pprPrec appPrec1 e
 
 -- | Representation of types.
 data Type = IntT
@@ -326,6 +343,10 @@ instance LiftNum (Const a) where
     liftNum _  f x@ComplexC{}  = fromComplex (f (lower x))
     liftNum op f c             = liftNum op f (flatten c)
 
+    liftNum2 Add _ (ComplexC a b) (ComplexC c d) = ComplexC (a + c) (b + d)
+    liftNum2 Sub _ (ComplexC a b) (ComplexC c d) = ComplexC (a - c) (b - d)
+    liftNum2 Mul _ (ComplexC a b) (ComplexC c d) = ComplexC (a*c - b*d) (b*c + a*d)
+
     liftNum2 Mul _ (RouC x) (RouC y)            = normalize $ RouC (x + y)
     liftNum2 Mul f (RouC x) (ComplexC 1      0) = liftNum2Opt Mul f (RouC x) (RouC 0)
     liftNum2 Mul f (RouC x) (ComplexC (-1)   0) = liftNum2Opt Mul f (RouC x) (RouC (1 % 2))
@@ -352,6 +373,10 @@ instance (Num (Const a), LiftNum (Const a)) => LiftNum (Exp a) where
 
     liftNum2 op f (ConstE c1) (ConstE c2) =
         ConstE $ liftNum2Opt op f c1 c2
+
+    liftNum2 Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
+    liftNum2 Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
+    liftNum2 Mul _ (ComplexE a b) (ComplexE c d) = ComplexE (a*c - b*d) (b*c + a*d)
 
     liftNum2 op _ e1 e2 = BinopE op e1 e2
 
@@ -515,7 +540,8 @@ instance Num (Exp (Complex Double)) where
 
     abs = liftNum Abs abs
 
-    negate = liftNum Neg negate
+    negate (ComplexE a b) = ComplexE (-a) (-b)
+    negate x = liftNum Neg negate x
 
     signum  = liftNum Signum signum
 
@@ -547,3 +573,9 @@ intE = ConstE . IntC
 
 complexE :: Complex Double -> Exp (Complex Double)
 complexE (r :+ i) = ConstE $ ComplexC (DoubleC r) (DoubleC i)
+
+unComplexE :: Exp (Complex a) -> (Exp a, Exp a)
+unComplexE (ConstE (ComplexC r i)) = (ConstE r, ConstE i)
+unComplexE (ConstE (RouC r))       = (ConstE (cos (PiC (2*r))), ConstE (sin (PiC (2*r))))
+unComplexE (ComplexE r i )         = (r, i)
+unComplexE e                       = (ReE e, ImE e)
