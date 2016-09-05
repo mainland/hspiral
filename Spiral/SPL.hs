@@ -44,6 +44,9 @@ data SPL a where
     -- The $n \times n$ reverse identity matrix.
     J :: Int -> SPL e
 
+    -- The rotation matrix
+    R :: Floating a => a -> SPL a
+
     -- The $L^{rs}_s$ $rs \times rs$ stride permutation matrix with stride $s$.
     L :: Int -> Int -> SPL e
 
@@ -76,6 +79,7 @@ splExtent :: SPL a -> DIM2
 splExtent (E a)     = extent a
 splExtent (I n)     = ix2 n n
 splExtent (J n)     = ix2 n n
+splExtent (R _)     = ix2 2 2
 splExtent (L mn _n) = ix2 mn mn
 
 splExtent (Kron a b) = ix2 (m*p) (n*q)
@@ -158,6 +162,10 @@ toMatrix (J n) =
     f (Z :. i :. j) | i + j == n = 1
                     | otherwise  = 0
 
+toMatrix (R alpha) =
+    matrix [[cos alpha, -(sin alpha)],
+            [sin alpha, cos alpha]]
+
 toMatrix (L mn n) =
     manifest $ fromFunction (ix2 mn mn) f
   where
@@ -180,6 +188,7 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (E a)      = pprPrec p a
     pprPrec _ (I n)      = text "I_" <> ppr n
     pprPrec _ (J n)      = text "J_" <> ppr n
+    pprPrec _ (R alpha)  = text "R_" <> ppr alpha
     pprPrec _ (L rs s)   = text "L^" <> ppr rs <> char '_' <> ppr s
     pprPrec p (Kron a b) = infixop p KOp a b
     pprPrec p (DSum a b) = infixop p DSOp a b
