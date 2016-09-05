@@ -14,6 +14,7 @@
 module Spiral.SPL (
     SPL(..),
     spl,
+    diag,
     lperm,
     splExtent,
     toMatrix,
@@ -50,6 +51,9 @@ data SPL a where
     -- The $L^{rs}_s$ $rs \times rs$ stride permutation matrix with stride $s$.
     L :: Int -> Int -> SPL e
 
+    -- A diagonal matrix
+    Diag :: V.Vector e -> SPL e
+
     -- Kronecker product
     Kron :: SPL e -> SPL e -> SPL e
 
@@ -71,6 +75,10 @@ spl :: (IArray r DIM2 e, Pretty (Array r DIM2 e))
     -> SPL e
 spl = E
 
+-- | Create a diagonal matrix
+diag :: [a] -> SPL a
+diag = Diag . V.fromList
+
 -- | The /inverse/ permutation $L^{mn}_n$. Useful for 'backpermute'.
 lperm :: Integral a => a -> a -> a -> a
 lperm mn n i = i*n `mod` mn + i*n `div` mn
@@ -81,6 +89,10 @@ splExtent (I n)     = ix2 n n
 splExtent (J n)     = ix2 n n
 splExtent (R _)     = ix2 2 2
 splExtent (L mn _n) = ix2 mn mn
+
+splExtent (Diag xs) = ix2 n n
+  where
+    n = length xs
 
 splExtent (Kron a b) = ix2 (m*p) (n*q)
   where
@@ -104,6 +116,14 @@ splExtent (DFT n) = ix2 n n
 toMatrix :: forall e . Num e => SPL e -> Matrix M e
 toMatrix (E a) =
     manifest a
+
+toMatrix (Diag xs) =
+    manifest $ fromFunction (ix2 n n) f
+  where
+    n = length xs
+
+    f (Z :. i :. j) | i == j    = xs V.! i
+                    | otherwise = 0
 
 toMatrix (Kron a b) =
     M (ix2 (m*p) (n*q)) $ V.generate (m*p*n*q) f
@@ -190,6 +210,8 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec _ (J n)      = text "J_" <> ppr n
     pprPrec _ (R alpha)  = text "R_" <> ppr alpha
     pprPrec _ (L rs s)   = text "L^" <> ppr rs <> char '_' <> ppr s
+    pprPrec _ (Diag xs)  = text "diag" <>
+                           parens (commasep (map ppr (V.toList xs)))
     pprPrec p (Kron a b) = infixop p KOp a b
     pprPrec p (DSum a b) = infixop p DSOp a b
     pprPrec p (Prod a b) = infixop p POp a b

@@ -14,23 +14,20 @@ module Spiral.FFT (
     f
   ) where
 
-import Data.Complex
+import Text.PrettyPrint.Mainland
 
 import Spiral.Array
-import Spiral.Exp
 import Spiral.ExtendedFloat
 import Spiral.SPL
 
 -- | The $W_m(\omega_n)$ matrix
-w :: Int -> Int -> SPL (Exp (Complex Double))
-w m n = spl $ fromFunction (ix2 m m) f
+w :: ExtendedFloat a => Int -> Int -> SPL a
+w m n = diag [w^i | i <- [0..m-1]]
   where
-    f :: DIM2 -> Exp (Complex Double)
-    f (Z :. i :. j) | i == j    = omega n^i
-                    | otherwise = 0
+    w = omega n
 
 -- | Twiddle factor matrix $T^{mn}_m$
-t :: Int -> Int -> SPL (Exp (Complex Double))
+t :: ExtendedFloat a => Int -> Int -> SPL a
 t mn m = I m ⊕ go (n-1)
   where
     n = mn `quot` m
@@ -39,7 +36,7 @@ t mn m = I m ⊕ go (n-1)
          | otherwise = w m mn ⊕ go (i-1)
 
 -- | DFT matrix $F_n$, for $n$ even
-f :: Int -> SPL (Exp (Complex Double))
+f :: (ExtendedFloat a, Pretty a) => Int -> SPL a
 f 1 = spl $ matrix [[1]]
 f 2 = F2
 

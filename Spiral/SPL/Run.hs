@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Module      :  Spiral.Spiral.SPL.Run
@@ -13,6 +14,7 @@ module Spiral.SPL.Run (
 
 import Prelude hiding ((!!), read)
 
+import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
@@ -56,6 +58,24 @@ runSPL J{} x y =
 
 runSPL (L mn n) x y =
     computeP y $ backpermute (lperm (fromIntegral mn) (fromIntegral n)) x
+
+runSPL e@(Diag v) x y = do
+    comment $ ppr e
+    shouldUnroll n >>= go
+  where
+    n :: Int
+    n = V.length v
+
+    go True =
+        forP 0 n $ \ei@(ConstE (IntC i)) ->
+            write y (Z :. ei) (v V.! i * indexS x (Z :. ei))
+
+    go _ = do
+        d <- cacheArray (fromFunction (ix1 n) f)
+        forShapeP (ix1 n) $ \eix ->
+            write y eix (indexS d eix * indexS x eix)
+      where
+        f (Z :. i) = v V.! i
 
 runSPL e@(Kron (I m) a) x y | n' == n = do
     comment $ ppr e
