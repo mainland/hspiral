@@ -119,15 +119,7 @@ dftTests = testGroup "DFT tests"
 
 prop_DFT :: SmallPowerOfTwo -> Property
 prop_DFT (SmallPowerOfTwo n) =
-    manifestComplex (directDFT (2^n)) === manifestComplex (toMatrix (FFT.f (2^n)))
-  where
-    -- | Direct calculation of the DFT matrix.
-    directDFT :: Int -> Matrix D (Exp (Complex Double))
-    directDFT n = fromFunction (ix2 n n) f
-      where
-        f (Z :. i :. j) = w^(i*j)
-
-        w = FFT.omega n
+    manifestComplex (toMatrix (DFT (2^n))) === manifestComplex (toMatrix (FFT.f (2^n)))
 
 -- $F_2$
 f2Test :: Test

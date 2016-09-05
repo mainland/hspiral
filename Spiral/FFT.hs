@@ -41,9 +41,7 @@ t mn m = I m ⊕ go (n-1)
 -- | DFT matrix $F_n$, for $n$ even
 f :: Int -> SPL (Exp (Complex Double))
 f 1 = spl $ matrix [[1]]
-
-f 2 = spl $  matrix [[1,  1],
-                     [1, -1]]
+f 2 = F2
 
 f n | even n =
     (f 2 ⊗ I n2) × t n n2 × (I 2 ⊗ f n2) × L n 2

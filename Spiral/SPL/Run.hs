@@ -90,6 +90,10 @@ runSPL e@(Prod a b) x y | n' == n = do
         runSPL b x t
         runSPL a t y
 
+runSPL e@F2{} x y = do
+    comment $ ppr e
+    mvP (toMatrix e) x y
+
 runSPL a x y = do
     traceCg $ text "Falling back to default compilation path:" </> ppr a
     mvP (toMatrix a) x y

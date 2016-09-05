@@ -27,6 +27,7 @@ import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
+import Spiral.ExtendedFloat
 import Spiral.Util.Pretty
 
 -- | An SPL transform. The type index is the type of the scalar values in the
@@ -51,6 +52,12 @@ data SPL a where
 
     -- Matrix product
     Prod :: SPL e -> SPL e -> SPL e
+
+    -- The 2x2 DFT
+    F2 :: SPL e
+
+    -- The nxn DFT matrix
+    DFT :: ExtendedFloat a => Int -> SPL a
 
 -- | Embed any 'Array' as an SPL term.
 spl :: (IArray r DIM2 e, Pretty (Array r DIM2 e))
@@ -81,6 +88,10 @@ splExtent (Prod a b) = ix2 m q
   where
     Z :. m  :. _n = splExtent a
     Z :. _p :. q  = splExtent b
+
+splExtent F2 = ix2 2 2
+
+splExtent (DFT n) = ix2 n n
 
 toMatrix :: forall e . Num e => SPL e -> Matrix M e
 toMatrix (E a) =
@@ -143,6 +154,18 @@ toMatrix (L mn n) =
     f (Z :. i :. j) | j == i*n `mod` mn + i*n `div` mn = 1
                     | otherwise                        = 0
 
+toMatrix F2 =
+    matrix [[1,  1],
+            [1, -1]]
+
+toMatrix (DFT n) = manifest $ fromFunction (ix2 n n) f
+  where
+    f :: forall a . ExtendedFloat a => DIM2 -> a
+    f (Z :. i :. j) = w ^ (i*j)
+      where
+        w :: a
+        w = omega n
+
 instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (E a)      = pprPrec p a
     pprPrec _ (I n)      = text "I_" <> ppr n
@@ -150,6 +173,8 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (Kron a b) = infixop p KOp a b
     pprPrec p (DSum a b) = infixop p DSOp a b
     pprPrec p (Prod a b) = infixop p POp a b
+    pprPrec _ F2         = text "F_2"
+    pprPrec _ (DFT n)    = text "DFT_" <> ppr n
 
 data MatrixBinop = KOp
                  | DSOp
