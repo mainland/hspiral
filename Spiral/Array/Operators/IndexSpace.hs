@@ -79,7 +79,7 @@ mvP a x y = do
             t = x .* row (coerceSymbolic a) i
 
     go y _ = do
-        a' <- cacheMatrix a
+        a' <- cacheArray a
         forP 0 m $ \i -> do
             yi <- sumP $ x .* row a' i
             write y (Z :. i) yi

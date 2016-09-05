@@ -517,13 +517,10 @@ instance MonadCg m => MonadP (Cg m) where
         insertVar t ce
         return $ VarE t
 
-    cacheMatrix :: forall r a . (Typed a, Num (Exp a), IArray r DIM2 (Exp a))
-                => Matrix r (Exp a)
-                -> Cg m (Matrix C (Exp a))
-    cacheMatrix a = do
-        cess <- traverse (traverse cgExp) ess
-        t  <- gensym "t"
-        ct <- cacheConst (cgMat cess) [cty|static const $ty:ctau |]
+    cacheArray a = do
+        cinit <- arrayInit (manifest a)
+        t     <- gensym "t"
+        ct    <- cacheConst cinit [cty|static const $ty:ctau |]
         insertVar t (CExp ct)
         return $ C sh t
       where
@@ -532,21 +529,30 @@ instance MonadCg m => MonadP (Cg m) where
         ctau :: C.Type
         ctau = cgArrayType (ComplexT DoubleT) sh
 
-        ess :: [[Exp a]]
-        ess = toLists $ manifest a
+arrayInit :: forall a sh m . (Shape sh, Typed a, MonadCg m)
+          => Array M sh (Exp a)
+          -> Cg m C.Initializer
+arrayInit a = do
+    inits <- f (reverse (listOfShape (extent a))) []
+    case inits of
+      [init] -> return init
+      _      -> return [cinit|{ $inits:inits }|]
+  where
+    f :: [Int] -> [Int] -> Cg m [C.Initializer]
+    f [] ix = do
+        ce <- cgExp (index a (shapeOfList ix))
+        return $ cgElem ce
+      where
+        cgElem :: CExp -> [C.Initializer]
+        cgElem (CComplex ce1 ce2) | not useComplexType =
+            [toInitializer ce1, toInitializer ce2]
 
-        cgRow :: [CExp] -> C.Initializer
-        cgRow ces = [cinit|{ $inits:(concatMap cgElem ces) }|]
-          where
-            cgElem :: CExp -> [C.Initializer]
-            cgElem (CComplex ce1 ce2) | not useComplexType =
-                [toInitializer ce1, toInitializer ce2]
+        cgElem ce =
+            [toInitializer ce]
 
-            cgElem ce =
-                [toInitializer ce]
-
-        cgMat :: [[CExp]] -> C.Initializer
-        cgMat cess = [cinit|{ $inits:(map cgRow cess) }|]
+    f (n:ix) ix' = do
+        inits <- mapM (\i -> f ix (i : ix')) [0..n-1]
+        return [[cinit|{ $inits:(concat inits) }|]]
 
 -- | Compile an assignment.
 cgAssign :: MonadCg m => Type -> CExp -> CExp -> Cg m ()

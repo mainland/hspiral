@@ -81,9 +81,9 @@ class ( PrimMonad m
              -> m (Array C sh (Exp a))
 
     -- | Cache the contents of a matrix, returning it as a concrete matrix.
-    cacheMatrix :: (Typed a, Num (Exp a), IArray r DIM2 (Exp a))
-                => Matrix r (Exp a)
-                -> m (Matrix C (Exp a))
+    cacheArray :: (Typed a, Num (Exp a), IArray r sh (Exp a))
+               => Array r sh (Exp a)
+               -> m (Array C sh (Exp a))
 
 -- | And alias for 'assignP'.
 infix 4 .:=.
