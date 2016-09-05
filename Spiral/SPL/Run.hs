@@ -45,6 +45,15 @@ runSPL e@E{} x y = do
 runSPL I{} x y =
     computeP y x
 
+runSPL J{} x y =
+    computeP y (backpermute f x)
+  where
+    n :: Int
+    Z :. n = extent x
+
+    f :: forall a . Integral a => a -> a
+    f i = fromIntegral n - 1 - i
+
 runSPL (L mn n) x y =
     computeP y $ backpermute (lperm (fromIntegral mn) (fromIntegral n)) x
 
