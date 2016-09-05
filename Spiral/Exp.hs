@@ -148,15 +148,13 @@ instance Pretty (Const a) where
                ppr (denominator r)
 
     ppr (PiC r) = pprPrec appPrec1 r <+> ppr "pi"
-      where
-        appPrec1 = 6
 
 instance ExtendedFloat (Const (Complex Double)) where
     rootOfUnity = normalize . RouC
 
 pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
 pprComplex (r :+ 0) = ppr r
-pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
+pprComplex (r :+ i) = ppr r <+> text "+" <+> pprPrec appPrec1 i <> char 'i'
 
 -- | Convert a 'Complex Double' to a 'Constant'
 fromComplex :: Complex Double -> Const (Complex Double)
