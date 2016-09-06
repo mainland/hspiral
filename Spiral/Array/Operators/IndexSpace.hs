@@ -39,7 +39,7 @@ row :: SArray r DIM2 a
     -> Vector DS a
 row a i = fromSFunction (Z :. n) g
   where
-    (Z :. _m :. n, f) = toSFunction (sdelay a)
+    (Z :. _m :. n, f) = toSFunction (delayS a)
 
     g (Z :. j) = f (Z :. i :. j)
 

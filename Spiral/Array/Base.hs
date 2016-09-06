@@ -36,7 +36,7 @@ module Spiral.Array.Base (
     DS,
     fromSFunction,
     toSFunction,
-    sdelay,
+    delayS,
 
     coerceSymbolic
   ) where
@@ -233,15 +233,15 @@ toSFunction :: (Shape sh, IsArray DS sh e)
             => Array DS sh e
             -> (sh, ExpShapeOf sh -> e)
 toSFunction a =
-    case sdelay a of
+    case delayS a of
       DS sh f -> (sh, f)
 
 -- | Delay an array symbolically. This ensures that the internal representation
 -- of the array is a function from symbolic indices to elements.
-sdelay :: (Shape sh, SArray r sh e)
+delayS :: (Shape sh, SArray r sh e)
        => Array r sh e
        -> Array DS sh e
-sdelay a = DS (extent a) (indexS a)
+delayS a = DS (extent a) (indexS a)
 
 -- | Coerce an 'IArray' to an array that can be index symbolically. This is only
 -- safe if we know that the array will only be indexed by constant
