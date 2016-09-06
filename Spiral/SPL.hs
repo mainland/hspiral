@@ -15,8 +15,11 @@ module Spiral.SPL (
     SPL(..),
     spl,
     diag,
+
     lperm,
+
     splExtent,
+
     toMatrix,
 
     (⊗),
@@ -89,6 +92,7 @@ diag = Diag . V.fromList
 lperm :: Integral a => a -> a -> a -> a
 lperm mn n i = i*n `mod` mn + i*n `div` mn
 
+-- | Return the extent of an SPL transform.
 splExtent :: SPL a -> DIM2
 splExtent (E a)     = extent a
 splExtent (I n)     = ix2 n n
@@ -123,6 +127,7 @@ splExtent F2 = ix2 2 2
 
 splExtent (DFT n) = ix2 n n
 
+-- | Convert an SPL transform to an explicit matrix.
 toMatrix :: forall e . Num e => SPL e -> Matrix M e
 toMatrix (E a) =
     manifest a
