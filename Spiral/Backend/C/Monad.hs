@@ -610,8 +610,8 @@ cgExp (BinopE op e1 e2) = do
 
 cgExp (IdxE v es) =
     case typeOf (undefined :: a) of
-      ComplexT DoubleT | useComplexType -> mkIdx v es
-      _                                 -> mkComplexIdx v es
+      ComplexT DoubleT | not useComplexType -> mkComplexIdx v es
+      _                                     -> mkIdx v es
 
 cgExp (ComplexE er ei) =
     CComplex <$> cgExp er <*> cgExp ei
