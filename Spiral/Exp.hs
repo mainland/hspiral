@@ -334,7 +334,8 @@ liftNum2Opt Mul _ (-1) x    = -x
 liftNum2Opt op f x y = liftNum2 op f x y
 
 instance LiftNum (Const a) where
-    liftNum Neg _ (RouC r) = RouC (r + 1 % 2)
+    liftNum Neg _ (ComplexC a b) = ComplexC (-a) (-b)
+    liftNum Neg _ (RouC r)       = RouC (r + 1 % 2)
 
     liftNum _  f (IntC x)      = IntC (f x)
     liftNum _  f (IntegerC x)  = IntegerC (f x)
@@ -367,6 +368,9 @@ instance LiftNum (Const a) where
 --- Exp instance.
 instance (Num (Const a), LiftNum (Const a)) => LiftNum (Exp a) where
     liftNum op f (ConstE c) = ConstE $ liftNumOpt op f c
+
+    liftNum Neg _ (UnopE Neg x)  = x
+    liftNum Neg _ (ComplexE a b) = ComplexE (-a) (-b)
 
     liftNum op _ e  = UnopE op e
 
