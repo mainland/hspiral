@@ -47,6 +47,7 @@ import Language.C.Quote (ToIdent(..))
 import Test.QuickCheck (Arbitrary(..))
 import Text.PrettyPrint.Mainland hiding (flatten)
 
+import Spiral.Driver.Globals
 import Spiral.ExtendedFloat
 import Spiral.Util.Name
 import Spiral.Util.Pretty
@@ -380,6 +381,16 @@ instance (Num (Const a), LiftNum (Const a)) => LiftNum (Exp a) where
     liftNum2 Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
     liftNum2 Mul _ (ComplexE a b) (ComplexE c d) = ComplexE (a*c - b*d) (b*c + a*d)
 
+    -- If we aren't using an explicit complex type in the code generator, then
+    -- we want to make sure that both arguments to the operator have explicit
+    -- real and imaginary parts so that we can cache them separately.
+    liftNum2 Add f x@ComplexE{} y | not useComplexType = liftNum2 Add f x (mkComplexE y)
+    liftNum2 Add f x y@ComplexE{} | not useComplexType = liftNum2 Add f (mkComplexE x) y
+    liftNum2 Sub f x@ComplexE{} y | not useComplexType = liftNum2 Sub f x (mkComplexE y)
+    liftNum2 Sub f x y@ComplexE{} | not useComplexType = liftNum2 Sub f (mkComplexE x) y
+    liftNum2 Mul f x@ComplexE{} y | not useComplexType = liftNum2 Mul f x (mkComplexE y)
+    liftNum2 Mul f x y@ComplexE{} | not useComplexType = liftNum2 Mul f (mkComplexE x) y
+
     liftNum2 op _ e1 e2 = BinopE op e1 e2
 
 instance Num (Const Int) where
@@ -446,6 +457,13 @@ instance Num (Const (Complex Double)) where
     signum  = liftNumOpt Signum signum
 
     fromInteger x = fromComplex (fromInteger x)
+
+-- | Ensure that a complex expression is represented using its constituent real
+-- and imaginary parts.
+mkComplexE :: (Typed a, Num (Exp a)) => Exp (Complex a) -> Exp (Complex a)
+mkComplexE e = ComplexE er ei
+  where
+    (er, ei) = unComplexE e
 
 instance Fractional (Const Double) where
     fromRational = DoubleC . fromRational
