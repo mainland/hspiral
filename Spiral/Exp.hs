@@ -366,13 +366,11 @@ instance LiftNum (Const a) where
 --- The other option would be to forgo the Const instance and push it into the
 --- Exp instance.
 instance (Num (Const a), LiftNum (Const a)) => LiftNum (Exp a) where
-    liftNum op f (ConstE c) =
-        ConstE $ liftNumOpt op f c
+    liftNum op f (ConstE c) = ConstE $ liftNumOpt op f c
 
     liftNum op _ e  = UnopE op e
 
-    liftNum2 op f (ConstE c1) (ConstE c2) =
-        ConstE $ liftNum2Opt op f c1 c2
+    liftNum2 op f (ConstE c1) (ConstE c2) = ConstE $ liftNum2Opt op f c1 c2
 
     liftNum2 Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
     liftNum2 Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
