@@ -35,6 +35,7 @@ runSPL :: ( MonadP m
           , Typed a
           , Num (Exp a)
           , SArray r1 DIM1 (Exp a)
+          , Compute r1 DIM1 (Exp a)
           , MArray r2 DIM1 (Exp a)
           )
        => SPL (Exp a)

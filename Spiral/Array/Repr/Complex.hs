@@ -73,6 +73,11 @@ instance (Typed a, Num (Exp a), MArray r (sh :. Int) (Exp (Complex a))) => MArra
           then write a (sh :. i `quot` 2) (ComplexE e im)
           else write a (sh :. i `quot` 2) (ComplexE re e)
 
+instance SArray r (sh :. Int) (Exp (Complex a)) => Compute (RE r) (sh :. Int) (Exp a) where
+    computeP a b =
+        forShapeP (extent b) $ \ix ->
+            write a ix (indexS b ix)
+
 data CMPLX r
 
 toComplexArray :: Array r (sh :. Int) (Exp a) -> Array (CMPLX r) (sh :. Int) (Exp (Complex a))
@@ -102,3 +107,6 @@ instance (Typed a, Num (Exp a), MArray r (sh :. Int) (Exp a)) => MArray (CMPLX r
         write a (sh :. 2*i+1) ei
       where
         (er, ei) = unComplexE e
+
+instance (Typed a, Num (Exp a), Compute r (sh :. Int) (Exp a)) => Compute (CMPLX r) (sh :. Int) (Exp (Complex a)) where
+    computeP a (CMPLX b) = computeP (toRealArray a) b
