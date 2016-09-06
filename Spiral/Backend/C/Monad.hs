@@ -351,39 +351,6 @@ cacheCExp tau ce0 | shouldCacheCExp ce0 = do
         ci' <- cacheCExp DoubleT ci
         return $ CComplex cr' ci'
 
-    go (CExp [cexp|$ce1 * $double:x - $ce2 * $double:y|]) | y < 0 =
-        cacheCExp tau (CExp [cexp|$ce1 * $double:x + $ce2 * $double:(-y)|])
-
-    go (CExp [cexp|$ce1 * $double:x + $ce2 * $double:y|]) | y < 0 =
-        cacheCExp tau (CExp [cexp|$ce1 * $double:x - $ce2 * $double:(-y)|])
-
-    go (CExp [cexp|$ce1 * $double:x + $ce2 * $double:y|]) | epsDiff x y = do
-        ce12 <- cacheCExp tau e12
-        cacheCExp tau (CExp [cexp|$double:x * $ce12|])
-      where
-        e12 :: CExp
-        e12 = CExp [cexp|$ce1 + $ce2|]
-
-    go (CExp [cexp|$ce1 * $double:x - $ce2 * $double:y|]) | epsDiff x y = do
-        ce12 <- cacheCExp tau e12
-        cacheCExp tau (CExp [cexp|$double:x * $ce12|])
-      where
-        e12 :: CExp
-        e12 = CExp [cexp|$ce1 - $ce2|]
-
-    go (CExp [cexp|-$ce1 - $ce2|]) = do
-        ce1' <- lookupCExp (CExp [cexp|-$ce1|])
-        ce2' <- lookupCExp (CExp [cexp|-$ce2|])
-        case (ce1', ce2') of
-          (CExp [cexp|$id:_|], CExp [cexp|$id:_|]) ->
-              return $ CExp [cexp|$ce1' + $ce2'|]
-          _ -> do
-              ce' <- cacheCExp tau e'
-              return $ CExp [cexp|-$ce'|]
-      where
-        e' :: CExp
-        e' = CExp [cexp|$ce1 + $ce2|]
-
     go (CInit ini) = do
         ce <- cacheConst ini (cgType tau)
         return $ CExp ce
@@ -393,11 +360,6 @@ cacheCExp tau ce0 | shouldCacheCExp ce0 = do
         -- cgAssign will modify the cache
         cgAssign tau ctemp ce
         return ctemp
-
-    epsDiff :: forall a . (Ord a, Fractional a) => a -> a -> Bool
-    epsDiff x y = abs (x - y) < eps
-      where
-        eps = 1e-15
 
 cacheCExp _ ce =
     return ce
@@ -505,13 +467,7 @@ instance MonadCg m => MonadP (Cg m) where
         tau :: Type
         tau = typeOf (undefined :: a)
 
-    cache e@ConstE{} =
-        return e
-
-    cache e@VarE{} =
-        return e
-
-    cache e = do
+    mustCache e = do
         t  <- gensym "t"
         ce <- cgCacheExp e
         insertVar t ce

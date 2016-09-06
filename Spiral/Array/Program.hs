@@ -73,7 +73,47 @@ class ( PrimMonad m
 
     -- | Cache the given expression. This serves as a hint that it will be used
     -- more than once.
-    cache :: Typed a => Exp a -> m (Exp a)
+    cache :: (Typed a, Num (Exp a)) => Exp a -> m (Exp a)
+    cache e@ConstE{} =
+        return e
+
+    cache e@VarE{} =
+        return e
+
+    cache (ComplexE er ei) = do
+        er' <- cache er
+        ei' <- cache ei
+        return (ComplexE er' ei')
+
+    cache (BinopE Add e1 (UnopE Neg e2)) =
+        cache (BinopE Sub e1 e2)
+
+    cache (BinopE Add e1 (BinopE Mul c2 e2)) | isNeg c2 =
+        cache (BinopE Sub e1 (BinopE Mul (-c2) e2))
+
+    cache (BinopE Sub e1 (BinopE Mul c2 e2)) | isNeg c2 =
+        cache (BinopE Add e1 (BinopE Mul (-c2) e2))
+
+    cache (BinopE Add (BinopE Mul c1 e1) (BinopE Mul c2 e2))
+      | ConstE (DoubleC x1) <- c1, ConstE (DoubleC x2) <- c2, epsDiff x1 x2 = do
+        e12 <- cache (BinopE Add e1 e2)
+        cache (BinopE Mul c1 e12)
+
+    cache (BinopE Add (BinopE Mul c1 e1) (BinopE Mul c2 e2))
+      | ConstE (DoubleC x1) <- c1, ConstE (DoubleC x2) <- c2, x1 < 0, epsDiff x1 (-x2) = do
+        e12 <- cache (BinopE Sub e1 e2)
+        cache (BinopE Mul c1 e12)
+
+    cache (BinopE Sub (BinopE Mul c1 e1) (BinopE Mul c2 e2))
+      | ConstE (DoubleC x1) <- c1, ConstE (DoubleC x2) <- c2, x1 < 0, epsDiff x1 (-x2) = do
+        e12 <- cache (BinopE Add e1 e2)
+        cache (BinopE Mul c1 e12)
+
+    cache e =
+        mustCache e
+
+    -- | Really cache the expression.
+    mustCache :: (Typed a, Num (Exp a)) => Exp a -> m (Exp a)
 
     -- | Create a new concrete array of the given shape.
     newArray :: (Shape sh, Typed a)
@@ -84,6 +124,15 @@ class ( PrimMonad m
     cacheArray :: (Typed a, Num (Exp a), IArray r sh (Exp a))
                => Array r sh (Exp a)
                -> m (Array C sh (Exp a))
+
+isNeg :: Exp a -> Bool
+isNeg (ConstE (DoubleC x)) = x < 0
+isNeg _                    = False
+
+epsDiff :: (Ord a, Fractional a) => a -> a -> Bool
+epsDiff x y = abs (x - y) < eps
+  where
+    eps = 1e-15
 
 -- | And alias for 'assignP'.
 infix 4 .:=.

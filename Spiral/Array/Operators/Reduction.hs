@@ -24,6 +24,8 @@ import Spiral.Exp
 foldP :: forall a b r m .
          ( Typed a
          , Typed b
+         , Num (Exp a)
+         , Num (Exp b)
          , SArray r DIM1 (Exp a)
          , MonadP m
          )
