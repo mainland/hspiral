@@ -482,68 +482,67 @@ instance Floating (Const Double) where
     cos x = lift cos x
 
 instance Num (Exp Int) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = ConstE . IntC . fromInteger
 
 instance Num (Exp Integer) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = ConstE . IntegerC
 
 instance Num (Exp Double) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = ConstE . DoubleC . fromInteger
 
 instance Num (Exp Rational) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = ConstE . RationalC . fromInteger
 
 instance Num (Exp (Complex Double)) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate (ComplexE a b) = ComplexE (-a) (-b)
-    negate x = liftNum Neg negate x
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger x = complexE (fromInteger x)
 
