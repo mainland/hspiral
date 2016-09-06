@@ -48,6 +48,7 @@ SRC = \
 	Spiral/Array/Operators/Mapping.hs \
 	Spiral/Array/Operators/Reduction.hs \
 	Spiral/Array/Program.hs \
+	Spiral/Array/Repr/Complex.hs \
 	Spiral/Array/Repr/Slice.hs \
 	Spiral/Array/Repr/Virtual.hs \
 	Spiral/Array/Shape.hs \

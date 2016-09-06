@@ -5,6 +5,7 @@ module Main (main) where
 import Data.Complex
 
 import Spiral.Driver
+import Spiral.Driver.Config
 import Spiral.Exp
 import Spiral.FFT
 import Spiral.SPL
@@ -16,4 +17,7 @@ main = defaultMain $ \args -> do
            _   -> return 4
     let dft_n :: SPL (Exp (Complex Double))
         dft_n = f n
-    codegenC ("dft_" ++ show n) dft_n
+    useComplex <- asksConfig (testDynFlag UseComplex)
+    if useComplex
+      then codegenC ("dft_" ++ show n) dft_n
+      else codegenC ("dft_" ++ show n) (Re dft_n)

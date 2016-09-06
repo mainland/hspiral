@@ -28,6 +28,7 @@ library
     Spiral.Array.Operators.Mapping
     Spiral.Array.Operators.Reduction
     Spiral.Array.Program
+    Spiral.Array.Repr.Complex
     Spiral.Array.Repr.Slice
     Spiral.Array.Repr.Virtual
     Spiral.Array.Shape

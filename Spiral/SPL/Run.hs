@@ -20,6 +20,7 @@ import Text.PrettyPrint.Mainland
 import Spiral.Array
 import Spiral.Array.Operators.IndexSpace
 import Spiral.Array.Program
+import Spiral.Array.Repr.Complex
 import Spiral.Array.Repr.Slice
 import Spiral.Array.Repr.Virtual
 import Spiral.Exp
@@ -118,6 +119,9 @@ runSPL e@(Prod a b) x y | n' == n = do
         t <- newArray (ix1 n)
         runSPL b x t
         runSPL a t y
+
+runSPL (Re a) x y =
+    runSPL a (CMPLX x) (CMPLX y)
 
 runSPL e@F2{} x y = do
     comment $ ppr e
