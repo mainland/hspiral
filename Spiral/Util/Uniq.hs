@@ -98,20 +98,18 @@ class Gensym a where
 instance Gensym String where
     gensymAt s _ = do
         Uniq u <- newUnique
-        return $ s ++ "__" ++ show u
+        return $ if u == 0 then s else s ++ show u
 
     uniquify s = do
         Uniq u <- newUnique
-        return $ s ++ "__" ++ show u
+        return $ if u == 0 then s else s ++ show u
 
 instance Gensym C.Id where
-    gensymAt s l = do
-        Uniq u <- newUnique
-        return $ C.Id (s ++ "__" ++ show u) (srclocOf l)
+    gensymAt s l =
+        C.Id <$> gensymAt s l <*> pure (srclocOf l)
 
-    uniquify (C.Id s l) = do
-        Uniq u <- newUnique
-        return $ C.Id (s ++ "__" ++ show u) l
+    uniquify (C.Id s l) =
+        C.Id <$> uniquify s <*> pure l
 
     uniquify cid =
         return cid
