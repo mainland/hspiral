@@ -150,7 +150,7 @@ instance Integral CExp where
         (CExp [cexp|$ce1 / $ce2|], CExp [cexp|$ce1 % $ce2|])
 
     toInteger (CInt i) = fromIntegral i
-    toInteger _        = error "Integral CExp: fromInteger not implemented"
+    toInteger _        = error "Integral CExp: toInteger not implemented"
 
 instance Fractional CExp where
     fromRational = CDouble . fromRational
