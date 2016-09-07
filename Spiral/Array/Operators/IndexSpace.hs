@@ -9,8 +9,6 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Array.Operators.IndexSpace (
-    backpermute,
-
     row,
 
     mvP
@@ -26,12 +24,6 @@ import Spiral.Array.Operators.Mapping
 import Spiral.Array.Operators.Reduction
 import Spiral.Array.Program
 import Spiral.Exp
-
-backpermute :: SArray r DIM1 a
-            => (forall a . Integral a => a -> a)
-            -> Vector r a
-            -> Vector DS a
-backpermute f x = fromSFunction (extent x) (\(Z :. i) -> indexS x (Z :. f i))
 
 row :: SArray r DIM2 a
     => Matrix r a

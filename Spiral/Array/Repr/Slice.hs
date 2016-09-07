@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      :  Spiral.Array.Repr.Slice
@@ -54,6 +55,11 @@ instance SArray r DIM1 a => SArray (S r) DIM1 a where
 instance MArray r DIM1 e => MArray (S r) DIM1 e where
     read  (S a b s _len) (Z :. ci) = read  a (Z :. b + ci * fromIntegral s)
     write (S a b s _len) (Z :. ci) = write a (Z :. b + ci * fromIntegral s)
+
+instance SArray r DIM1 a => Compute (S r) DIM1 a where
+    computeP a b =
+        forShapeP (extent b) $ \ix ->
+            write a ix (indexS b ix)
 
 -- | Take a slice of an array.
 slice :: Array r DIM1 (Exp a)

@@ -16,8 +16,6 @@ module Spiral.SPL (
     spl,
     diag,
 
-    lperm,
-
     splExtent,
 
     toMatrix,
@@ -87,10 +85,6 @@ spl = E
 -- | Create a diagonal matrix
 diag :: [a] -> SPL a
 diag = Diag . V.fromList
-
--- | The /inverse/ permutation $L^{mn}_n$. Useful for 'backpermute'.
-lperm :: Integral a => a -> a -> a -> a
-lperm mn n i = i*n `mod` mn + i*n `div` mn
 
 -- | Return the extent of an SPL transform.
 splExtent :: SPL a -> DIM2

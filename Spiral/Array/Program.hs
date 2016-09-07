@@ -22,9 +22,9 @@ module Spiral.Array.Program (
 
     MArray(..),
 
-    ForShape(..),
+    Compute(..),
 
-    computeP,
+    ForShape(..),
 
     (.:=.)
   ) where
@@ -147,6 +147,22 @@ class IsArray r sh e => MArray r sh e where
     -- | Write an element of an array.
     write :: MonadP m => Array r sh e -> ExpShapeOf sh -> e -> m ()
 
+class IsArray r sh e => Compute r sh e where
+    -- | Compute @a = b@, that is, compute an array's elements in the given
+    -- destination.
+    computeP :: ( ForShape sh
+                , MArray r' sh e
+                , MonadP m
+                )
+             => Array r' sh e -- ^ Destination
+             -> Array r  sh e -- ^ Source
+             -> m ()
+
+instance Shape sh => Compute DS sh e where
+    computeP a b =
+        forShapeP (extent b) $ \ix ->
+            write a ix (indexS b ix)
+
 -- | Type tag for a concrete array backed by storage in a variable.
 data C
 
@@ -166,6 +182,11 @@ instance (Shape sh, Typed a) => MArray C sh (Exp a) where
     read  (C _sh v) ix = return $ IdxE v (listOfExpShape ix)
     write (C _sh v) ix = assignP (IdxE v (listOfExpShape ix))
 
+instance Shape sh => Compute C sh (Exp a) where
+    computeP a b =
+        forShapeP (extent b) $ \ix ->
+            write a ix (indexS b ix)
+
 class Shape sh => ForShape sh where
     -- | Allow iterating over all indices in a shape.
     forShapeP :: MonadP m
@@ -181,17 +202,3 @@ instance ForShape sh => ForShape (sh :. Int) where
       forShapeP sh $ \csh ->
         forP 0 i $ \ci ->
           k (csh :. ci)
-
--- | Compute @a = b@, that is, compute an array's elements in the given
--- destination.
-computeP :: ( ForShape sh
-            , MArray r1 sh e
-            , SArray r2 sh e
-            , MonadP m
-            )
-         => Array r1 sh e -- ^ Destination
-         -> Array r2 sh e -- ^ Source
-         -> m ()
-computeP a b =
-    forShapeP (extent b) $ \ix ->
-        write a ix (indexS b ix)
