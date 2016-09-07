@@ -617,7 +617,7 @@ cgExp (ImE e) = do
 
 mkIdx :: MonadCg m => Var -> [Exp Int] -> Cg m CExp
 mkIdx v es = do
-    ces <- mapM cgCacheExp es
+    ces <- mapM cgExp es
     return $ CExp $ foldr cidx [cexp|$id:v|] ces
   where
     cidx ci ce = [cexp|$ce[$ci]|]
