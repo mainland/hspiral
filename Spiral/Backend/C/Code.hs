@@ -21,6 +21,8 @@ data Code = Code
       codeDefs :: !(Seq C.Definition)
     , -- | Top-level function definitions
       codeFunDefs :: !(Seq C.Definition)
+    , -- | Function-level declarations
+      codeFunDecls :: !(Seq C.InitGroup)
     , -- | Local declarations
       codeDecls :: !(Seq C.InitGroup)
     , -- | Local statements
@@ -32,20 +34,23 @@ instance Pretty Code where
     ppr c = stack $
             (map ppr . toList . codeDefs) c ++
             (map ppr . toList . codeFunDefs) c ++
+            (map ppr . toList . codeFunDecls) c ++
             (map ppr . toList . codeDecls) c ++
             (map ppr . toList . codeStms) c
 
 instance Monoid Code where
     mempty = Code
-        { codeDefs              = mempty
-        , codeFunDefs           = mempty
-        , codeDecls             = mempty
-        , codeStms              = mempty
+        { codeDefs     = mempty
+        , codeFunDefs  = mempty
+        , codeFunDecls = mempty
+        , codeDecls    = mempty
+        , codeStms     = mempty
         }
 
     a `mappend` b = Code
-        { codeDefs    = codeDefs a <> codeDefs b
-        , codeFunDefs = codeFunDefs a <> codeFunDefs b
-        , codeDecls   = codeDecls a <> codeDecls b
-        , codeStms    = codeStms a <> codeStms b
+        { codeDefs     = codeDefs a <> codeDefs b
+        , codeFunDefs  = codeFunDefs a <> codeFunDefs b
+        , codeFunDecls = codeFunDecls a <> codeFunDecls b
+        , codeDecls    = codeDecls a <> codeDecls b
+        , codeStms     = codeStms a <> codeStms b
         }

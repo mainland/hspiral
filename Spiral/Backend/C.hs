@@ -53,7 +53,7 @@ codegen name a = do
     extendVars [(vx, CExp [cexp|$id:cx|]), (vy, CExp [cexp|$id:cy|])] $ do
       let x =  P.C (ix1 n) vx
       let y =  P.C (ix1 m) vy
-      items <- inNewBlock_ $
+      items <- inNewFunBlock_ $
                runSPL a (fromGather x) >>= P.computeP y
       appendTopFunDef [cedecl|
 void $id:name(const $ty:(restrict (cgArrayType tau (ix1 n))) $id:cx,
