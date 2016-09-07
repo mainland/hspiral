@@ -109,6 +109,15 @@ class ( PrimMonad m
         e12 <- cache (BinopE Add e1 e2)
         cache (BinopE Mul c1 e12)
 
+    cache (BinopE op e1 e2) = do
+        e1' <- cache e1
+        e2' <- cache e2
+        mustCache (BinopE op e1' e2')
+
+    cache (UnopE op e) = do
+        e' <- cache e
+        mustCache (UnopE op e')
+
     cache e =
         mustCache e
 
