@@ -581,15 +581,15 @@ cgExp (ConstE c) = return $ cgConst c
 cgExp (VarE v)   = lookupVar v
 
 cgExp (UnopE op e) =
-    cgCacheExp e >>= go op
+    cgExp e >>= go op
   where
     go Neg ce    = return $ -ce
     go Abs ce    = return $ abs ce
     go Signum ce = return $ signum ce
 
 cgExp (BinopE op e1 e2) = do
-    ce1 <- cgCacheExp e1
-    ce2 <- cgCacheExp e2
+    ce1 <- cgExp e1
+    ce2 <- cgExp e2
     go op ce1 ce2
   where
     go Add  ce1 ce2 = return $ ce1 + ce2
