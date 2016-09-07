@@ -1,7 +1,7 @@
 TOP=.
 
 .PHONY : all
-all : test dftgen
+all : test dftgen voronenko
 
 include mk/common.mk
 
@@ -99,6 +99,10 @@ dftgen.prof : dftgen
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make examples/DFTGen.hs -odir obj -hidir obj \
 		-prof -auto-all -caf-all -osuf p_o -hisuf p_hi -hcsuf p_hc -o $@
+
+voronenko : examples/Voronenko.hs $(SRC) dist/build/autogen/cabal_macros.h
+	@mkdir -p obj
+	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
 dist/build/autogen/cabal_macros.h :
 	cabal build
