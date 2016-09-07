@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -32,7 +33,7 @@ instance Shape sh => IsArray V sh (Exp a) where
 
     extent (V sh _) = sh
 
-instance (Shape sh, Typed a) => MArray V sh (Exp a) where
+instance (Shape sh, Typed a, Num (Exp a)) => MArray V sh (Exp a) where
     read  (V sh v) cix = do
         ix <- fromExpShape cix
         MV.read v (toIndex sh ix)

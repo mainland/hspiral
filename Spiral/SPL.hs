@@ -24,10 +24,13 @@ module Spiral.SPL (
     (⊕),
   ) where
 
+import Data.Complex
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
+import Spiral.Array.Repr.Complex
+import Spiral.Exp
 import Spiral.ExtendedFloat
 import Spiral.Util.Pretty
 
@@ -62,6 +65,9 @@ data SPL a where
 
     -- Matrix product
     Prod :: SPL e -> SPL e -> SPL e
+
+    -- Make a complex transform into a real transform.
+    Re :: Num (Exp (Complex a)) => SPL (Exp (Complex a)) -> SPL (Exp a)
 
     -- The 2x2 DFT
     F2 :: SPL e
@@ -108,6 +114,10 @@ splExtent (Prod a b) = ix2 m q
   where
     Z :. m  :. _n = splExtent a
     Z :. _p :. q  = splExtent b
+
+splExtent (Re a) = ix2 (2*m) (2*n)
+  where
+    Z :. m  :. n = splExtent a
 
 splExtent F2 = ix2 2 2
 
@@ -192,6 +202,8 @@ toMatrix (L mn n) =
     f (Z :. i :. j) | j == i*n `mod` mn + i*n `div` mn = 1
                     | otherwise                        = 0
 
+toMatrix (Re a) = manifest (RE (toMatrix a))
+
 toMatrix F2 =
     matrix [[1,  1],
             [1, -1]]
@@ -215,6 +227,7 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (Kron a b) = infixop p KOp a b
     pprPrec p (DSum a b) = infixop p DSOp a b
     pprPrec p (Prod a b) = infixop p POp a b
+    pprPrec _ (Re a)     = text "Re" <> parens (ppr a)
     pprPrec _ F2         = text "F_2"
     pprPrec _ (DFT n)    = text "DFT_" <> ppr n
 

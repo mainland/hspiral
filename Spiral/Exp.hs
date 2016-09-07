@@ -33,7 +33,8 @@ module Spiral.Exp (
     rootOfUnity,
 
     intE,
-    complexE
+    complexE,
+    unComplexE
   ) where
 
 import Data.Complex
@@ -46,6 +47,7 @@ import Language.C.Quote (ToIdent(..))
 import Test.QuickCheck (Arbitrary(..))
 import Text.PrettyPrint.Mainland hiding (flatten)
 
+import Spiral.Driver.Globals
 import Spiral.ExtendedFloat
 import Spiral.Util.Name
 import Spiral.Util.Pretty
@@ -148,15 +150,13 @@ instance Pretty (Const a) where
                ppr (denominator r)
 
     ppr (PiC r) = pprPrec appPrec1 r <+> ppr "pi"
-      where
-        appPrec1 = 6
 
 instance ExtendedFloat (Const (Complex Double)) where
     rootOfUnity = normalize . RouC
 
 pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
 pprComplex (r :+ 0) = ppr r
-pprComplex (r :+ i) = ppr r <+> text "+" <+> ppr i <> char 'i'
+pprComplex (r :+ i) = ppr r <+> text "+" <+> pprPrec appPrec1 i <> char 'i'
 
 -- | Convert a 'Complex Double' to a 'Constant'
 fromComplex :: Complex Double -> Const (Complex Double)
@@ -193,6 +193,10 @@ data Exp a where
     UnopE  :: Unop -> Exp a -> Exp a
     BinopE :: Binop -> Exp a -> Exp a -> Exp a
     IdxE   :: Var -> [Exp Int] -> Exp a
+
+    ComplexE :: (Typed a, Num (Exp a)) => Exp a -> Exp a -> Exp (Complex a)
+    ReE :: Exp (Complex a) -> Exp a
+    ImE :: Exp (Complex a) -> Exp a
 
 deriving instance Eq (Exp a)
 deriving instance Ord (Exp a)
@@ -255,6 +259,18 @@ instance Pretty (Exp a) where
 
     pprPrec _ (IdxE ev eis) =
         ppr ev <> mconcat [brackets (ppr ei) | ei <- eis]
+
+    pprPrec p (ComplexE er ei) =
+        parensIf (p > addPrec) $
+        pprComplex (er :+ ei)
+
+    pprPrec p (ReE e) =
+        parensIf (p > appPrec) $
+        text "re" <+> pprPrec appPrec1 e
+
+    pprPrec p (ImE e) =
+        parensIf (p > appPrec) $
+        text "im" <+> pprPrec appPrec1 e
 
 -- | Representation of types.
 data Type = IntT
@@ -319,7 +335,8 @@ liftNum2Opt Mul _ (-1) x    = -x
 liftNum2Opt op f x y = liftNum2 op f x y
 
 instance LiftNum (Const a) where
-    liftNum Neg _ (RouC r) = RouC (r + 1 % 2)
+    liftNum Neg _ (ComplexC a b) = ComplexC (-a) (-b)
+    liftNum Neg _ (RouC r)       = RouC (r + 1 % 2)
 
     liftNum _  f (IntC x)      = IntC (f x)
     liftNum _  f (IntegerC x)  = IntegerC (f x)
@@ -327,6 +344,10 @@ instance LiftNum (Const a) where
     liftNum _  f (RationalC x) = RationalC (f x)
     liftNum _  f x@ComplexC{}  = fromComplex (f (lower x))
     liftNum op f c             = liftNum op f (flatten c)
+
+    liftNum2 Add _ (ComplexC a b) (ComplexC c d) = ComplexC (a + c) (b + d)
+    liftNum2 Sub _ (ComplexC a b) (ComplexC c d) = ComplexC (a - c) (b - d)
+    liftNum2 Mul _ (ComplexC a b) (ComplexC c d) = ComplexC (a*c - b*d) (b*c + a*d)
 
     liftNum2 Mul _ (RouC x) (RouC y)            = normalize $ RouC (x + y)
     liftNum2 Mul f (RouC x) (ComplexC 1      0) = liftNum2Opt Mul f (RouC x) (RouC 0)
@@ -347,13 +368,28 @@ instance LiftNum (Const a) where
 --- The other option would be to forgo the Const instance and push it into the
 --- Exp instance.
 instance (Num (Const a), LiftNum (Const a)) => LiftNum (Exp a) where
-    liftNum op f (ConstE c) =
-        ConstE $ liftNumOpt op f c
+    liftNum op f (ConstE c) = ConstE $ liftNumOpt op f c
+
+    liftNum Neg _ (UnopE Neg x)  = x
+    liftNum Neg _ (ComplexE a b) = ComplexE (-a) (-b)
 
     liftNum op _ e  = UnopE op e
 
-    liftNum2 op f (ConstE c1) (ConstE c2) =
-        ConstE $ liftNum2Opt op f c1 c2
+    liftNum2 op f (ConstE c1) (ConstE c2) = ConstE $ liftNum2Opt op f c1 c2
+
+    liftNum2 Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
+    liftNum2 Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
+    liftNum2 Mul _ (ComplexE a b) (ComplexE c d) = ComplexE (a*c - b*d) (b*c + a*d)
+
+    -- If we aren't using an explicit complex type in the code generator, then
+    -- we want to make sure that both arguments to the operator have explicit
+    -- real and imaginary parts so that we can cache them separately.
+    liftNum2 Add f x@ComplexE{} y | not useComplexType = liftNum2 Add f x (mkComplexE y)
+    liftNum2 Add f x y@ComplexE{} | not useComplexType = liftNum2 Add f (mkComplexE x) y
+    liftNum2 Sub f x@ComplexE{} y | not useComplexType = liftNum2 Sub f x (mkComplexE y)
+    liftNum2 Sub f x y@ComplexE{} | not useComplexType = liftNum2 Sub f (mkComplexE x) y
+    liftNum2 Mul f x@ComplexE{} y | not useComplexType = liftNum2 Mul f x (mkComplexE y)
+    liftNum2 Mul f x y@ComplexE{} | not useComplexType = liftNum2 Mul f (mkComplexE x) y
 
     liftNum2 op _ e1 e2 = BinopE op e1 e2
 
@@ -422,6 +458,13 @@ instance Num (Const (Complex Double)) where
 
     fromInteger x = fromComplex (fromInteger x)
 
+-- | Ensure that a complex expression is represented using its constituent real
+-- and imaginary parts.
+mkComplexE :: (Typed a, Num (Exp a)) => Exp (Complex a) -> Exp (Complex a)
+mkComplexE e = ComplexE er ei
+  where
+    (er, ei) = unComplexE e
+
 instance Fractional (Const Double) where
     fromRational = DoubleC . fromRational
 
@@ -459,67 +502,67 @@ instance Floating (Const Double) where
     cos x = lift cos x
 
 instance Num (Exp Int) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = ConstE . IntC . fromInteger
 
 instance Num (Exp Integer) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = ConstE . IntegerC
 
 instance Num (Exp Double) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = ConstE . DoubleC . fromInteger
 
 instance Num (Exp Rational) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger = ConstE . RationalC . fromInteger
 
 instance Num (Exp (Complex Double)) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
+    (+) = liftNum2Opt Add (+)
+    (-) = liftNum2Opt Sub (-)
+    (*) = liftNum2Opt Mul (*)
 
-    abs = liftNum Abs abs
+    abs = liftNumOpt Abs abs
 
-    negate = liftNum Neg negate
+    negate = liftNumOpt Neg negate
 
-    signum  = liftNum Signum signum
+    signum  = liftNumOpt Signum signum
 
     fromInteger x = complexE (fromInteger x)
 
@@ -549,3 +592,9 @@ intE = ConstE . IntC
 
 complexE :: Complex Double -> Exp (Complex Double)
 complexE (r :+ i) = ConstE $ ComplexC (DoubleC r) (DoubleC i)
+
+unComplexE :: Exp (Complex a) -> (Exp a, Exp a)
+unComplexE (ConstE (ComplexC r i)) = (ConstE r, ConstE i)
+unComplexE (ConstE (RouC r))       = (ConstE (cos (PiC (2*r))), ConstE (sin (PiC (2*r))))
+unComplexE (ComplexE r i )         = (r, i)
+unComplexE e                       = (ReE e, ImE e)

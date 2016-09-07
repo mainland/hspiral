@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 -- |
 -- Module      :  Spiral.Driver
 -- Copyright   :  (c) 2016 Drexel University
@@ -15,7 +17,6 @@ import Control.Monad.Exception (SomeException,
                                 catch)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString.Lazy as B
-import Data.Complex
 import Data.Foldable (toList)
 import qualified Data.Text.Lazy.Encoding as E
 import System.Environment (getArgs)
@@ -51,8 +52,9 @@ defaultMainWith config k = do
     printFailure e = hPrint stderr e >> exitFailure
 
 -- | Generate C code for the given SPL transform.
-codegenC :: String
-         -> SPL (Exp (Complex Double))
+codegenC :: (Typed a, Num (Exp a))
+         => String
+         -> SPL (Exp a)
          -> Spiral ()
 codegenC name e = do
     defs <- evalCg $ codegen name e
