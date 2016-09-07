@@ -87,6 +87,7 @@ import qualified Data.Map as Map
 import Data.Monoid
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
+import Data.String (fromString)
 import Language.C.Pretty ()
 import qualified Language.C.Quote as C
 import Language.C.Quote.C
@@ -468,8 +469,10 @@ instance MonadCg m => MonadP (Cg m) where
         tau = typeOf (undefined :: a)
 
     mustCache e = do
-        t  <- gensym "t"
         ce <- cgCacheExp e
+        t  <- case ce of
+                CExp [cexp|$id:t|] -> return $ fromString t
+                _                  -> gensym "t"
         insertVar t ce
         return $ VarE t
 
