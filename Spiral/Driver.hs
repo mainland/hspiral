@@ -7,6 +7,8 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Driver (
+    Spiral,
+    
     defaultMainWith,
     defaultMain,
 
