@@ -50,9 +50,9 @@ runSPL :: forall m a .
        -> Vector T (Exp a)
        -> m (Vector T (Exp a))
 runSPL e@E{} x = do
-    comment $ ppr e
     t <- gather x
-    computeTransform e $ \y ->
+    computeTransform e $ \y -> do
+      comment $ ppr e
       mvP (toMatrix e) t y
 
 runSPL I{} x =
@@ -65,9 +65,9 @@ runSPL (L mn n) x =
     return $ permute (LP mn n) x
 
 runSPL e@(Diag v) x = do
-    comment $ ppr e
     t <- gather x
-    computeTransform e $ \y ->
+    computeTransform e $ \y -> do
+      comment $ ppr e
       shouldUnroll n >>= go t y
   where
     n :: Int
@@ -90,27 +90,27 @@ runSPL e@(Diag v) x = do
         f (Z :. i) = v V.! i
 
 runSPL e@(Kron (I m) a) x | n' == n = do
-    comment $ ppr e
     t <- gather x
-    computeTransform e $ \y ->
+    computeTransform e $ \y -> do
+      comment $ ppr e
       forP 0 m $ \i ->
         slice y (i*fromIntegral n) 1 n .<-. runSPL a (fromGather (slice t (i*fromIntegral n) 1 n))
   where
     Z :. n :. n' = splExtent a
 
 runSPL e@(Kron a (I n)) x | m' == m = do
-    comment $ ppr e
     t <- gather x
-    computeTransform e $ \y ->
+    computeTransform e $ \y -> do
+      comment $ ppr e
       forP 0 n $ \i ->
         slice y i n m .<-. runSPL a (fromGather (slice t i n m))
   where
    Z :. m :. m' = splExtent a
 
 runSPL e@(DSum a b) x | m' == m && n' == n = do
-    comment $ ppr e
     t <- gather x
     computeTransform e $ \y -> do
+      comment $ ppr e
       slice y 0 1 m                .<-. runSPL a  (fromGather (slice t 0 1 m))
       slice y (fromIntegral m) 1 n .<-. runSPL b  (fromGather (slice t (fromIntegral m) 1 n))
   where
@@ -132,16 +132,16 @@ runSPL (Re a) x = do
       toComplexArray y .<-. runSPL a (fromGather t')
 
 runSPL a@F2{} x = do
-    comment $ ppr a
     t <- gather x
-    computeTransform a $ \y ->
+    computeTransform a $ \y -> do
+      comment $ ppr a
       mvP (toMatrix a) t y
 
 runSPL a x = do
     traceCg $ text "Falling back to default compilation path:" </> ppr a
-    comment $ ppr a
     t <- gather x
-    computeTransform a $ \y ->
+    computeTransform a $ \y -> do
+      comment $ ppr a
       mvP (toMatrix a) t y
 
 computeTransform :: Monad m
