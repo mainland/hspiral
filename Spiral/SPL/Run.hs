@@ -16,6 +16,7 @@ module Spiral.SPL.Run (
 
 import Prelude hiding ((!!), read)
 
+import Control.Monad (unless)
 import Data.Complex
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
@@ -49,12 +50,6 @@ runSPL :: forall m a .
        => SPL (Exp a)
        -> Vector T (Exp a)
        -> m (Vector T (Exp a))
-runSPL e@E{} x = do
-    t <- gather x
-    computeTransform e $ \y -> do
-      comment $ ppr e
-      mvP (toMatrix e) t y
-
 runSPL I{} x =
     return x
 
@@ -131,18 +126,18 @@ runSPL (Re a) x = do
       let t' :: Vector (CMPLX DS) (Exp (Complex a)) = toComplexArray t
       toComplexArray y .<-. runSPL a (fromGather t')
 
-runSPL a@F2{} x = do
-    t <- gather x
-    computeTransform a $ \y -> do
-      comment $ ppr a
-      mvP (toMatrix a) t y
-
 runSPL a x = do
-    traceCg $ text "Falling back to default compilation path:" </> ppr a
+    unless (shouldDefault a) $
+      traceCg $ text "Falling back to default compilation path:" </> ppr a
     t <- gather x
     computeTransform a $ \y -> do
       comment $ ppr a
       mvP (toMatrix a) t y
+  where
+    shouldDefault :: SPL (Exp a) -> Bool
+    shouldDefault E{}  = True
+    shouldDefault F2{} = True
+    shouldDefault _    = False
 
 computeTransform :: Monad m
                  => SPL a
