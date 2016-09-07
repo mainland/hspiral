@@ -1,7 +1,9 @@
 TOP=.
 
+TARGETS = test dftgen voronenko
+
 .PHONY : all
-all : test dftgen voronenko
+all : $(TARGETS)
 
 include mk/common.mk
 
@@ -81,7 +83,7 @@ SRC = \
 .PHONY : clean
 clean :
 	$(_QUIET)cabal clean
-	$(_QUIET)rm -rf test
+	$(_QUIET)rm -rf $(TARGETS)
 
 .PHONY : distclean
 distclean : clean
