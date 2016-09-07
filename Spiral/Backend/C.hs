@@ -46,20 +46,20 @@ codegen :: forall a m . (Num (Exp a), Typed a, MonadCg m)
 codegen name a = do
     traceCg $ text "Compiling:" </> ppr a
     appendTopDef [cedecl|$esc:("#include <complex.h>")|]
-    let cin :: C.Id  = fromString "in"
-    let cout :: C.Id = fromString "out"
-    let vin          = fromString "in"
-    let vout         = fromString "out"
-    extendVars [(vin, CExp [cexp|$id:cin|]), (vout, CExp [cexp|$id:cout|])] $ do
-      let x =  P.C (ix1 n) vin
-      let y =  P.C (ix1 m) vout
+    let cx :: C.Id = fromString "X"
+    let cy :: C.Id = fromString "Y"
+    let vx         = fromString "X"
+    let vy         = fromString "Y"
+    extendVars [(vx, CExp [cexp|$id:cx|]), (vy, CExp [cexp|$id:cy|])] $ do
+      let x =  P.C (ix1 n) vx
+      let y =  P.C (ix1 m) vy
       items <- inNewBlock_ $
                runSPL a (fromGather x) >>= P.computeP y
       appendTopFunDef [cedecl|
-void $id:name(const $ty:(restrict (cgArrayType tau (ix1 n))) $id:cin,
-             $ty:(restrict (cgArrayType tau (ix1 m))) $id:cout)
+void $id:name(const $ty:(restrict (cgArrayType tau (ix1 n))) $id:cx,
+                    $ty:(restrict (cgArrayType tau (ix1 m))) $id:cy)
 {
-$items:items
+  $items:items
 }|]
    where
      Z :. m :. n = splExtent a

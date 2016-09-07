@@ -450,7 +450,7 @@ instance MonadCg m => MonadP (Cg m) where
              => sh
              -> Cg m (Array C sh (Exp a))
     newArray sh = do
-        v      <- gensym "v"
+        v      <- gensym "V"
         let cv =  CExp [cexp|$id:v|]
         insertVar v cv
         appendDecl [cdecl|$ty:ctau $id:v;|]
@@ -478,7 +478,7 @@ instance MonadCg m => MonadP (Cg m) where
 
     cacheArray a = do
         cinit <- arrayInit (manifest a)
-        t     <- gensym "t"
+        t     <- gensym "T"
         ct    <- cacheConst cinit [cty|static const $ty:ctau |]
         insertVar t (CExp ct)
         return $ C sh t
