@@ -30,6 +30,7 @@ import Text.PrettyPrint.Mainland
 
 import Spiral.Array
 import qualified Spiral.Array.Program as P
+import Spiral.Array.Repr.Transform
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
 import Spiral.Exp
@@ -53,7 +54,7 @@ codegen name a = do
       let x =  P.C (ix1 n) vin
       let y =  P.C (ix1 m) vout
       items <- inNewBlock_ $
-               runSPL a x y
+               runSPL a (fromGather x) >>= P.computeP y
       appendTopFunDef [cedecl|
 void $id:name(const $ty:(restrict (cgArrayType tau (ix1 n))) $id:cin,
              $ty:(restrict (cgArrayType tau (ix1 m))) $id:cout)
