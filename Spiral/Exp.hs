@@ -585,7 +585,7 @@ instance Integral (Exp Int) where
         (BinopE Quot x y, BinopE Rem x y)
 
     toInteger (ConstE (IntC i)) = fromIntegral i
-    toInteger _                 = error "Integral CExp: fromInteger not implemented"
+    toInteger _                 = error "Integral Exp: toInteger not implemented"
 
 intE :: Int -> Exp Int
 intE = ConstE . IntC
