@@ -18,9 +18,11 @@ GHCFLAGS += \
 	-package exception-mtl \
 	-package exception-transformers \
 	-package language-c-quote \
+	-package libltdl \
 	-package mainland-pretty \
 	-package mtl \
 	-package primitive \
+	-package process \
 	-package ref-fd \
 	-package srcloc \
 	-package symbol \
@@ -30,6 +32,7 @@ GHCFLAGS += \
 	-package text \
 	-package transformers \
 	-package vector \
+	-package vector-fftw \
 	-package HUnit \
 	-package QuickCheck
 
@@ -77,6 +80,10 @@ SRC = \
 	Spiral/Util/Trace.hs \
 	Spiral/Util/Uniq.hs
 
+TESTSRC = \
+  src/test/Test/FFTW.hs \
+  src/test/Test/Gen.hs
+
 #
 # all, clean, and distclean targets
 #
@@ -89,9 +96,9 @@ clean :
 distclean : clean
 	$(_QUIET)rm -rf dist
 
-test : src/test/Main.hs $(SRC) dist/build/autogen/cabal_macros.h
+test : src/test/Main.hs $(SRC) $(TESTSRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
-	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
+	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -isrc/test -odir obj -hidir obj -o $@
 
 dftgen : examples/DFTGen.hs $(SRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
