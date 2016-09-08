@@ -296,6 +296,12 @@ instance Typed Double where
 instance Typed a => Typed (Complex a) where
     typeOf _ = ComplexT (typeOf (undefined :: a))
 
+--------------------------------------------------------------------------------
+--
+-- Num instances
+--
+--------------------------------------------------------------------------------
+
 -- | Class to lift 'Num' operators.
 class LiftNum b where
     -- | Lift a unary operation on 'Num' to the type 'b'
@@ -460,41 +466,6 @@ instance Num (Const (Complex Double)) where
 
     fromInteger x = fromComplex (fromInteger x)
 
-instance Fractional (Const Double) where
-    fromRational = DoubleC . fromRational
-
-    x / y = DoubleC $ lower x / lower y
-
-lift :: (Double -> Double) -> Const Double -> Const Double
-lift f = DoubleC . f . lower
-
-instance Floating (Const Double) where
-    pi = PiC 1
-
-    exp = lift exp
-    log = lift log
-    asin = lift asin
-    acos = lift acos
-    atan = lift atan
-    sinh = lift sinh
-    cosh = lift cosh
-    asinh = lift asinh
-    acosh = lift acosh
-    atanh = lift atanh
-
-    sin (PiC x) = cos (PiC (x - 1 / 2))
-
-    sin x = lift sin x
-
-    cos (PiC x)
-      | x >  1    = cos (PiC (x - 2))
-      | x < -1    = cos (PiC (x + 2))
-      | x == -1   = -1
-      | x == -1/2 = 0
-      | x == 0    = 1
-
-    cos x = lift cos x
-
 instance Num (Exp Int) where
     (+) = liftNum2Opt Add (+)
     (-) = liftNum2Opt Sub (-)
@@ -560,6 +531,55 @@ instance Num (Exp (Complex Double)) where
 
     fromInteger x = complexE (fromInteger x)
 
+--------------------------------------------------------------------------------
+--
+-- Enum/Real/Integral instances
+--
+--------------------------------------------------------------------------------
+
+-- | Class to lift 'Integral' operators.
+class LiftIntegral b where
+    -- | Lift a binary operation on 'LiftIntegral' to the type 'b
+    liftIntegral2 :: Binop -> (forall a . Integral a => a -> a -> a) -> b -> b -> b
+
+instance LiftIntegral (Const Int) where
+    liftIntegral2 _ f (IntC x) (IntC y) = IntC (f x y)
+
+instance Enum (Const Int) where
+    toEnum n          = IntC (fromIntegral n)
+    fromEnum (IntC i) = fromIntegral i
+
+instance Real (Const Int) where
+    toRational (IntC i) = toRational i
+
+instance Integral (Const Int) where
+    quot = liftIntegral2 Quot quot
+    rem  = liftIntegral2 Rem rem
+
+    x `quotRem` y = (x `quot` y, x `rem` y)
+
+    toInteger (IntC i) = fromIntegral i
+
+-- | "Optimizing" version of 'liftIntegral2'.
+liftIntegral2Opt :: (Eq (Exp a), Integral (Exp a), LiftIntegral (Exp a))
+                 => Binop
+                 -> (forall a . Integral a => a -> a -> a)
+                 -> Exp a
+                 -> Exp a
+                 -> Exp a
+liftIntegral2Opt Quot _ (BinopE Mul  e1 e2) e2' | e2' == e2 = e1
+liftIntegral2Opt Rem  _ (BinopE Mul _e1 e2) e2' | e2' == e2 = 0
+
+liftIntegral2Opt Quot _ (BinopE Add (BinopE Mul  e1 e2) e3) e2' | e2' == e2 = e1 + e3 `quot` e2
+liftIntegral2Opt Rem  _ (BinopE Add (BinopE Mul _e1 e2) e3) e2' | e2' == e2 = e3 `rem` e2
+
+liftIntegral2Opt op f e1 e2 = liftIntegral2 op f e1 e2
+
+instance (Num (Exp a), Integral (Const a), LiftIntegral (Const a)) => LiftIntegral (Exp a) where
+    liftIntegral2 op f (ConstE x) (ConstE y) = ConstE $ liftIntegral2 op f x y
+
+    liftIntegral2 op _ e1 e2 = BinopE op e1 e2
+
 instance Enum (Exp Int) where
     toEnum n = intE (fromIntegral n)
 
@@ -571,15 +591,60 @@ instance Real (Exp Int) where
     toRational _                 = error "Real Exp: toRational not implemented"
 
 instance Integral (Exp Int) where
-    ConstE (IntC x) `quotRem` ConstE (IntC y) = (intE q, intE r)
-      where
-        (q, r) = x `quotRem` y
+    quot = liftIntegral2Opt Quot quot
+    rem  = liftIntegral2Opt Rem rem
 
-    x `quotRem` y =
-        (BinopE Quot x y, BinopE Rem x y)
+    x `quotRem` y = (x `quot` y, x `rem` y)
 
     toInteger (ConstE (IntC i)) = fromIntegral i
     toInteger _                 = error "Integral Exp: toInteger not implemented"
+
+--------------------------------------------------------------------------------
+--
+-- Fractional/Floating instances
+--
+--------------------------------------------------------------------------------
+
+instance Fractional (Const Double) where
+    fromRational = DoubleC . fromRational
+
+    x / y = DoubleC $ lower x / lower y
+
+lift :: (Double -> Double) -> Const Double -> Const Double
+lift f = DoubleC . f . lower
+
+instance Floating (Const Double) where
+    pi = PiC 1
+
+    exp = lift exp
+    log = lift log
+    asin = lift asin
+    acos = lift acos
+    atan = lift atan
+    sinh = lift sinh
+    cosh = lift cosh
+    asinh = lift asinh
+    acosh = lift acosh
+    atanh = lift atanh
+
+    sin (PiC x) = cos (PiC (x - 1 / 2))
+
+    sin x = lift sin x
+
+    cos (PiC x)
+      | x >  1    = cos (PiC (x - 2))
+      | x < -1    = cos (PiC (x + 2))
+      | x == -1   = -1
+      | x == -1/2 = 0
+      | x == 0    = 1
+
+    cos x = lift cos x
+
+--------------------------------------------------------------------------------
+--
+-- Smart constructors
+--
+--------------------------------------------------------------------------------
 
 -- | Create an 'Exp Int' from an 'Int'.
 intE :: Int -> Exp Int
