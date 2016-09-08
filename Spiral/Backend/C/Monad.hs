@@ -17,8 +17,6 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Backend.C.Monad (
-    MonadCg,
-
     Cg,
     evalCg,
 
@@ -70,8 +68,7 @@ module Spiral.Backend.C.Monad (
 
 import Control.Monad.Exception (MonadException(..))
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Primitive (PrimMonad(..),
-                                RealWorld)
+import Control.Monad.Primitive (PrimMonad(..))
 import Control.Monad.Ref (MonadRef(..))
 import Control.Monad.Reader (MonadReader(..),
                              ReaderT,
@@ -105,20 +102,10 @@ import Spiral.Backend.C.Code
 import Spiral.Backend.C.Util
 import Spiral.Config
 import Spiral.Driver.Globals
-import Spiral.Driver.Monad (Spiral)
+import Spiral.Driver.Monad (MonadSpiral)
 import Spiral.Exp
 import Spiral.Util.Trace
 import Spiral.Util.Uniq
-
-class ( PrimMonad m
-      , PrimState m ~ RealWorld
-      , MonadRef IORef m
-      , MonadConfig m
-      , MonadUnique m
-      , MonadTrace m
-      ) => MonadCg m where
-
-instance MonadCg Spiral where
 
 data CgEnv = CgEnv { unroll :: Bool }
 
@@ -163,7 +150,7 @@ instance PrimMonad m => PrimMonad (Cg m) where
     type PrimState (Cg m) = PrimState m
     primitive = Cg . primitive
 
-instance MonadCg m => MonadCg (Cg m) where
+instance MonadSpiral m => MonadSpiral (Cg m) where
 
 -- | Evaluate a 'Cg' action and return a list of 'C.Definition's.
 evalCg :: Monad m => Cg m () -> m (Seq C.Definition)
@@ -328,7 +315,7 @@ formatComment doc =
     pretty 80 $ group $
     text "/*" <+> align doc </> text "*/"
 
-extendVars :: MonadCg m
+extendVars :: MonadSpiral m
            => [(Var, CExp)]
            -> Cg m a
            -> Cg m a
@@ -342,14 +329,14 @@ extendVars vces m = do
     insert :: Ord k => Map k v -> (k, v) -> Map k v
     insert mp (k, v) = Map.insert k v mp
 
-insertVar :: MonadCg m
+insertVar :: MonadSpiral m
           => Var
           -> CExp
           -> Cg m ()
 insertVar v ce =
     modify $ \s -> s { vars = Map.insert v ce (vars s) }
 
-lookupVar :: MonadCg m => Var -> Cg m CExp
+lookupVar :: MonadSpiral m => Var -> Cg m CExp
 lookupVar v = do
     maybe_ce <- gets (Map.lookup v . vars)
     case maybe_ce of
@@ -372,7 +359,7 @@ cacheConst cinits ctau = do
                     return ce
 
 -- | Cache a 'CExp'. This generates a local binding for the value of the 'CExp'.
-cacheCExp :: forall m . MonadCg m => Type -> CExp -> Cg m CExp
+cacheCExp :: forall m . MonadSpiral m => Type -> CExp -> Cg m CExp
 cacheCExp tau ce0 | shouldCacheCExp ce0 = do
     maybe_ce <- gets (Map.lookup ce0 . cexpCache)
     case maybe_ce of
@@ -407,7 +394,7 @@ shouldCacheCExp (CExp [cexp|-$id:_|]) = False
 shouldCacheCExp _                     = True
 
 -- | @'insertCachedCExp' ce1 ce2@ adds @ce2@ as the cached version of @ce1@.
-insertCachedCExp :: forall m . MonadCg m
+insertCachedCExp :: forall m . MonadSpiral m
                  => CExp
                  -> CExp
                  -> Cg m ()
@@ -416,7 +403,7 @@ insertCachedCExp ce1 ce2 =
 
 -- | Look up the cached C expression corresponding to a 'CExp'. If the 'CExp'
 -- has not been cached, we return it without caching it.
-lookupCExp :: forall m . MonadCg m
+lookupCExp :: forall m . MonadSpiral m
            => CExp -> Cg m CExp
 lookupCExp ce = do
     maybe_ce' <- gets (Map.lookup ce . cexpCache)
@@ -430,7 +417,7 @@ cgVar = gensym
 
 -- | Generate code to allocate a temporary value. A name for the temporary is
 -- optionally provided.
-cgTemp :: MonadCg m => Type -> Maybe Var -> Cg m CExp
+cgTemp :: MonadSpiral m => Type -> Maybe Var -> Cg m CExp
 cgTemp (ComplexT DoubleT) _ | not useComplexType = do
     ct1 <- cgTemp DoubleT Nothing
     ct2 <- cgTemp DoubleT Nothing
@@ -443,7 +430,7 @@ cgTemp tau maybe_v = do
     appendFunDecl [cdecl|$ty:(cgType tau) $id:ct;|]
     return $ CExp [cexp|$id:ct|]
 
-instance MonadCg m => MonadP (Cg m) where
+instance MonadSpiral m => MonadP (Cg m) where
     -- | Always unroll loop in the continuation.
     alwaysUnroll = local $ \env -> env { unroll = True }
 
@@ -525,7 +512,7 @@ gensymFromC _ (CExp [cexp|$id:t|]) =
 gensymFromC t _ =
     gensym t
 
-arrayInit :: forall a sh m . (Shape sh, Typed a, MonadCg m)
+arrayInit :: forall a sh m . (Shape sh, Typed a, MonadSpiral m)
           => Array M sh (Exp a)
           -> Cg m C.Initializer
 arrayInit a = do
@@ -551,7 +538,7 @@ arrayInit a = do
         return [[cinit|{ $inits:(concat inits) }|]]
 
 -- | Compile an assignment.
-cgAssign :: MonadCg m => Type -> CExp -> CExp -> Cg m ()
+cgAssign :: MonadSpiral m => Type -> CExp -> CExp -> Cg m ()
 cgAssign (ComplexT DoubleT) ce1 ce2 | not useComplexType = do
     insertCachedCExp cr2 cr1
     insertCachedCExp ci2 ci1
@@ -577,11 +564,11 @@ cgConst e@RouC{}         = cgConst (flatten e)
 
 -- | Compile an 'Exp a' and cache the result. If we try to compile the same
 -- expression again, we will re-use the cached value.
-cgCacheExp :: forall a m . Typed a => MonadCg m => Exp a -> Cg m CExp
+cgCacheExp :: forall a m . Typed a => MonadSpiral m => Exp a -> Cg m CExp
 cgCacheExp e = cgExp e >>= cacheCExp (typeOf (undefined :: a))
 
 -- | Compile an 'Exp a'.
-cgExp :: forall a m . (Typed a, MonadCg m) => Exp a -> Cg m CExp
+cgExp :: forall a m . (Typed a, MonadSpiral m) => Exp a -> Cg m CExp
 cgExp (ConstE c) = return $ cgConst c
 cgExp (VarE v)   = lookupVar v
 
@@ -620,7 +607,7 @@ cgExp (ImE e) = do
     (_cr, ci) <- unComplex <$> cgExp e
     return ci
 
-mkIdx :: MonadCg m => Var -> [Exp Int] -> Cg m CExp
+mkIdx :: MonadSpiral m => Var -> [Exp Int] -> Cg m CExp
 mkIdx v es = do
     cv  <- lookupVar v
     ces <- mapM cgExp es
@@ -628,7 +615,7 @@ mkIdx v es = do
   where
     cidx ci ce = [cexp|$ce[$ci]|]
 
-mkComplexIdx :: MonadCg m => Var -> [Exp Int] -> Cg m CExp
+mkComplexIdx :: MonadSpiral m => Var -> [Exp Int] -> Cg m CExp
 mkComplexIdx cv []       = return $ CComplex (CExp [cexp|$id:cv[0]|]) (CExp [cexp|$id:cv[1]|])
 mkComplexIdx cv (ci:cis) = CComplex <$> mkIdx cv (2*ci:cis) <*> mkIdx cv (2*ci+1:cis)
 

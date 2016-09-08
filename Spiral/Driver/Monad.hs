@@ -9,6 +9,7 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Driver.Monad (
+    MonadSpiral,
     Spiral,
     runSpiral,
     runSpiralWith
@@ -72,3 +73,13 @@ instance MonadUnique Spiral where
         let u' = u + 1
         u' `seq` writeRef r u'
         return $ Uniq u
+
+class ( PrimMonad m
+      , PrimState m ~ RealWorld
+      , MonadRef IORef m
+      , MonadConfig m
+      , MonadUnique m
+      , MonadTrace m
+      ) => MonadSpiral m where
+
+instance MonadSpiral Spiral where

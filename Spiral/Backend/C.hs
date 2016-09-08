@@ -33,13 +33,14 @@ import qualified Spiral.Array.Program as P
 import Spiral.Array.Repr.Transform
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
+import Spiral.Driver.Monad (MonadSpiral)
 import Spiral.Exp
 import Spiral.SPL
 import Spiral.SPL.Run
 import Spiral.Util.Trace
 
 -- | Generate code for an SPL transform.
-codegen :: forall a m . (Num (Exp a), Typed a, MonadCg m)
+codegen :: forall a m . (Num (Exp a), Typed a, MonadSpiral m)
         => String
         -> SPL (Exp a)
         -> Cg m ()
