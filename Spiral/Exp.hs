@@ -34,6 +34,7 @@ module Spiral.Exp (
 
     intE,
     complexE,
+    ensureComplexE,
     unComplexE
   ) where
 
@@ -385,12 +386,12 @@ instance (Num (Const a), LiftNum (Const a)) => LiftNum (Exp a) where
     -- If we aren't using an explicit complex type in the code generator, then
     -- we want to make sure that both arguments to the operator have explicit
     -- real and imaginary parts so that we can cache them separately.
-    liftNum2 Add f x@ComplexE{} y | not useComplexType = liftNum2 Add f x (mkComplexE y)
-    liftNum2 Add f x y@ComplexE{} | not useComplexType = liftNum2 Add f (mkComplexE x) y
-    liftNum2 Sub f x@ComplexE{} y | not useComplexType = liftNum2 Sub f x (mkComplexE y)
-    liftNum2 Sub f x y@ComplexE{} | not useComplexType = liftNum2 Sub f (mkComplexE x) y
-    liftNum2 Mul f x@ComplexE{} y | not useComplexType = liftNum2 Mul f x (mkComplexE y)
-    liftNum2 Mul f x y@ComplexE{} | not useComplexType = liftNum2 Mul f (mkComplexE x) y
+    liftNum2 Add f x@ComplexE{} y | not useComplexType = liftNum2 Add f x (ensureComplexE y)
+    liftNum2 Add f x y@ComplexE{} | not useComplexType = liftNum2 Add f (ensureComplexE x) y
+    liftNum2 Sub f x@ComplexE{} y | not useComplexType = liftNum2 Sub f x (ensureComplexE y)
+    liftNum2 Sub f x y@ComplexE{} | not useComplexType = liftNum2 Sub f (ensureComplexE x) y
+    liftNum2 Mul f x@ComplexE{} y | not useComplexType = liftNum2 Mul f x (ensureComplexE y)
+    liftNum2 Mul f x y@ComplexE{} | not useComplexType = liftNum2 Mul f (ensureComplexE x) y
 
     liftNum2 op _ e1 e2 = BinopE op e1 e2
 
@@ -458,13 +459,6 @@ instance Num (Const (Complex Double)) where
     signum  = liftNumOpt Signum signum
 
     fromInteger x = fromComplex (fromInteger x)
-
--- | Ensure that a complex expression is represented using its constituent real
--- and imaginary parts.
-mkComplexE :: (Typed a, Num (Exp a)) => Exp (Complex a) -> Exp (Complex a)
-mkComplexE e = ComplexE er ei
-  where
-    (er, ei) = unComplexE e
 
 instance Fractional (Const Double) where
     fromRational = DoubleC . fromRational
@@ -587,12 +581,22 @@ instance Integral (Exp Int) where
     toInteger (ConstE (IntC i)) = fromIntegral i
     toInteger _                 = error "Integral Exp: toInteger not implemented"
 
+-- | Create an 'Exp Int' from an 'Int'.
 intE :: Int -> Exp Int
 intE = ConstE . IntC
 
+-- | Create an 'Exp (Complex Double)' from a 'Complex Double'.
 complexE :: Complex Double -> Exp (Complex Double)
 complexE (r :+ i) = ConstE $ ComplexC (DoubleC r) (DoubleC i)
 
+-- | Ensure that a complex expression is represented using its constituent real
+-- and imaginary parts.
+ensureComplexE :: (Typed a, Num (Exp a)) => Exp (Complex a) -> Exp (Complex a)
+ensureComplexE e = ComplexE er ei
+  where
+    (er, ei) = unComplexE e
+
+-- | Extract the complex and real portions of an 'Exp (Complex a)'.
 unComplexE :: Exp (Complex a) -> (Exp a, Exp a)
 unComplexE (ConstE (ComplexC r i)) = (ConstE r, ConstE i)
 unComplexE (ConstE (RouC r))       = (ConstE (cos (PiC (2*r))), ConstE (sin (PiC (2*r))))
