@@ -30,6 +30,7 @@ import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
+import Spiral.Array.Operators.Permute
 import Spiral.Array.Repr.Complex
 import Spiral.Exp
 import Spiral.ExtendedFloat
@@ -198,8 +199,10 @@ toMatrix (R alpha) =
 toMatrix (L mn n) =
     manifest $ fromFunction (ix2 mn mn) f
   where
-    f (Z :. i :. j) | j == i*n `mod` mn + i*n `div` mn = 1
-                    | otherwise                        = 0
+    f (Z :. i :. j) | j == p i  = 1
+                    | otherwise = 0
+
+    p = fromPermutation (LP mn n)
 
 toMatrix (Re a) = manifest (RE (toMatrix a))
 

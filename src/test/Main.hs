@@ -65,7 +65,7 @@ main :: IO ()
 main = defaultMain tests
 
 tests :: [Test]
-tests = [strideTest, kroneckerTest, directSumTest, dftTests]
+tests = [strideTest, l82Test, kroneckerTest, directSumTest, dftTests]
 
 -- See:
 --   https://en.wikipedia.org/wiki/Kronecker_product
@@ -82,6 +82,21 @@ strideTest = testCase "Stride matrix L^8_4" $
                 [0, 0, 0, 0, 0, 0, 1, 0],
                 [0, 0, 0, 1, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0, 0, 1]]
+
+l82Test :: Test
+l82Test = testCase "Stride matrix L^8_2" $
+    toMatrix (L 8 2) @?= a
+  where
+    a :: Matrix M Int
+    a = matrix [[1, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 1]]
+
 -- See:
 --   https://en.wikipedia.org/wiki/Kronecker_product
 kroneckerTest :: Test
