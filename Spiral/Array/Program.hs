@@ -38,7 +38,7 @@ import Control.Monad.Ref (MonadRef(..))
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
-import Spiral.Driver.Config
+import Spiral.Config
 import Spiral.Exp
 import Spiral.Util.Trace
 import Spiral.Util.Uniq

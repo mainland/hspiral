@@ -4,8 +4,8 @@ module Main (main) where
 
 import Data.Complex
 
-import Spiral.Driver
-import Spiral.Driver.Config
+import Spiral
+import Spiral.Config
 import Spiral.Exp
 import Spiral.FFT
 import Spiral.SPL

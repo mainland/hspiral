@@ -6,8 +6,8 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Complex
 import Text.PrettyPrint.Mainland
 
-import Spiral.Driver
-import Spiral.Driver.Config
+import Spiral
+import Spiral.Config
 import Spiral.Exp
 import Spiral.SPL
 

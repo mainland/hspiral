@@ -40,8 +40,7 @@ library
     Spiral.Backend.C.Code
     Spiral.Backend.C.Monad
     Spiral.Backend.C.Util
-    Spiral.Driver
-    Spiral.Driver.Config
+    Spiral.Config
     Spiral.Exp
     Spiral.ExtendedFloat
     Spiral.FFT
@@ -49,6 +48,7 @@ library
     Spiral.SPL.Run
 
   other-modules:
+    Spiral.Driver
     Spiral.Driver.Globals
     Spiral.Driver.Monad
     Spiral.Driver.Opts

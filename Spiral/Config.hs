@@ -2,12 +2,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
--- Module      :  Spiral.Driver.Config
+-- Module      :  Spiral.Config
 -- Copyright   :  (c) 2016 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module Spiral.Driver.Config (
+module Spiral.Config (
     ModeFlag(..),
     DynFlag(..),
     TraceFlag(..),

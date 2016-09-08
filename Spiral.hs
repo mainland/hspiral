@@ -5,14 +5,25 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral (
+    Config(..),
+
     Spiral,
     runSpiral,
     runSpiralWith,
 
-    codegen
+    defaultMainWith,
+    defaultMain,
+
+    parseOpts,
+
+    codegenC
   ) where
 
+import Spiral.Config (Config(..))
+import Spiral.Driver (defaultMain,
+                      defaultMainWith,
+                      codegenC)
 import Spiral.Driver.Monad (Spiral,
                             runSpiral,
                             runSpiralWith)
-import Spiral.Backend.C (codegen)
+import Spiral.Driver.Opts (parseOpts)

@@ -39,7 +39,7 @@ import System.IO (hPutStrLn,
 import System.IO.Unsafe (unsafePerformIO)
 import Text.PrettyPrint.Mainland
 
-import Spiral.Driver.Config
+import Spiral.Config
 
 class MonadConfig m => MonadTrace m where
     askTraceDepth   :: m Int

@@ -29,9 +29,9 @@ import Test.QuickCheck ((===),
                         choose,
                         counterexample)
 
+import Spiral (Config(..),
+               parseOpts)
 import Spiral.Array
-import Spiral.Driver (Config(..),
-                      parseOpts)
 import Spiral.Exp
 import qualified Spiral.FFT as FFT
 import Spiral.SPL

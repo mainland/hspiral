@@ -38,9 +38,9 @@ import System.IO (IOMode(..),
                   stdout)
 import Text.PrettyPrint.Mainland
 
-import Spiral
 import Spiral.Backend.C
-import Spiral.Driver.Config
+import Spiral.Config
+import Spiral.Driver.Monad
 import Spiral.Driver.Opts
 import Spiral.Exp
 import Spiral.SPL

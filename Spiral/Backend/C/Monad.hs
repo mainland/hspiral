@@ -103,7 +103,7 @@ import Spiral.Array.Program
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
 import Spiral.Backend.C.Util
-import Spiral.Driver.Config
+import Spiral.Config
 import Spiral.Driver.Globals
 import Spiral.Driver.Monad (Spiral)
 import Spiral.Exp

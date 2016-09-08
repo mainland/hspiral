@@ -25,7 +25,7 @@ import Control.Monad.Reader (MonadReader(..),
                              runReaderT)
 import Data.IORef (IORef)
 
-import Spiral.Driver.Config
+import Spiral.Config
 import Spiral.Util.Trace
 import Spiral.Util.Uniq
 

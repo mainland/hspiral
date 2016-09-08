@@ -36,9 +36,9 @@ import System.Process (callProcess)
 import Text.PrettyPrint.Mainland   hiding (flatten)
 
 import qualified Spiral.Backend.C as C
-import Spiral.Driver (Spiral,
-                      runSpiralWith)
-import Spiral.Driver.Config
+import Spiral (Spiral,
+               runSpiralWith)
+import Spiral.Config
 import Spiral.Exp
 import Spiral.SPL
 
