@@ -89,7 +89,7 @@ clean :
 distclean : clean
 	$(_QUIET)rm -rf dist
 
-test : src/Test.hs $(SRC) dist/build/autogen/cabal_macros.h
+test : src/test/Main.hs $(SRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
