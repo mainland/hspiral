@@ -497,7 +497,6 @@ instance Floating (Const Double) where
       | x == -1   = -1
       | x == -1/2 = 0
       | x == 0    = 1
-      | x > 0     = 0
 
     cos x = lift cos x
 
