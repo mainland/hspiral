@@ -8,7 +8,8 @@
 
 module Spiral.Driver (
     Spiral,
-    
+    runSpiral,
+
     defaultMainWith,
     defaultMain,
 
