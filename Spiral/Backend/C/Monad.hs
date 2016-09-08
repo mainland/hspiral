@@ -365,7 +365,7 @@ cacheConst cinits ctau = do
     maybe_ce <- gets (Map.lookup cinits . cinitCache)
     case maybe_ce of
       Just ce -> return ce
-      Nothing -> do ctemp  <- cgVar "m"
+      Nothing -> do ctemp  <- cgVar "K"
                     let ce =  [cexp|$id:ctemp|]
                     appendTopDecl [cdecl|$ty:ctau $id:ctemp = $init:cinits;|]
                     modify $ \s -> s { cinitCache = Map.insert cinits ce (cinitCache s) }
@@ -502,23 +502,28 @@ instance MonadCg m => MonadP (Cg m) where
 
     mustCache e = do
         ce <- cgCacheExp e
-        t  <- case ce of
-                CExp [cexp|$id:t|] -> return $ fromString t
-                _                  -> gensym "t"
+        t  <- gensymFromC "t" ce
         insertVar t ce
         return $ VarE t
 
     cacheArray a = do
         cinit <- arrayInit (manifest a)
-        t     <- gensym "T"
-        ct    <- cacheConst cinit [cty|static const $ty:ctau |]
-        insertVar t (CExp ct)
+        ct    <- CExp <$> cacheConst cinit [cty|static const $ty:ctau |]
+        t     <- gensymFromC "K" ct
+        insertVar t ct
         return $ C sh t
       where
         sh = extent a
 
         ctau :: C.Type
         ctau = cgArrayType (ComplexT DoubleT) sh
+
+gensymFromC :: MonadUnique m => String -> CExp -> m Var
+gensymFromC _ (CExp [cexp|$id:t|]) =
+    return $ fromString t
+
+gensymFromC t _ =
+    gensym t
 
 arrayInit :: forall a sh m . (Shape sh, Typed a, MonadCg m)
           => Array M sh (Exp a)
