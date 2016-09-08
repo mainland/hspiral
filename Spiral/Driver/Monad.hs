@@ -10,7 +10,8 @@
 
 module Spiral.Driver.Monad (
     Spiral,
-    runSpiral
+    runSpiral,
+    runSpiralWith
   ) where
 
 import Control.Monad.Exception (MonadException(..))
@@ -47,6 +48,10 @@ newtype Spiral a = Spiral { unSpiral :: ReaderT SpiralEnv IO a }
 
 runSpiral :: Spiral a -> IO a
 runSpiral m = defaultSpiralEnv >>= runReaderT (unSpiral m)
+
+runSpiralWith :: Config -> Spiral a -> IO a
+runSpiralWith conf m =
+    defaultSpiralEnv >>= runReaderT (unSpiral (localConfig (const conf) m))
 
 instance PrimMonad Spiral where
     type PrimState Spiral = RealWorld

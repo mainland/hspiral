@@ -7,10 +7,12 @@
 module Spiral (
     Spiral,
     runSpiral,
+    runSpiralWith,
 
     codegen
   ) where
 
 import Spiral.Driver.Monad (Spiral,
-                            runSpiral)
+                            runSpiral,
+                            runSpiralWith)
 import Spiral.Backend.C (codegen)

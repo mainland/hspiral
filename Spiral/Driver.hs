@@ -7,11 +7,16 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Driver (
+    Config(..),
     Spiral,
     runSpiral,
+    runSpiralWith,
 
     defaultMainWith,
     defaultMain,
+
+    parseOpts,
+    usage,
 
     codegenC
   ) where
