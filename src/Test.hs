@@ -12,10 +12,11 @@
 module Main (main) where
 
 import Data.Complex
-
-import Test.Framework
-import Test.Framework.Providers.HUnit
-import Test.Framework.Providers.QuickCheck2
+import Test.Framework (Test,
+                       defaultMain,
+                       testGroup)
+import Test.Framework.Providers.HUnit (testCase)
+import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.HUnit ((@?=))
 import Test.QuickCheck ((===),
                         Arbitrary(..),
