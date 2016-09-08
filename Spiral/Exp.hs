@@ -91,6 +91,7 @@ data Const a where
 deriving instance Eq (Const a)
 deriving instance Show (Const a)
 
+-- | Lower a 'Const a' to the value of type 'a' that it represents.
 lower :: Const a -> a
 lower (IntC x)       = x
 lower (IntegerC x)   = x
