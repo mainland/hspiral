@@ -56,8 +56,8 @@ codegen name a = do
       items <- inNewFunBlock_ $
                runSPL a (fromGather x) >>= P.computeP y
       appendTopFunDef [cedecl|
-void $id:name(const $ty:(restrict (cgArrayType tau (ix1 n))) $id:cx,
-                    $ty:(restrict (cgArrayType tau (ix1 m))) $id:cy)
+void $id:name(const $ty:(mkParamType (cgArrayType tau (ix1 n))) $id:cx,
+                    $ty:(mkParamType (cgArrayType tau (ix1 m))) $id:cy)
 {
   $items:items
 }|]
@@ -67,18 +67,21 @@ void $id:name(const $ty:(restrict (cgArrayType tau (ix1 n))) $id:cx,
      tau :: Type
      tau = typeOf (undefined :: a)
 
-     restrict :: C.Type -> C.Type
-     restrict (C.Type dspec decl s) =
-         C.Type dspec (restrictDecl decl) s
+     mkParamType :: C.Type -> C.Type
+     mkParamType (C.Type dspec decl s) = C.Type dspec (mkRestrict decl) s
        where
-         restrictDecl :: C.Decl -> C.Decl
-         restrictDecl (C.Ptr quals d s) =
-             C.Ptr (C.Trestrict s:quals) (restrictDecl d) s
+         mkRestrict :: C.Decl -> C.Decl
+         mkRestrict (C.Ptr quals d s) =
+             C.Ptr (C.Trestrict s:quals) (mkRestrict d) s
 
-         restrictDecl (C.Array quals sz d s) =
-             C.Array (C.Trestrict s:quals) sz (restrictDecl d) s
+         mkRestrict (C.Array quals sz d s) =
+             C.Array (C.Trestrict s:quals) (mkStatic sz) (mkRestrict d) s
 
-         restrictDecl d =
+         mkRestrict d =
              d
 
-     restrict ty = ty
+         mkStatic :: C.ArraySize -> C.ArraySize
+         mkStatic (C.ArraySize _ e l) = C.ArraySize True e l
+         mkStatic sz                  = sz
+
+     mkParamType ty = ty

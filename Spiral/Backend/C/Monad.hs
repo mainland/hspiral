@@ -654,4 +654,4 @@ cgArrayType (ComplexT DoubleT) sh | not useComplexType =
 cgArrayType tau sh = foldl cidx (cgType tau) (listOfShape sh)
   where
     cidx :: C.Type -> Int -> C.Type
-    cidx ctau i = [cty|$ty:ctau[static $int:i]|]
+    cidx ctau i = [cty|$ty:ctau[$int:i]|]
