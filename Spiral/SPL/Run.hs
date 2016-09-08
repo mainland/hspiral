@@ -54,10 +54,10 @@ runSPL I{} x =
     return x
 
 runSPL (J n) x =
-    return $ permute (JP n) x
+    return $ backpermute (JP n) x
 
 runSPL (L mn n) x =
-    return $ permute (LP mn n) x
+    return $ backpermute (LP mn n) x
 
 runSPL e@(Diag v) x = do
     t <- gather x
