@@ -50,13 +50,16 @@ runSPL :: forall m a .
        => SPL (Exp a)
        -> Vector T (Exp a)
        -> m (Vector T (Exp a))
-runSPL I{} x =
+runSPL e@I{} x = do
+    comment $ ppr e
     return x
 
-runSPL (J n) x =
+runSPL e@(J n) x = do
+    comment $ ppr e
     return $ backpermute (JP n) x
 
-runSPL (L mn n) x =
+runSPL e@(L mn n) x = do
+    comment $ ppr e
     return $ backpermute (LP mn n) x
 
 runSPL e@(Diag v) x = do
