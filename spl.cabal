@@ -44,6 +44,7 @@ library
     Spiral.Exp
     Spiral.ExtendedFloat
     Spiral.FFT
+    Spiral.OpCount
     Spiral.SPL
     Spiral.SPL.Run
 
