@@ -74,6 +74,10 @@ instance MonadUnique Spiral where
         u' `seq` writeRef r u'
         return $ Uniq u
 
+    resetUnique = do
+        r <- asks uniq
+        writeRef r 0
+
 class ( PrimMonad m
       , PrimState m ~ RealWorld
       , MonadRef IORef m

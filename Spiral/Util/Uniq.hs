@@ -50,37 +50,50 @@ class Monad m => MonadUnique m where
     -- | Generate a new unique.
     newUnique :: m Uniq
 
+    -- | Reset the unique counter.
+    resetUnique :: m ()
+
 instance MonadUnique m => MonadUnique (MaybeT m) where
-    newUnique = lift newUnique
+    newUnique   = lift newUnique
+    resetUnique = lift resetUnique
 
 instance MonadUnique m => MonadUnique (ContT r m) where
-    newUnique = lift newUnique
+    newUnique   = lift newUnique
+    resetUnique = lift resetUnique
 
 #if !MIN_VERSION_base(4,8,0)
 instance (Error e, MonadUnique m) => MonadUnique (ErrorT e m) where
-    newUnique = lift newUnique
+    newUnique   = lift newUnique
+    resetUnique = lift resetUnique
 #endif /* !MIN_VERSION_base(4,8,0) */
 
 instance MonadUnique m => MonadUnique (ExceptT e m) where
-    newUnique = lift newUnique
+    newUnique   = lift newUnique
+    resetUnique = lift resetUnique
 
 instance MonadUnique m => MonadUnique (ExceptionT m) where
-    newUnique = lift newUnique
+    newUnique   = lift newUnique
+    resetUnique = lift resetUnique
 
 instance MonadUnique m => MonadUnique (ReaderT r m) where
-    newUnique = lift newUnique
+    newUnique   = lift newUnique
+    resetUnique = lift resetUnique
 
 instance MonadUnique m => MonadUnique (StateT s m) where
-    newUnique = lift newUnique
+    newUnique   = lift newUnique
+    resetUnique = lift resetUnique
 
 instance MonadUnique m => MonadUnique (S.StateT s m) where
-    newUnique = lift newUnique
+    newUnique   = lift newUnique
+    resetUnique = lift resetUnique
 
 instance (Monoid w, MonadUnique m) => MonadUnique (WriterT w m) where
-    newUnique = lift newUnique
+    newUnique   = lift newUnique
+    resetUnique = lift resetUnique
 
 instance (Monoid w, MonadUnique m) => MonadUnique (S.WriterT w m) where
-    newUnique = lift newUnique
+    newUnique   = lift newUnique
+    resetUnique = lift resetUnique
 
 -- | A type that can be gensym'd.
 class Gensym a where
