@@ -86,28 +86,28 @@ class ( PrimMonad m
         return (ComplexE er' ei')
 
     cache (BinopE Add e1 (UnopE Neg e2)) =
-        cache (BinopE Sub e1 e2)
+        cache (e1 - e2)
 
     cache (BinopE Add e1 (BinopE Mul c2 e2)) | isNeg c2 =
-        cache (BinopE Sub e1 (BinopE Mul (-c2) e2))
+        cache (e1 - ((-c2) * e2))
 
     cache (BinopE Sub e1 (BinopE Mul c2 e2)) | isNeg c2 =
-        cache (BinopE Add e1 (BinopE Mul (-c2) e2))
+        cache (e1 + ((-c2) * e2))
 
     cache (BinopE Add (BinopE Mul c1 e1) (BinopE Mul c2 e2))
       | ConstE (DoubleC x1) <- c1, ConstE (DoubleC x2) <- c2, epsDiff x1 x2 = do
-        e12 <- cache (BinopE Add e1 e2)
-        cache (BinopE Mul c1 e12)
+        e12 <- cache (e1 + e2)
+        cache (c1 * e12)
 
     cache (BinopE Add (BinopE Mul c1 e1) (BinopE Mul c2 e2))
       | ConstE (DoubleC x1) <- c1, ConstE (DoubleC x2) <- c2, x1 < 0, epsDiff x1 (-x2) = do
-        e12 <- cache (BinopE Sub e1 e2)
-        cache (BinopE Mul c1 e12)
+        e12 <- cache (e1 - e2)
+        cache (c1 * e12)
 
     cache (BinopE Sub (BinopE Mul c1 e1) (BinopE Mul c2 e2))
       | ConstE (DoubleC x1) <- c1, ConstE (DoubleC x2) <- c2, x1 < 0, epsDiff x1 (-x2) = do
-        e12 <- cache (BinopE Add e1 e2)
-        cache (BinopE Mul c1 e12)
+        e12 <- cache (e1 + e2)
+        cache (c1 * e12)
 
     cache (BinopE op e1 e2) = do
         e1' <- cache e1
