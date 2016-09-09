@@ -18,9 +18,8 @@ module Spiral.Array.Operators.Permute (
 
     Permutation(..),
     Perm(..),
-
-    L(..),
-    J(..),
+    L,
+    J,
 
     Permute(..),
 
@@ -39,43 +38,27 @@ import Spiral.Exp
 -- | A permutation function.
 type PermFun = forall a . Integral a => a -> a
 
--- | An existentially-quantified permutation.
-data Perm = forall a . Permutation a => Perm a
+-- | A permutation.
+class (Show (Perm r), Pretty (Perm r)) => Permutation r where
+    data Perm r
 
--- | A tyep class representing permutations
-class (Show a, Pretty a) => Permutation a where
     -- | Convert a permutation into an explicit index-mappoing function.
-    fromPermutation :: a -> PermFun
+    fromPermutation :: Perm r -> PermFun
 
-    dim :: a -> Int
+    dim :: Perm r -> Int
 
-    invert :: a -> Perm
+    invert :: Perm r -> Perm r
 
-instance Show Perm where
-    show (Perm p) = show p
-
-instance Pretty Perm where
-    ppr (Perm p) = ppr p
-
-instance Permutation Perm where
-    fromPermutation (Perm p) = fromPermutation p
-
-    dim (Perm p) = dim p
-
-    invert (Perm p) = invert p
-
--- See [Voronenko08] p. 24
+data L
 
 -- | The $L^{mn}_n$ $mn \times mn$ stride permutation with stride $n$.
-data L = L Int Int
-  deriving (Eq, Ord, Show)
-
-instance Pretty L where
-    ppr (L mn n) = text "L^" <> ppr mn <> char '_' <> ppr n
-
 instance Permutation L where
+    data Perm L = L Int Int
+      deriving (Eq, Ord, Show)
+
     fromPermutation (L mn n0) = f
       where
+        -- See [Voronenko08] p. 24
         f :: forall b . Integral b => b -> b
         f i = i `quot` m + n * (i `rem` m)
           where
@@ -85,18 +68,20 @@ instance Permutation L where
 
     dim (L mn _n) = mn
 
-    invert (L mn n) = Perm (L mn m)
+    invert (L mn n) = L mn m
       where
         m = mn `quot` n
 
+instance Pretty (Perm L) where
+    ppr (L mn n) = text "L^" <> ppr mn <> char '_' <> ppr n
+
+data J
+
 -- | The reverse identity permutation.
-data J = J Int
-  deriving (Eq, Ord, Show)
-
-instance Pretty J where
-    ppr (J n) = text "J_" <> ppr n
-
 instance Permutation J where
+    data Perm J = J Int
+      deriving (Eq, Ord, Show)
+
     fromPermutation (J n0) = f
       where
         f :: forall b . Integral b => b -> b
@@ -107,13 +92,17 @@ instance Permutation J where
 
     dim (J n) = n
 
-    invert p@J{} = Perm p
+    invert p@J{} = p
 
+instance Pretty (Perm J) where
+    ppr (J n) = text "J_" <> ppr n
+
+-- | Array representations that can be permuted.
 class Permute r where
-    permute :: Permutation a => a -> Vector r b -> Vector r b
+    permute :: Permutation p => Perm p -> Vector r b -> Vector r b
     permute p = backpermute (invert p)
 
-    backpermute :: Permutation a => a -> Vector r b -> Vector r b
+    backpermute :: Permutation p => Perm p -> Vector r b -> Vector r b
     backpermute p = permute (invert p)
 
 instance Permute D where
@@ -126,9 +115,9 @@ instance Permute DS where
       where
         g (Z :. i) = Z :. fromPermutation p i
 
--- | Type tag for backpermuted matrics
 data BP r
 
+-- | A backpermuted vector.
 instance IsArray r DIM1 a => IsArray (BP r) DIM1 a where
     data Array (BP r) DIM1 a = BP PermFun (Array r DIM1 a)
 
@@ -147,6 +136,10 @@ instance MArray r DIM1 e => MArray (BP r) DIM1 e where
 
     write (BP f a) (Z :. ConstE (IntC i)) = write a (Z :. intE (f i))
     write (BP f a) (Z :. i)               = write a (Z :. f i)
+
+-- XXX Do we want to be able to compute a 'BP r'? It is usually better to
+-- permute the destination instead of backpermuting the source, so I've
+-- commented out the Compute instance.
 
 {-
 instance SArray r DIM1 a => Compute (BP r) DIM1 a where

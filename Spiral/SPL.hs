@@ -12,9 +12,12 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.SPL (
+    Permutation(..),
+    Perm(..),
+    L,
+    J,
+
     SPL(..),
-    J(..),
-    L(..),
     spl,
     diag,
 
@@ -50,7 +53,7 @@ data SPL a where
     I :: Int -> SPL e
 
     -- A permutation
-    Pi :: Permutation a => a -> SPL e
+    Pi :: Permutation p => Perm p -> SPL e
 
     -- The rotation matrix
     R :: Floating a => a -> SPL a

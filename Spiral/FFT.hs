@@ -17,6 +17,7 @@ module Spiral.FFT (
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
+import Spiral.Array.Operators.Permute
 import Spiral.ExtendedFloat
 import Spiral.SPL
 
