@@ -371,6 +371,60 @@ instance LiftNum (Const a) where
     liftNum2 _  f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (lower x) (lower y)
     liftNum2 op f x             y             = liftNum2 op f (flatten x) (flatten y)
 
+-- | "Optimizing" version of 'liftNum' for expressions.
+liftNumExp :: (Ord (Exp a), Num (Exp a), LiftNum (Exp a))
+           => Unop
+           -> (forall a . Num a => a -> a)
+           -> Exp a
+           -> Exp a
+liftNumExp Neg _ e | e == 0 = 0
+liftNumExp Neg _ (UnopE Neg x)  = x
+liftNumExp Neg _ (ComplexE a b) = ComplexE (-a) (-b)
+
+liftNumExp op f x = liftNum op f x
+
+-- | "Optimizing" version of 'liftNum2' for expressions.
+liftNum2Exp :: (Eq (Exp a), Num (Exp a), LiftNum (Exp a))
+            => Binop
+            -> (forall a . Num a => a -> a -> a)
+            -> Exp a
+            -> Exp a
+            -> Exp a
+liftNum2Exp Add _ e1 e2
+  | e1 == 0 = e2
+  | e2 == 0 = e1
+
+liftNum2Exp Sub _ e1 e2
+  | e1 == 0 = -e2
+  | e2 == 0 = e1
+
+liftNum2Exp Mul _ e1 e2
+  | e1 ==  0 = 0
+  | e2 ==  0 = 0
+  | e1 ==  1 = e2
+  | e2 ==  1 = e1
+  | e1 == -1 = -e2
+  | e2 == -1 = -e1
+
+liftNum2Exp Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
+liftNum2Exp Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
+liftNum2Exp Mul _ (ComplexE a b) (ComplexE c d) = ComplexE (a*c - b*d) (b*c + a*d)
+
+-- If we aren't using an explicit complex type in the code generator, then
+-- we want to make sure that both arguments to the operator have explicit
+-- real and imaginary parts so that we can cache them separately.
+liftNum2Exp Add _ x@ComplexE{} y | not useComplexType = x + ensureComplexE y
+liftNum2Exp Add _ x y@ComplexE{} | not useComplexType = ensureComplexE x + y
+liftNum2Exp Sub _ x@ComplexE{} y | not useComplexType = x - ensureComplexE y
+liftNum2Exp Sub _ x y@ComplexE{} | not useComplexType = ensureComplexE x - y
+liftNum2Exp Mul _ x@ComplexE{} y | not useComplexType = x * ensureComplexE y
+liftNum2Exp Mul _ x y@ComplexE{} | not useComplexType = ensureComplexE x * y
+
+liftNum2Exp Add _ e1 (UnopE Neg e2) = e1 - e2
+liftNum2Exp Sub _ e1 (UnopE Neg e2) = e1 + e2
+
+liftNum2Exp op f x y = liftNum2 op f x y
+
 --- XXX Need UndecidableInstances for this...but we *must* call
 --- liftNumOpt/liftNum2Opt on constants to ensure they are properly simplified.
 --- The other option would be to forgo the Const instance and push it into the
@@ -378,26 +432,9 @@ instance LiftNum (Const a) where
 instance (Num (Const a), LiftNum (Const a)) => LiftNum (Exp a) where
     liftNum op f (ConstE c) = ConstE $ liftNumOpt op f c
 
-    liftNum Neg _ (UnopE Neg x)  = x
-    liftNum Neg _ (ComplexE a b) = ComplexE (-a) (-b)
-
     liftNum op _ e  = UnopE op e
 
     liftNum2 op f (ConstE c1) (ConstE c2) = ConstE $ liftNum2Opt op f c1 c2
-
-    liftNum2 Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
-    liftNum2 Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
-    liftNum2 Mul _ (ComplexE a b) (ComplexE c d) = ComplexE (a*c - b*d) (b*c + a*d)
-
-    -- If we aren't using an explicit complex type in the code generator, then
-    -- we want to make sure that both arguments to the operator have explicit
-    -- real and imaginary parts so that we can cache them separately.
-    liftNum2 Add f x@ComplexE{} y | not useComplexType = liftNum2 Add f x (ensureComplexE y)
-    liftNum2 Add f x y@ComplexE{} | not useComplexType = liftNum2 Add f (ensureComplexE x) y
-    liftNum2 Sub f x@ComplexE{} y | not useComplexType = liftNum2 Sub f x (ensureComplexE y)
-    liftNum2 Sub f x y@ComplexE{} | not useComplexType = liftNum2 Sub f (ensureComplexE x) y
-    liftNum2 Mul f x@ComplexE{} y | not useComplexType = liftNum2 Mul f x (ensureComplexE y)
-    liftNum2 Mul f x y@ComplexE{} | not useComplexType = liftNum2 Mul f (ensureComplexE x) y
 
     liftNum2 op _ e1 e2 = BinopE op e1 e2
 
@@ -467,67 +504,67 @@ instance Num (Const (Complex Double)) where
     fromInteger x = fromComplex (fromInteger x)
 
 instance Num (Exp Int) where
-    (+) = liftNum2Opt Add (+)
-    (-) = liftNum2Opt Sub (-)
-    (*) = liftNum2Opt Mul (*)
+    (+) = liftNum2Exp Add (+)
+    (-) = liftNum2Exp Sub (-)
+    (*) = liftNum2Exp Mul (*)
 
-    abs = liftNumOpt Abs abs
+    abs = liftNumExp Abs abs
 
-    negate = liftNumOpt Neg negate
+    negate = liftNumExp Neg negate
 
-    signum  = liftNumOpt Signum signum
+    signum  = liftNumExp Signum signum
 
     fromInteger = ConstE . IntC . fromInteger
 
 instance Num (Exp Integer) where
-    (+) = liftNum2Opt Add (+)
-    (-) = liftNum2Opt Sub (-)
-    (*) = liftNum2Opt Mul (*)
+    (+) = liftNum2Exp Add (+)
+    (-) = liftNum2Exp Sub (-)
+    (*) = liftNum2Exp Mul (*)
 
-    abs = liftNumOpt Abs abs
+    abs = liftNumExp Abs abs
 
-    negate = liftNumOpt Neg negate
+    negate = liftNumExp Neg negate
 
-    signum  = liftNumOpt Signum signum
+    signum  = liftNumExp Signum signum
 
     fromInteger = ConstE . IntegerC
 
 instance Num (Exp Double) where
-    (+) = liftNum2Opt Add (+)
-    (-) = liftNum2Opt Sub (-)
-    (*) = liftNum2Opt Mul (*)
+    (+) = liftNum2Exp Add (+)
+    (-) = liftNum2Exp Sub (-)
+    (*) = liftNum2Exp Mul (*)
 
-    abs = liftNumOpt Abs abs
+    abs = liftNumExp Abs abs
 
-    negate = liftNumOpt Neg negate
+    negate = liftNumExp Neg negate
 
-    signum  = liftNumOpt Signum signum
+    signum  = liftNumExp Signum signum
 
     fromInteger = ConstE . DoubleC . fromInteger
 
 instance Num (Exp Rational) where
-    (+) = liftNum2Opt Add (+)
-    (-) = liftNum2Opt Sub (-)
-    (*) = liftNum2Opt Mul (*)
+    (+) = liftNum2Exp Add (+)
+    (-) = liftNum2Exp Sub (-)
+    (*) = liftNum2Exp Mul (*)
 
-    abs = liftNumOpt Abs abs
+    abs = liftNumExp Abs abs
 
-    negate = liftNumOpt Neg negate
+    negate = liftNumExp Neg negate
 
-    signum  = liftNumOpt Signum signum
+    signum  = liftNumExp Signum signum
 
     fromInteger = ConstE . RationalC . fromInteger
 
 instance Num (Exp (Complex Double)) where
-    (+) = liftNum2Opt Add (+)
-    (-) = liftNum2Opt Sub (-)
-    (*) = liftNum2Opt Mul (*)
+    (+) = liftNum2Exp Add (+)
+    (-) = liftNum2Exp Sub (-)
+    (*) = liftNum2Exp Mul (*)
 
-    abs = liftNumOpt Abs abs
+    abs = liftNumExp Abs abs
 
-    negate = liftNumOpt Neg negate
+    negate = liftNumExp Neg negate
 
-    signum  = liftNumOpt Signum signum
+    signum  = liftNumExp Signum signum
 
     fromInteger x = complexE (fromInteger x)
 
