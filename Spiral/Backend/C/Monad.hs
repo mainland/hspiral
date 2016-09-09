@@ -384,7 +384,7 @@ cacheCExp tau ce0 | shouldCacheCExp ce0 = do
 cacheCExp _ ce =
     return ce
 
--- | Retunr 'True' if a 'CExp' is worth caching.
+-- | Return 'True' if a 'CExp' is worth caching.
 shouldCacheCExp :: CExp -> Bool
 shouldCacheCExp CInt{}                = False
 shouldCacheCExp CDouble{}             = False
