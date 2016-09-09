@@ -41,7 +41,7 @@ f 1 = spl $ matrix [[1]]
 f 2 = F2
 
 f n | even n =
-    (f 2 ⊗ I n2) × t n n2 × (I 2 ⊗ f n2) × L n 2
+    (f 2 ⊗ I n2) × t n n2 × (I 2 ⊗ f n2) × Pi (L n 2)
   where
     n2 = n `quot` 2
 

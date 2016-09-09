@@ -19,8 +19,8 @@ module Spiral.Array.Operators.Permute (
     Permutation(..),
     Perm(..),
 
-    LP(..),
-    JP(..),
+    L(..),
+    J(..),
 
     Permute(..),
 
@@ -29,6 +29,8 @@ module Spiral.Array.Operators.Permute (
   ) where
 
 import Prelude hiding (read)
+
+import Text.PrettyPrint.Mainland
 
 import Spiral.Array
 import Spiral.Array.Program
@@ -41,24 +43,38 @@ type PermFun = forall a . Integral a => a -> a
 data Perm = forall a . Permutation a => Perm a
 
 -- | A tyep class representing permutations
-class Permutation a where
+class (Show a, Pretty a) => Permutation a where
     -- | Convert a permutation into an explicit index-mappoing function.
     fromPermutation :: a -> PermFun
 
+    dim :: a -> Int
+
     invert :: a -> Perm
+
+instance Show Perm where
+    show (Perm p) = show p
+
+instance Pretty Perm where
+    ppr (Perm p) = ppr p
 
 instance Permutation Perm where
     fromPermutation (Perm p) = fromPermutation p
+
+    dim (Perm p) = dim p
 
     invert (Perm p) = invert p
 
 -- See [Voronenko08] p. 24
 
 -- | The $L^{mn}_n$ $mn \times mn$ stride permutation with stride $n$.
-data LP = LP Int Int
+data L = L Int Int
+  deriving (Eq, Ord, Show)
 
-instance Permutation LP where
-    fromPermutation (LP mn n0) = f
+instance Pretty L where
+    ppr (L mn n) = text "L^" <> ppr mn <> char '_' <> ppr n
+
+instance Permutation L where
+    fromPermutation (L mn n0) = f
       where
         f :: forall b . Integral b => b -> b
         f i = i `quot` m + n * (i `rem` m)
@@ -67,15 +83,21 @@ instance Permutation LP where
             m = fromIntegral (mn `quot` n0)
             n = fromIntegral n0
 
-    invert (LP mn n) = Perm (LP mn m)
+    dim (L mn _n) = mn
+
+    invert (L mn n) = Perm (L mn m)
       where
         m = mn `quot` n
 
 -- | The reverse identity permutation.
-data JP = JP Int
+data J = J Int
+  deriving (Eq, Ord, Show)
 
-instance Permutation JP where
-    fromPermutation (JP n0) = f
+instance Pretty J where
+    ppr (J n) = text "J_" <> ppr n
+
+instance Permutation J where
+    fromPermutation (J n0) = f
       where
         f :: forall b . Integral b => b -> b
         f i = n - i
@@ -83,7 +105,9 @@ instance Permutation JP where
             n :: b
             n = fromIntegral n0
 
-    invert p@JP{} = Perm p
+    dim (J n) = n
+
+    invert p@J{} = Perm p
 
 class Permute r where
     permute :: Permutation a => a -> Vector r b -> Vector r b

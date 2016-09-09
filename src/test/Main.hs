@@ -52,7 +52,7 @@ tests = [strideTest, l82Test, kroneckerTest, directSumTest, dftTests]
 --   https://en.wikipedia.org/wiki/Kronecker_product
 strideTest :: Test
 strideTest = testCase "Stride matrix L^8_4" $
-    toMatrix (L 8 4) @?= a
+    toMatrix (Pi (L 8 4)) @?= a
   where
     a :: Matrix M Int
     a = matrix [[1, 0, 0, 0, 0, 0, 0, 0],
@@ -66,7 +66,7 @@ strideTest = testCase "Stride matrix L^8_4" $
 
 l82Test :: Test
 l82Test = testCase "Stride matrix L^8_2" $
-    toMatrix (L 8 2) @?= a
+    toMatrix (Pi (L 8 2)) @?= a
   where
     a :: Matrix M Int
     a = matrix [[1, 0, 0, 0, 0, 0, 0, 0],

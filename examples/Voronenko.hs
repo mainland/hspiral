@@ -13,7 +13,7 @@ import Spiral.SPL
 
 main :: IO ()
 main = defaultMain $ \_args ->
-    genTransform (text "Page 35") $ (I 5 ⊗ F2) × L 10 5
+    genTransform (text "Page 35") $ (I 5 ⊗ F2) × Pi (L 10 5)
 
 genTransform :: Doc -> SPL (Exp (Complex Double)) -> Spiral ()
 genTransform doc t = do

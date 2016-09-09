@@ -54,13 +54,9 @@ runSPL e@I{} x = do
     comment $ ppr e
     return x
 
-runSPL e@(J n) x = do
+runSPL e@(Pi p) x = do
     comment $ ppr e
-    return $ backpermute (JP n) x
-
-runSPL e@(L mn n) x = do
-    comment $ ppr e
-    return $ backpermute (LP mn n) x
+    return $ backpermute p x
 
 runSPL e@(Diag v) x = do
     t <- gather x

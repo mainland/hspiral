@@ -13,6 +13,8 @@
 
 module Spiral.SPL (
     SPL(..),
+    J(..),
+    L(..),
     spl,
     diag,
 
@@ -47,14 +49,11 @@ data SPL a where
     -- The $n \times n$ identity matrix.
     I :: Int -> SPL e
 
-    -- The $n \times n$ reverse identity matrix.
-    J :: Int -> SPL e
+    -- A permutation
+    Pi :: Permutation a => a -> SPL e
 
     -- The rotation matrix
     R :: Floating a => a -> SPL a
-
-    -- The $L^{rs}_s$ $rs \times rs$ stride permutation matrix with stride $s$.
-    L :: Int -> Int -> SPL e
 
     -- A diagonal matrix
     Diag :: V.Vector e -> SPL e
@@ -91,9 +90,8 @@ diag = Diag . V.fromList
 splExtent :: SPL a -> DIM2
 splExtent (E a)     = extent a
 splExtent (I n)     = ix2 n n
-splExtent (J n)     = ix2 n n
+splExtent (Pi p)    = ix2 (dim p) (dim p)
 splExtent (R _)     = ix2 2 2
-splExtent (L mn _n) = ix2 mn mn
 
 splExtent (Diag xs) = ix2 n n
   where
@@ -186,23 +184,17 @@ toMatrix (I n) =
     f (Z :. i :. j) | i == j    = 1
                     | otherwise = 0
 
-toMatrix (J n) =
-    manifest $ fromFunction (ix2 n n) f
-  where
-    f (Z :. i :. j) | i + j == n = 1
-                    | otherwise  = 0
-
 toMatrix (R alpha) =
     matrix [[cos alpha, -(sin alpha)],
             [sin alpha, cos alpha]]
 
-toMatrix (L mn n) =
-    manifest $ fromFunction (ix2 mn mn) f
+toMatrix (Pi p) =
+    manifest $ fromFunction (ix2 (dim p) (dim p)) f
   where
-    f (Z :. i :. j) | j == p i  = 1
+    f (Z :. i :. j) | j == g i  = 1
                     | otherwise = 0
 
-    p = fromPermutation (LP mn n)
+    g = fromPermutation p
 
 toMatrix (Re a) = manifest (RE (toMatrix a))
 
@@ -221,9 +213,8 @@ toMatrix (DFT n) = manifest $ fromFunction (ix2 n n) f
 instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (E a)      = pprPrec p a
     pprPrec _ (I n)      = text "I_" <> ppr n
-    pprPrec _ (J n)      = text "J_" <> ppr n
+    pprPrec _ (Pi p)     = ppr p
     pprPrec _ (R alpha)  = text "R_" <> ppr alpha
-    pprPrec _ (L rs s)   = text "L^" <> ppr rs <> char '_' <> ppr s
     pprPrec _ (Diag xs)  = text "diag" <>
                            parens (commasep (map ppr (V.toList xs)))
     pprPrec p (Kron a b) = infixop p KOp a b
