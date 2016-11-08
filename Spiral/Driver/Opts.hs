@@ -49,13 +49,13 @@ options =
     outOpt :: String -> Config -> m Config
     outOpt path fs = return fs { output = Just path }
 
-    parseFFlags :: Monad m => String -> Config -> m Config
+    parseFFlags :: String -> Config -> m Config
     parseFFlags = parseFlagOpts "-f" opts fOpts
       where
         opts :: [FlagOpt]
         opts = mkFlagOpts "" fFlags setDynFlag (Just unsetDynFlag)
 
-    parseDFlags :: Monad m => String -> Config -> m Config
+    parseDFlags :: String -> Config -> m Config
     parseDFlags = parseFlagOpts "-d" opts dOpts
       where
         opts :: [FlagOpt]
@@ -161,7 +161,7 @@ dFlags = [(GenComments, "gen-comments", "add comments in generated code")]
 dTraceFlags :: [(TraceFlag, String, String)]
 dTraceFlags = [(TraceCg, "cg", "trace code generation")]
 
-dOpts :: forall m . Monad m => [FlagOptDescr (Config -> m Config)]
+dOpts :: [FlagOptDescr (Config -> m Config)]
 dOpts = []
 
 parseOpts :: [String] -> IO (Config, [String])

@@ -598,7 +598,7 @@ instance Integral (Const Int) where
     toInteger (IntC i) = fromIntegral i
 
 -- | "Optimizing" version of 'liftIntegral2'.
-liftIntegral2Opt :: (Eq (Exp a), Integral (Exp a), LiftIntegral (Exp a))
+liftIntegral2Opt :: (Integral (Exp a), LiftIntegral (Exp a))
                  => Binop
                  -> (forall a . Integral a => a -> a -> a)
                  -> Exp a
@@ -612,7 +612,7 @@ liftIntegral2Opt Rem  _ (BinopE Add (BinopE Mul _e1 e2) e3) e2' | e2' == e2 = e3
 
 liftIntegral2Opt op f e1 e2 = liftIntegral2 op f e1 e2
 
-instance (Num (Exp a), Integral (Const a), LiftIntegral (Const a)) => LiftIntegral (Exp a) where
+instance LiftIntegral (Const a) => LiftIntegral (Exp a) where
     liftIntegral2 op f (ConstE x) (ConstE y) = ConstE $ liftIntegral2 op f x y
 
     liftIntegral2 op _ e1 e2 = BinopE op e1 e2

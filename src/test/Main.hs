@@ -180,7 +180,7 @@ vectorsOfSize n = V.fromList <$> replicateM n arbitrary
 
 -- | Return 'True' if the maximum pairwise difference between two vectors is
 -- less than epsilon.
-epsDiff :: forall a . (Show a, Ord a, RealFloat a, V.Storable a)
+epsDiff :: forall a . (Show a, RealFloat a, V.Storable a)
         => V.Vector (Complex a)
         -> V.Vector (Complex a)
         -> Property

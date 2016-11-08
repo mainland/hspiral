@@ -28,8 +28,7 @@ mapS f a = fromSFunction (extent a) g
   where
     g ix = f (indexS a ix)
 
-zipWithI :: ( Shape sh
-            , IArray r1 sh (Exp a)
+zipWithI :: ( IArray r1 sh (Exp a)
             , IArray r2 sh (Exp b)
             )
          => (Exp a -> Exp b -> Exp c)

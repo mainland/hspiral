@@ -27,7 +27,7 @@ import Spiral.Exp
 -- | Type tag for a virtual array.
 data V
 
-instance Shape sh => IsArray V sh (Exp a) where
+instance IsArray V sh (Exp a) where
     -- | A matrix whose entries are manifest.
     data Array V sh (Exp a) = V sh (MV.IOVector (Exp a))
 

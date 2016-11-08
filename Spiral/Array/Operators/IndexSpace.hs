@@ -56,8 +56,7 @@ mvP a x y = do
     Z :. n'     = extent x
     Z :. m :. n = extent a
 
-    go :: (MonadP m, MArray r3 DIM1 (Exp a))
-       => Vector r3 (Exp a)
+    go :: Vector r3 (Exp a)
        -> Bool
        -> m ()
     go y True =

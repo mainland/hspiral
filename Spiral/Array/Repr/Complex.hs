@@ -46,7 +46,7 @@ instance IsArray r (sh :. Int) (Exp (Complex a)) => IsArray (RE r) (sh :. Int) (
 instance Pretty (Array r (sh :. Int) (Exp (Complex a))) => Pretty (Array (RE r) (sh :. Int) (Exp a)) where
     ppr (RE a) = text "Re" <> parens (ppr a)
 
-instance IArray r (sh :. Int) (Exp (Complex a)) => IArray (RE r) (sh :. Int) (Exp a) where
+instance (Shape sh, IArray r (sh :. Int) (Exp (Complex a))) => IArray (RE r) (sh :. Int) (Exp a) where
     index (RE a) (sh :. i)
         | i `rem` 2 == 0 = re
         | otherwise      = im

@@ -44,7 +44,7 @@ instance Compute P sh a where
 instance Permute P where
     permute p (P sh k) = P sh (k . backpermute (invert p) . idBackpermute)
 
-toCompute :: (Shape sh, ForShape sh, Compute r sh a) => Array r sh a -> Array P sh a
+toCompute :: (ForShape sh, Compute r sh a) => Array r sh a -> Array P sh a
 toCompute x = fromCompute (extent x) (`computeP` x)
 
 fromCompute :: sh

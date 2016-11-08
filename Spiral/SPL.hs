@@ -243,13 +243,13 @@ instance Pretty MatrixBinop where
     ppr POp  = char '×'
 
 -- | Extract a row of a matrix
-row :: Num e => Matrix M e -> Int -> V.Vector e
+row :: Matrix M e -> Int -> V.Vector e
 row e i = V.slice (i*n) n xs
   where
     M (Z :. _m :. n) xs = manifest e
 
 -- | Extract a column of a matrix
-col :: forall e . Num e => Matrix M e -> Int -> V.Vector e
+col :: forall e . Matrix M e -> Int -> V.Vector e
 col e j = V.generate n f
   where
     M (Z :. _m :. n) xs = manifest e

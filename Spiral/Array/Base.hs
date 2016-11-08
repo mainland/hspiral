@@ -79,7 +79,7 @@ class (Shape sh, IsArray r sh e) => IArray r sh e where
 class Index r sh ix e where
     (!) :: Array r sh e -> ix -> e
 
-instance (Shape sh, IArray r sh e) => Index r sh sh e where
+instance IArray r sh e => Index r sh sh e where
     a ! i = index a i
 
 instance IArray r DIM1 e => Index r DIM1 Int e where
@@ -127,7 +127,7 @@ instance Shape sh => IArray M sh e where
 instance Functor (Array M sh) where
     fmap f (M sh es) = M sh (fmap f es)
 
-instance (Num e, Pretty e) => Pretty (Matrix M e) where
+instance Pretty e => Pretty (Matrix M e) where
       ppr a =
           brackets $ align $
           folddoc (\d1 d2 -> d1 <> comma </> d2) $
@@ -152,7 +152,7 @@ matrix :: [[e]] -> Matrix M e
 matrix = fromLists
 
 -- | Convert a matrix to a list of lists of elements.
-toLists :: (Num e, IArray r DIM2 e)
+toLists :: IArray r DIM2 e
         => Matrix r e
         -> [[e]]
 toLists e = [[a ! ix2 i j | i <- [0..m-1]] | j <- [0..n-1]]
@@ -184,7 +184,7 @@ instance (Shape sh, Ord sh, Ord e) => Ord (Array D sh e) where
 instance (Shape sh, Show sh, Show e) => Show (Array D sh e) where
     show a = show (manifest a)
 
-instance (Num e, Pretty e) => Pretty (Matrix D e) where
+instance Pretty e => Pretty (Matrix D e) where
     ppr = ppr . manifest
 
 -- | Create a delayed array from a function mapping indices to elements.
@@ -193,7 +193,7 @@ fromFunction = D
 
 -- | Produce the extent of an array and a function to retrieve an arbitrary
 -- element.
-toFunction :: (Shape sh, IsArray D sh e)
+toFunction :: Shape sh
            => Array D sh e
            -> (sh, sh -> e)
 toFunction a =
@@ -202,7 +202,7 @@ toFunction a =
 
 -- | Delay an array. This ensures that the internal representation of the array
 -- is a function from indices to elements.
-delay :: (Shape sh, IArray r sh e)
+delay :: IArray r sh e
       => Array r sh e
       -> Array D sh e
 delay a = D (extent a) (index a)
@@ -210,13 +210,13 @@ delay a = D (extent a) (index a)
 -- | Type tag for a delayed symbolic arrays..
 data DS
 
-instance Shape sh => IsArray DS sh e where
+instance IsArray DS sh e where
     -- | A "delayed" matrix, i.e., functional representation.
     data Array DS sh e = DS sh (ExpShapeOf sh -> e)
 
     extent (DS sh _) = sh
 
-instance Shape sh => SArray DS sh e where
+instance SArray DS sh e where
     indexS (DS _sh f) = f
 
 instance Shape sh => IArray DS sh e where
@@ -229,7 +229,7 @@ fromSFunction = DS
 
 -- | Produce the extent of an array and a function to retrieve an arbitrary
 -- element given a symbolic index.
-toSFunction :: (Shape sh, IsArray DS sh e)
+toSFunction :: Shape sh
             => Array DS sh e
             -> (sh, ExpShapeOf sh -> e)
 toSFunction a =

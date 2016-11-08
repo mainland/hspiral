@@ -73,7 +73,7 @@ foreign import ccall "dynamic"
                         -> Ptr (Complex Double)
                         -> IO ()
 
-withCompiledTransform :: (Typed a, Typed (Complex a), Num (Exp a), Num (Exp (Complex a)))
+withCompiledTransform :: (Typed a, Num (Exp a), Num (Exp (Complex a)))
                       => Config
                       -> String
                       -> SPL (Exp (Complex a))

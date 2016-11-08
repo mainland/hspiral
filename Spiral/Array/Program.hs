@@ -175,7 +175,7 @@ instance Shape sh => Compute DS sh e where
 -- | Type tag for a concrete array backed by storage in a variable.
 data C
 
-instance Shape sh => IsArray C sh e where
+instance IsArray C sh e where
     -- | A matrix whose entries are stored in a concrete location.
     data Array C sh e = C sh Var
 
