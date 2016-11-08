@@ -1,7 +1,9 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Test
@@ -15,6 +17,7 @@ import Control.Monad (mzero,
                       replicateM)
 import Data.Complex
 import Data.Maybe (catMaybes)
+import Data.Modular
 import Data.Typeable (Typeable)
 import qualified Data.Vector.Storable as V
 import Data.Word (Word32)
@@ -47,6 +50,7 @@ import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas
 import Spiral.FFT.Rader
 import Spiral.Monad
+import Spiral.NumberTheory
 import Spiral.OpCount
 import Spiral.RootOfUnity
 import Spiral.SPL
@@ -60,6 +64,8 @@ import Test.Gen
 
 main :: IO ()
 main = do
+    setGenerator 17 3
+    setGenerator 2013265921 31
     (conf, opts, _args) <- getArgs >>= \args -> parseOpts' args optionsDescription
     defaultMainWithOpts (tests conf) (mconcat (catMaybes opts))
   where
@@ -69,6 +75,7 @@ main = do
                  , kroneckerTest
                  , directSumTest
                  , dftTests
+                 , moddftTests
                  , searchTests
                  , splitRadixOpcountTests
                  , difOpcountTests
@@ -294,6 +301,30 @@ searchTests =
     dftTest n = testCase ("OpcountSearch(" ++ show n ++ ")") $ do
         Re e <- Spiral.defaultMain $ \_ -> searchOpCount (Re (DFT n) :: SPL (Exp Double))
         toMatrix e @?= toMatrix (DFT n)
+
+--
+-- Modular DFT tests
+--
+
+moddftTests :: Test
+moddftTests = testGroup "Modular DFT tests"
+    [modf4Test_17, modf128Test_2013265921]
+
+-- $F_4$
+modf4Test_17 :: Test
+modf4Test_17 = testCase "F_4 in ℤ/17" $
+    toMatrix fft_spl @?= toMatrix (DFT 4)
+  where
+    fft_spl :: SPL (Exp (ℤ/17))
+    fft_spl = dit 4
+
+-- $F_64$
+modf128Test_2013265921 :: Test
+modf128Test_2013265921 = testCase "F_128 in ℤ/2013265921" $
+    toMatrix fft_spl @?= toMatrix (DFT 128)
+  where
+    fft_spl :: SPL (Exp (ℤ/2013265921))
+    fft_spl = dit 128
 
 ditCodegenTests :: Config -> Test
 ditCodegenTests conf =

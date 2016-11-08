@@ -24,6 +24,7 @@ module Spiral.Backend.C (
 import Prelude hiding ((!!))
 
 import Data.Foldable (toList)
+import Data.Modular
 import Data.Symbol
 import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
@@ -50,6 +51,7 @@ cgProgram :: forall a m . (Num (Exp a), Typed a, MonadSpiral m)
 cgProgram t@(Program f (C n x) (C m y) block) = do
     traceCg $ text "Compiling:" </> ppr t
     appendTopDef [cedecl|$esc:("#include <complex.h>")|]
+    appendTopDef [cedecl|$esc:("#include <stdint.h>")|]
     cx    <- return $ C.Id "X"
     cy    <- return $ C.Id "Y"
     items <- inNewFunBlock_ $
@@ -160,6 +162,7 @@ cgConst (IntegerC x)     = CInt (fromIntegral x)
 cgConst (RationalC x)    = CDouble (fromRational x)
 cgConst (FloatC x)       = CFloat x
 cgConst (DoubleC x)      = CDouble x
+cgConst (ModularC x)     = CLLInt (unMod x)
 cgConst (ComplexC e1 e2) = CComplex (cgConst e1) (cgConst e2)
 cgConst e@W{}            = cgConst (lower e)
 cgConst e@CycC{}         = cgConst (lower e)
@@ -175,6 +178,13 @@ cgExp (UnopE op e) = do
     go op (typeOf (undefined :: a)) ce
   where
     go :: Unop -> Type a -> CExp -> Cg m CExp
+    go Neg (ModPT p) ce    = return $ -ce `rem` fromIntegral p
+    go Abs (ModPT p) ce    = return $ abs ce `rem` fromIntegral p
+    go Signum (ModPT p) ce = return $ signum ce `rem` fromIntegral p
+
+    go op ModPT{} _ =
+        faildoc $ text "Cannot compile" <+> ppr op <+> text "for modular arithmetic"
+
     go Neg _ ce    = return $ -ce
     go Abs _ ce    = return $ abs ce
     go Signum _ ce = return $ signum ce
@@ -198,6 +208,13 @@ cgExp (BinopE op e1 e2) = do
     go op (typeOf (undefined :: a)) ce1 ce2
   where
     go :: Binop -> Type a -> CExp -> CExp -> Cg m CExp
+    go Add (ModPT p) ce1 ce2 = return $ (ce1 + ce2) `rem` fromIntegral p
+    go Sub (ModPT p) ce1 ce2 = return $ (ce1 - ce2) `rem` fromIntegral p
+    go Mul (ModPT p) ce1 ce2 = return $ (ce1 * ce2) `rem` fromIntegral p
+
+    go op ModPT{} _ _ =
+        faildoc $ text "Cannot compile" <+> ppr op <+> text "for modular arithmetic"
+
     go Add _  ce1 ce2 = return $ ce1 + ce2
     go Sub _  ce1 ce2 = return $ ce1 - ce2
     go Mul _  ce1 ce2 = return $ ce1 * ce2

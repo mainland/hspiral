@@ -1,6 +1,6 @@
 TOP=.
 
-TARGETS = test dftgen voronenko maple opcount search
+TARGETS = test dftgen voronenko maple opcount search moddftgen
 
 .PHONY : all
 all : $(TARGETS)
@@ -23,6 +23,7 @@ GHCFLAGS += \
 	-package libltdl \
 	-package logict \
 	-package mainland-pretty \
+	-package modular-arithmetic \
 	-package mtl \
 	-package primitive \
 	-package process \
@@ -46,6 +47,7 @@ GHCFLAGS += \
 SRC = \
 	Data/FlagSet.hs \
 	Data/Heterogeneous.hs \
+	Data/Modular/Instances.hs \
 	Spiral.hs \
 	Spiral/Array.hs \
 	Spiral/Array/Base.hs \
@@ -109,7 +111,7 @@ TESTSRC = \
 #
 .PHONY : clean
 clean :
-	$(_QUIET)rm -rf $(TARGETS) obj dft*.c dft*.so
+	$(_QUIET)rm -rf $(TARGETS) dft*.c dft*.so moddft_*.c moddft_*.so
 
 .PHONY : distclean
 distclean : clean
@@ -141,6 +143,10 @@ opcount : examples/OpCount.hs $(SRC) dist/build/autogen/cabal_macros.h
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
 search : examples/Search.hs $(SRC) dist/build/autogen/cabal_macros.h
+	@mkdir -p obj
+	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
+
+moddftgen : examples/ModDFTGen.hs $(SRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
