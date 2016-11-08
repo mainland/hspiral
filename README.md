@@ -1,6 +1,6 @@
 # Building
 
-Building hspiral requires GHC 7.10.3 (GHC 8 has not been tested).
+Building hspiral requires GHC 8.0.
 
 Suggested method for building once the Haskell Platform has been installed:
 
@@ -12,10 +12,11 @@ Suggested method for building once the Haskell Platform has been installed:
 # cabal test
 ```
 
-Building the test requires that FFTW 3 is installed. On Ubuntu, that can be
-accomplished as follows:
+Building the tests requires that `libltdl` and FFTW 3 are installed. On Ubuntu,
+that can be accomplished as follows:
 
 ```
+sudo apt-get install libltdl-dev
 sudo apt-get install libfftw3-dev
 ```
 
@@ -24,6 +25,15 @@ command sequence above.
 
 Once you have created the cabal sandbox and installed SPL's dependencies, you
 can also type `make` to build the executables explicitly.
+
+## Building on a Mac
+
+I installed the `fftw-3` port from MacPorts and then built a sandbox as follows:
+
+```
+# cabal install --only-dependencies --extra-include-dirs=/usr/include --extra-include-dirs=/opt/local/include --extra-lib-dirs=/usr/lib --extra-lib-dirs=/opt/local/lib
+# cabal configure --extra-include-dirs=/usr/include --extra-include-dirs=/opt/local/include --extra-lib-dirs=/usr/lib --extra-lib-dirs=/opt/local/lib
+```
 
 # Command-line Flags
 
