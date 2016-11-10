@@ -26,6 +26,8 @@ import Spiral.Exp
 -- | A compiled C expression.
 data CExp -- A known integer constant
           = CInt Int
+          -- A known long long (at least 64 bit) constant
+          | CLLInt Integer
           -- A known double constant
           | CDouble Rational
           -- A complex number.
@@ -38,6 +40,7 @@ data CExp -- A known integer constant
 
 instance Eq CExp where
     CInt x       == CInt x'        = x' == x
+    CLLInt x     == CLLInt x'      = x' == x
     CDouble x    == CDouble x'     = x' == x
     CComplex r i == CComplex r' i' = r' == r && i' == i
     CExp e       == CExp e'        = e' == e
@@ -58,6 +61,7 @@ unComplex ce             = (CExp [cexp|creal($ce)|], CExp [cexp|cimag($ce)|])
 
 instance Pretty CExp where
     ppr (CInt x)      = ppr x
+    ppr (CLLInt x)    = ppr x
     ppr (CDouble x)   = ppr x
     ppr ce@CComplex{} = ppr [cexp|$ce|]
     ppr (CExp ce)     = ppr ce
@@ -65,6 +69,7 @@ instance Pretty CExp where
 
 instance ToExp CExp where
     toExp (CInt i)    = const [cexp|$int:i|]
+    toExp (CLLInt i)  = const [cexp|$llint:i|]
     toExp (CDouble x) = const [cexp|$double:x|]
     toExp (CExp ce)   = const ce
     toExp (CInit _)   = error "ToExp CExp: cannot convert CInit to a C expression"
@@ -82,6 +87,7 @@ instance ToInitializer CExp where
 
 instance LiftNum CExp where
     liftNum _ f (CInt x)    = CInt (f x)
+    liftNum _ f (CLLInt x)  = CLLInt (f x)
     liftNum _ f (CDouble x) = CDouble (f x)
 
     liftNum Neg _ (CComplex cr ci)    = CComplex (-cr) (-ci)
@@ -92,6 +98,7 @@ instance LiftNum CExp where
     liftNum Signum _ ce  = CExp [cexp|$ce == 0 ? 0 : ($ce > 0 ? 1 : -1)|]
 
     liftNum2 _ f (CInt x)    (CInt y)    = CInt (f x y)
+    liftNum2 _ f (CLLInt x)  (CLLInt y)  = CLLInt (f x y)
     liftNum2 _ f (CDouble x) (CDouble y) = CDouble (f x y)
 
     liftNum2 Add _ (CComplex a b) (CComplex c d) =
@@ -142,6 +149,10 @@ instance Integral CExp where
     CExp [cexp|$int:x|] `quotRem` y = CInt (fromIntegral x) `quotRem` y
     x `quotRem` CExp [cexp|$int:y|] = x `quotRem` CInt (fromIntegral y)
 
+    CLLInt x `quotRem` CLLInt y = (CLLInt q, CLLInt r)
+      where
+        (q, r) = x `quotRem` y
+
     CInt x `quotRem` CInt y = (CInt q, CInt r)
       where
         (q, r) = x `quotRem` y
@@ -149,8 +160,9 @@ instance Integral CExp where
     ce1 `quotRem` ce2 =
         (CExp [cexp|$ce1 / $ce2|], CExp [cexp|$ce1 % $ce2|])
 
-    toInteger (CInt i) = fromIntegral i
-    toInteger _        = error "Integral CExp: toInteger not implemented"
+    toInteger (CInt i)   = fromIntegral i
+    toInteger (CLLInt i) = fromIntegral i
+    toInteger _          = error "Integral CExp: toInteger not implemented"
 
 instance Fractional CExp where
     fromRational = CDouble . fromRational
