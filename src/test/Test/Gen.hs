@@ -20,6 +20,7 @@ import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as MV
 import Control.Exception (bracket,
                           bracket_)
+import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString.Lazy as B
 import Data.Foldable (toList)
@@ -47,7 +48,7 @@ genComplexTransform :: Config
                     -> SPL (Exp (Complex Double))
                     -> IO (V.Vector (Complex Double) -> V.Vector (Complex Double))
 genComplexTransform conf name e =
-    withCompiledTransform conf name e $ \fptr ->
+    withCompiledTransform conf name (Re e) $ \fptr ->
       return $ mkComplexTransform fptr
 
 mkComplexTransform :: FunPtr (Ptr (Complex Double) -> Ptr (Complex Double) -> IO ())
@@ -73,16 +74,16 @@ foreign import ccall "dynamic"
                         -> Ptr (Complex Double)
                         -> IO ()
 
-withCompiledTransform :: (Typed a, Num (Exp a), Num (Exp (Complex a)))
+withCompiledTransform :: (Typed a, Num (Exp a))
                       => Config
                       -> String
-                      -> SPL (Exp (Complex a))
-                      -> (FunPtr (Ptr (Complex a) -> Ptr (Complex a) -> IO ()) -> IO b)
-                      -> IO b
+                      -> SPL (Exp a)
+                      -> (FunPtr b -> IO c)
+                      -> IO c
 withCompiledTransform conf fname e k = do
     runSpiralWith conf $ do
-        c <- C.evalCg $ C.codegen fname (Re e)
-        if True then writeOutput dotc (toList c) else return ()
+        c <- C.evalCg $ C.codegen fname e
+        when True $ writeOutput dotc (toList c)
     callProcess "gcc" ["-o", dotso, "-fPIC", "-shared", dotc]
     dlInit
     dlSetSearchPath ["."]
