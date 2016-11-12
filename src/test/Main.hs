@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -18,9 +19,13 @@ import Control.Monad (mzero,
 import Data.Complex
 import Data.Maybe (catMaybes)
 import Data.Modular
+import Data.Proxy (Proxy(..))
 import Data.Typeable (Typeable)
 import qualified Data.Vector.Storable as V
 import Data.Word (Word32)
+import GHC.TypeLits (KnownNat,
+                     Nat,
+                     natVal)
 import System.Environment (getArgs)
 import Test.Framework (Test,
                        buildTest,
@@ -30,11 +35,14 @@ import Test.Framework (Test,
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.HUnit ((@?=))
-import Test.QuickCheck (Arbitrary(..),
+import Test.QuickCheck ((===),
+                        Arbitrary(..),
                         Gen,
                         Property,
+                        choose,
+                        counterexample,
                         forAll,
-                        counterexample)
+                        ioProperty)
 
 import qualified Data.FlagSet as FS
 
@@ -84,6 +92,7 @@ main = do
                  , splitRadixCodegenTests conf
                  , improvedSplitRadixCodegenTests conf
                  , searchCodegenTests conf
+                 , modCodegenTests conf
                  ]
 
 -- See:
@@ -377,6 +386,65 @@ codegenTests conf desc f =
         return $
             testProperty (desc ++ " " ++ show n) $
             forAll (uniformVectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
+
+data ModTest (p :: Nat) = ModTest Int Int
+  deriving (Eq, Ord, Show)
+
+instance Arbitrary (ModTest 2013265921) where
+    arbitrary = do
+        n <- choose (0, 12)
+        i <- choose (0, 2^n-1)
+        return $ ModTest n i
+
+instance Arbitrary (ModTest 17) where
+    arbitrary = do
+        n <- choose (0, 4)
+        i <- choose (0, 2^n-1)
+        return $ ModTest n i
+
+moddft17Test :: Config -> Test
+moddft17Test conf = testProperty "Generated ModDFT (p = 17)"
+    (modDFTTest conf :: ModTest 17 -> Property)
+
+moddft2013265921Test :: Config -> Test
+moddft2013265921Test conf = testProperty "Generated ModDFT (p = 2013265921)"
+    (modDFTTest conf :: ModTest 2013265921 -> Property)
+
+modDFTTest :: forall p . KnownNat p => Config -> ModTest p -> Property
+modDFTTest conf (ModTest n i) = ioProperty $ do
+    moddft <- genModularTransform conf
+                                  ("moddft_" ++ show p ++ "_" ++ show n)
+                                  fft_spl
+    return $ moddft e_i === res
+  where
+    fft_spl :: SPL (Exp (ℤ/p))
+    fft_spl = dit (2^n)
+
+    p :: Integer
+    p = natVal (Proxy :: Proxy p)
+
+    len :: Int
+    len = 2^n
+
+    e_i :: V.Vector (ℤ/p)
+    e_i = V.generate len $ \j -> if i == j then 1 else 0
+
+    res :: V.Vector (ℤ/p)
+    res = V.generate len $ \j -> a^j
+      where
+        a :: ℤ/p
+        a = w^i
+
+    w :: ℤ/p
+    w = omega len
+
+modCodegenTests :: Config
+                -> Test
+modCodegenTests conf =
+    testGroup "Generated ModDFT"
+    [ moddft17Test conf
+    , moddft2013265921Test conf
+    ]
 
 -- | Generate vectors of a given size with uniformly distributed elements.
 uniformVectorsOfSize :: (Arbitrary (Uniform01 a), V.Storable a)

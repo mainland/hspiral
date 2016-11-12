@@ -14,6 +14,9 @@ module Data.Modular.Instances () where
 import Data.Modular
 import Data.Proxy (Proxy (..))
 import Data.Ratio
+import Foreign.C.Types (CLLong)
+import Foreign.Ptr (Ptr, castPtr)
+import Foreign.Storable (Storable(..))
 import GHC.TypeLits (KnownNat,
                      natVal)
 import Text.PrettyPrint.Mainland.Class
@@ -23,6 +26,15 @@ import Spiral.RootOfUnity
 
 instance Pretty i => Pretty (i `Mod` n) where
     pprPrec p z = pprPrec p (unMod z)
+
+instance KnownNat p => Storable (ℤ/p) where
+    sizeOf _ = sizeOf (undefined :: CLLong)
+
+    alignment _ = alignment (undefined :: CLLong)
+
+    peek p = toMod . fromIntegral <$> peek (castPtr p :: Ptr CLLong)
+
+    poke p i = poke (castPtr p :: Ptr CLLong) (fromIntegral (unMod i))
 
 instance KnownNat p => Fractional (ℤ/p) where
     recip = Data.Modular.inv
