@@ -493,17 +493,17 @@ instance MonadSpiral m => MonadP (Cg m) where
         insertVar t ce
         return $ VarE t
 
-    cacheArray a = do
-        cinit <- arrayInit (manifest a)
+    cacheArray (arr :: Array r sh (Exp a)) = do
+        cinit <- arrayInit (manifest arr)
         ct    <- CExp <$> cacheConst cinit [cty|static const $ty:ctau |]
         t     <- gensymFromC "K" ct
         insertVar t ct
         return $ C sh t
       where
-        sh = extent a
+        sh = extent arr
 
         ctau :: C.Type
-        ctau = cgArrayType (ComplexT DoubleT) sh
+        ctau = cgArrayType (typeOf (undefined :: a)) sh
 
 gensymFromC :: MonadUnique m => String -> CExp -> m Var
 gensymFromC _ (CExp [cexp|$id:t|]) =
