@@ -10,7 +10,7 @@ stability:     alpha
 homepage:      https://lambda.cs.drexel.edu/gitlab/mainland/spl
 category:      Language
 synopsis:      SPL language.
-tested-with:   GHC==7.10.3
+tested-with:   GHC==8.0.2
 
 description:
   A Haskell implementation of the SPL language.
@@ -74,7 +74,7 @@ library
     text                   >= 1.1      && < 1.3,
     transformers           >= 0.2      && < 0.6,
     vector                 >= 0.11     && < 0.12,
-    QuickCheck             >= 2.8      && < 2.9
+    QuickCheck             >= 2.8      && < 2.10
 
   ghc-options:
     -Wall -fno-warn-name-shadowing
@@ -127,8 +127,8 @@ test-suite test
     transformers               >= 0.2     && < 0.6,
     vector                     >= 0.11    && < 0.12,
     vector-fftw                >= 0.1     && < 0.2,
-    HUnit                      >= 1.3     && < 1.4,
-    QuickCheck                 >= 2.8     && < 2.9
+    HUnit                      >= 1.3     && < 1.6,
+    QuickCheck                 >= 2.8     && < 2.10
 
 source-repository head
   type:     git
