@@ -13,7 +13,7 @@ MAKEFLAGS += --no-builtin-rules
 # Misc flags
 #
 GHC=ghc
-GHCFLAGS+=-rtsopts -O -Wall -fno-warn-name-shadowing -Werror
+GHCFLAGS+=-XHaskell2010 -rtsopts -O -Wall -fno-warn-name-shadowing -Werror
 
 RUNGHC=runghc
 RUNGHCFLAGS+=-W -fno-warn-unused-imports
