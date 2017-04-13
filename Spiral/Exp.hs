@@ -54,14 +54,8 @@ import Spiral.Util.Name
 import Spiral.Util.Pretty
 import Spiral.Util.Uniq
 
-newtype Var = Var { unVar :: Name }
-  deriving (Eq, Ord, Show)
-
-instance Pretty Var where
-    ppr v = ppr (unVar v)
-
-instance IsString Var where
-    fromString s = Var (fromString s)
+newtype Var = Var Name
+  deriving (Eq, Ord, Show, IsString, ToIdent, Pretty)
 
 instance Gensym Var where
     gensymAt s _ = do
@@ -71,9 +65,6 @@ instance Gensym Var where
     uniquify (Var (Name sym _)) = do
         u <- newUnique
         return $ Var $ Name sym (Just u)
-
-instance ToIdent Var where
-    toIdent v = toIdent (unVar v)
 
 -- | Representation of scalar expressions.
 data Const a where
