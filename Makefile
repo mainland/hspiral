@@ -76,6 +76,7 @@ SRC = \
 	Spiral/OpCount.hs \
 	Spiral/SPL.hs \
 	Spiral/SPL/Run.hs \
+	Spiral/Util/MaplePretty.hs \
 	Spiral/Util/Name.hs \
 	Spiral/Util/Pretty.hs \
 	Spiral/Util/Trace.hs \
