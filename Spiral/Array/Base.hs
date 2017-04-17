@@ -151,11 +151,11 @@ fromLists _ = error "matrix: rows have differing lengths"
 matrix :: [[e]] -> Matrix M e
 matrix = fromLists
 
--- | Convert a matrix to a list of lists of elements.
+-- | Convert a matrix to a list of rows, where each row is a list of elements.
 toLists :: IArray r DIM2 e
         => Matrix r e
         -> [[e]]
-toLists e = [[a ! ix2 i j | i <- [0..m-1]] | j <- [0..n-1]]
+toLists e = [[a ! ix2 i j | j <- [0..n-1]] | i <- [0..m-1]]
   where
     a@(M (Z :. m :. n) _) = manifest e
 
