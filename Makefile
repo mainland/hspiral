@@ -92,7 +92,7 @@ TESTSRC = \
 .PHONY : clean
 clean :
 	$(_QUIET)cabal clean
-	$(_QUIET)rm -rf $(TARGETS) dft*.c dft*.so
+	$(_QUIET)rm -rf $(TARGETS) obj dft*.c dft*.so
 
 .PHONY : distclean
 distclean : clean
