@@ -1,6 +1,6 @@
 TOP=.
 
-TARGETS = test dftgen voronenko
+TARGETS = test dftgen voronenko maple
 
 .PHONY : all
 all : $(TARGETS)
@@ -112,6 +112,10 @@ dftgen.prof : dftgen
 		-prof -auto-all -caf-all -osuf p_o -hisuf p_hi -hcsuf p_hc -o $@
 
 voronenko : examples/Voronenko.hs $(SRC) dist/build/autogen/cabal_macros.h
+	@mkdir -p obj
+	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
+
+maple : examples/Maple.hs $(SRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
