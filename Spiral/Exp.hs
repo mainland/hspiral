@@ -272,6 +272,12 @@ data Type = IntT
           | ComplexT Type
   deriving (Eq, Ord, Show)
 
+instance Pretty Type where
+    ppr IntT           = text "int"
+    ppr IntegerT       = text "integer"
+    ppr DoubleT        = text "double"
+    ppr (ComplexT tau) = text "complex" <+> ppr tau
+
 class Typed a where
     typeOf :: a -> Type
 
