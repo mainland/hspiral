@@ -235,8 +235,8 @@ instance Pretty Binop where
     ppr Add  = text "+"
     ppr Sub  = text "-"
     ppr Mul  = text "*"
-    ppr Quot = text "`div`"
-    ppr Rem  = text "`mod`"
+    ppr Quot = text "`quot`"
+    ppr Rem  = text "`rem`"
     ppr Div  = text "/"
 
 instance Pretty (Exp a) where
