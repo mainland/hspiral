@@ -48,6 +48,7 @@ import Language.C.Quote (ToIdent(..))
 import Test.QuickCheck (Arbitrary(..))
 import Text.PrettyPrint.Mainland hiding (flatten)
 
+import Data.Heterogeneous
 import Spiral.Driver.Globals
 import Spiral.ExtendedFloat
 import Spiral.Util.Name
@@ -197,6 +198,124 @@ deriving instance Show (Exp a)
 
 instance ExtendedFloat (Exp (Complex Double)) where
     rootOfUnity = ConstE . rootOfUnity
+
+--
+-- Heterogeneous quality and comparison
+--
+
+instance HEq Const where
+    heq (IntC x)         (IntC y)         = x == y
+    heq (IntegerC x)     (IntegerC y)     = x == y
+    heq (DoubleC x)      (DoubleC y)      = x == y
+    heq (RationalC x)    (RationalC y)    = x == y
+    heq (ComplexC r1 i1) (ComplexC r2 i2) = r1 == r2 && i1 == i2
+    heq (RouC x)         (RouC y)         = x == y
+    heq (PiC x)          (PiC y)          = x == y
+    heq _                _                = False
+
+instance HEq Exp where
+    heq (ConstE c1)          (ConstE c2)          = heq c1 c2
+    heq (VarE x)             (VarE y)             = x == y
+    heq (UnopE op1 e1)       (UnopE op2 e2)       = op1 == op2 && heq e1 e2
+    heq (BinopE op1 e1a e1b) (BinopE op2 e2a e2b) = op1 == op2 && heq e1a e2a && heq e1b e2b
+    heq (IdxE v1 es1)        (IdxE v2 es2)        = v1 == v2 && es1 == es2
+    heq (ComplexE r1 i1)     (ComplexE r2 i2)     = heq r1 r2 && heq i1 i2
+    heq (ReE e1)             (ReE e2)             = heq e1 e2
+    heq (ImE e1)             (ImE e2)             = heq e1 e2
+    heq _                    _                    = False
+
+instance HOrd Const where
+    hcompare (IntC x)         (IntC y)         = compare x y
+    hcompare IntC{}           _                = LT
+
+    hcompare IntegerC{}       IntC{}           = GT
+    hcompare (IntegerC x)     (IntegerC y)     = compare x y
+    hcompare IntegerC{}       _                = LT
+
+    hcompare DoubleC{}        IntC{}           = GT
+    hcompare DoubleC{}        IntegerC{}       = GT
+    hcompare (DoubleC x)      (DoubleC y)      = compare x y
+    hcompare DoubleC{}        _                = LT
+
+    hcompare RationalC{}      IntC{}           = GT
+    hcompare RationalC{}      IntegerC{}       = GT
+    hcompare RationalC{}      DoubleC{}        = GT
+    hcompare (RationalC x)    (RationalC y)    = compare x y
+    hcompare RationalC{}      _                = LT
+
+    hcompare ComplexC{}       IntC{}           = GT
+    hcompare ComplexC{}       IntegerC{}       = GT
+    hcompare ComplexC{}       DoubleC{}        = GT
+    hcompare ComplexC{}       RationalC{}      = GT
+    hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
+    hcompare ComplexC{}       _                = LT
+
+    hcompare RouC{}           IntC{}           = GT
+    hcompare RouC{}           IntegerC{}       = GT
+    hcompare RouC{}           DoubleC{}        = GT
+    hcompare RouC{}           RationalC{}      = GT
+    hcompare RouC{}           ComplexC{}       = GT
+    hcompare (RouC x)         (RouC y)         = compare x y
+    hcompare RouC{}           _                = LT
+
+    hcompare (PiC x)          (PiC y)          = compare x y
+    hcompare PiC{}            _                = GT
+
+instance HOrd Exp where
+    hcompare (ConstE c1)          (ConstE c2)          = hcompare c1 c2
+    hcompare ConstE{}             _                    = LT
+
+    hcompare VarE{}               ConstE{}             = GT
+    hcompare (VarE x)             (VarE y)             = compare x y
+    hcompare VarE{}               _                    = LT
+
+    hcompare UnopE{}              ConstE{}             = GT
+    hcompare UnopE{}              VarE{}               = GT
+    hcompare (UnopE op1 e1)       (UnopE op2 e2)       = case compare op1 op2 of
+                                                           EQ -> hcompare e1 e2
+                                                           other -> other
+    hcompare UnopE{}              _                    = LT
+
+    hcompare BinopE{}             ConstE{}             = GT
+    hcompare BinopE{}             VarE{}               = GT
+    hcompare BinopE{}             UnopE{}              = GT
+    hcompare (BinopE op1 e1a e1b) (BinopE op2 e2a e2b) = case compare op1 op2 of
+                                                           EQ -> case hcompare e1a e2a of
+                                                                   EQ -> hcompare e1b e2b
+                                                                   other -> other
+                                                           other -> other
+    hcompare BinopE{}             _                    = LT
+
+    hcompare IdxE{}               ConstE{}             = GT
+    hcompare IdxE{}               VarE{}               = GT
+    hcompare IdxE{}               UnopE{}              = GT
+    hcompare IdxE{}               BinopE{}             = GT
+    hcompare (IdxE v1 es1)        (IdxE v2 es2)        = case compare v1 v2 of
+                                                           EQ -> compare es1 es2
+                                                           other -> other
+    hcompare IdxE{}               _                    = LT
+
+    hcompare ComplexE{}           ConstE{}             = GT
+    hcompare ComplexE{}           VarE{}               = GT
+    hcompare ComplexE{}           UnopE{}              = GT
+    hcompare ComplexE{}           BinopE{}             = GT
+    hcompare ComplexE{}           IdxE{}               = GT
+    hcompare (ComplexE r1 i1)     (ComplexE r2 i2)     = case hcompare r1 r2 of
+                                                           EQ -> hcompare i1 i2
+                                                           other -> other
+    hcompare ComplexE{}           _                    = LT
+
+    hcompare ReE{}                ConstE{}             = GT
+    hcompare ReE{}                VarE{}               = GT
+    hcompare ReE{}                UnopE{}              = GT
+    hcompare ReE{}                BinopE{}             = GT
+    hcompare ReE{}                IdxE{}               = GT
+    hcompare ReE{}                ComplexE{}           = GT
+    hcompare (ReE e1)             (ReE e2)             = hcompare e1 e2
+    hcompare ReE{}                _                    = LT
+
+    hcompare (ImE e1)             (ImE e2)             = hcompare e1 e2
+    hcompare ImE{}                _                    = GT
 
 -- | Unary operators
 data Unop = Neg
