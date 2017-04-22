@@ -46,6 +46,7 @@ endif
 # Source locations
 #
 SRC = \
+	Data/Heterogeneous.hs \
 	Spiral.hs \
 	Spiral/Array.hs \
 	Spiral/Array/Base.hs \

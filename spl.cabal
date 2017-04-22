@@ -49,6 +49,7 @@ library
     Spiral.SPL.Run
 
   other-modules:
+    Data.Heterogeneous
     Spiral.Driver
     Spiral.Driver.Globals
     Spiral.Driver.Monad
