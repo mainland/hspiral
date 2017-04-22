@@ -9,7 +9,7 @@
 
 -- |
 -- Module      :  Spiral.Exp
--- Copyright   :  (c) 2016 Drexel University
+-- Copyright   :  (c) 2016-2017 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
@@ -56,7 +56,7 @@ import Spiral.Util.Pretty
 import Spiral.Util.Uniq
 
 newtype Var = Var Name
-  deriving (Eq, Ord, Show, IsString, ToIdent, Pretty)
+  deriving (Eq, Ord, Show, IsString, ToIdent, Pretty, Named)
 
 instance Gensym Var where
     gensymAt s _ = do
