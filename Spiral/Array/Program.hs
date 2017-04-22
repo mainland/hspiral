@@ -196,6 +196,12 @@ instance Shape sh => Compute C sh (Exp a) where
         forShapeP (extent b) $ \ix ->
             write a ix (indexS b ix)
 
+instance (Shape sh, Typed a) => Pretty (Array C sh (Exp a)) where
+    ppr (C sh v) = ppr tau <> ppr (listOfShape sh) <+> ppr v
+      where
+        tau :: Type
+        tau = typeOf (undefined :: a)
+
 class Shape sh => ForShape sh where
     -- | Allow iterating over all indices in a shape.
     forShapeP :: MonadP m
