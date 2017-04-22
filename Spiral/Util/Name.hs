@@ -2,7 +2,7 @@
 
 -- |
 -- Module      :  Spiral.Util.Name
--- Copyright   :  (c) 2016 Drexel University
+-- Copyright   :  (c) 2016-2017 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
@@ -54,3 +54,15 @@ instance Gensym Name where
 instance ToIdent Name where
     toIdent (Name sym Nothing)         = C.Id $ unintern sym
     toIdent (Name sym (Just (Uniq u))) = C.Id $ unintern sym ++ show u
+
+class Named a where
+    namedSymbol :: a -> Symbol
+
+    namedString :: a -> String
+    namedString n = unintern (namedSymbol n)
+
+    mapName :: (Name -> Name) -> a -> a
+
+instance Named Name where
+    namedSymbol = nameSym
+    mapName f   = f
