@@ -8,7 +8,7 @@
 
 -- |
 -- Module      :  Spiral.Array.Repr.Transform
--- Copyright   :  (c) 2016 Drexel University
+-- Copyright   :  (c) 2016-2017 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
@@ -36,7 +36,7 @@ data T
 -- | A transform.
 instance IsArray T sh a where
     data Array T sh a = G (Array DS sh a)
-                      | S (Array P sh a)
+                      | S (Array CP sh a)
 
     extent (G a) = extent a
     extent (S a) = extent a
@@ -82,5 +82,5 @@ fromGather :: (Shape sh, SArray r sh a) => Array r sh a -> Array T sh a
 fromGather = G . delayS
 
 -- | Create a transform from a computed array.
-fromScatter :: Array P sh a -> Array T sh a
+fromScatter :: Array CP sh a -> Array T sh a
 fromScatter = S
