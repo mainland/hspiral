@@ -27,8 +27,8 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Text.PrettyPrint.Mainland
 
-import Spiral.Driver.Monad (MonadSpiral)
 import Spiral.Exp
+import Spiral.Monad (MonadSpiral)
 import Spiral.Program
 import Spiral.Program.Syntax
 import Spiral.SPL

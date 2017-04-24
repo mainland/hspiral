@@ -74,6 +74,7 @@ SRC = \
 	Spiral/Exp.hs \
 	Spiral/ExtendedFloat.hs \
 	Spiral/FFT.hs \
+	Spiral/Monad.hs \
 	Spiral/OpCount.hs \
 	Spiral/Program.hs \
 	Spiral/Program/Monad.hs \

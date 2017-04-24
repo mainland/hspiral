@@ -96,8 +96,8 @@ import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
 import Spiral.Config
 import Spiral.Driver.Globals
-import Spiral.Driver.Monad (MonadSpiral)
 import Spiral.Exp
+import Spiral.Monad (MonadSpiral)
 import Spiral.Util.Trace
 import Spiral.Util.Uniq
 

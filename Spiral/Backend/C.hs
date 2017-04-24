@@ -36,8 +36,8 @@ import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Util
 import Spiral.Config
 import Spiral.Driver.Globals
-import Spiral.Driver.Monad (MonadSpiral)
 import Spiral.Exp
+import Spiral.Monad (MonadSpiral)
 import Spiral.Program.Syntax
 import Spiral.Util.Name
 import Spiral.Util.Trace

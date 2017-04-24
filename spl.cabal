@@ -44,6 +44,7 @@ library
     Spiral.Exp
     Spiral.ExtendedFloat
     Spiral.FFT
+    Spiral.Monad
     Spiral.OpCount
     Spiral.Program
     Spiral.Program.Monad

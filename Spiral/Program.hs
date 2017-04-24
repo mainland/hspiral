@@ -16,8 +16,8 @@ import Spiral.Array
 import Spiral.Array.Program
 import qualified Spiral.Array.Program as P
 import Spiral.Array.Repr.Transform (fromGather)
-import Spiral.Driver.Monad (MonadSpiral)
 import Spiral.Exp
+import Spiral.Monad (MonadSpiral)
 import Spiral.Program.Monad
 import Spiral.Program.Syntax
 import Spiral.SPL

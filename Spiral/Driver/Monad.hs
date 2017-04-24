@@ -4,12 +4,11 @@
 
 -- |
 -- Module      :  Spiral.Driver.Monad
--- Copyright   :  (c) 2016 Drexel University
+-- Copyright   :  (c) 2016-2017 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Driver.Monad (
-    MonadSpiral,
     Spiral,
     runSpiral,
     runSpiralWith
@@ -27,6 +26,7 @@ import Control.Monad.Reader (MonadReader(..),
 import Data.IORef (IORef)
 
 import Spiral.Config
+import Spiral.Monad
 import Spiral.Util.Trace
 import Spiral.Util.Uniq
 
@@ -77,13 +77,5 @@ instance MonadUnique Spiral where
     resetUnique = do
         r <- asks uniq
         writeRef r 0
-
-class ( PrimMonad m
-      , PrimState m ~ RealWorld
-      , MonadRef IORef m
-      , MonadConfig m
-      , MonadUnique m
-      , MonadTrace m
-      ) => MonadSpiral m where
 
 instance MonadSpiral Spiral where
