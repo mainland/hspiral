@@ -30,7 +30,7 @@ import Language.C.Quote.C
 import Text.PrettyPrint.Mainland hiding (flatten)
 
 import Spiral.Array
-import Spiral.Array.Repr.Transform
+import Spiral.Array.Repr.Concrete
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Util

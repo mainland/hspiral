@@ -23,8 +23,9 @@ import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Text.PrettyPrint.Mainland hiding (flatten)
 
-import Spiral.Array
-import Spiral.Array.Program
+import Spiral.Array.Base
+import Spiral.Array.Repr.Concrete
+import Spiral.Array.Shape
 import Spiral.Exp
 
 data Program a = Program

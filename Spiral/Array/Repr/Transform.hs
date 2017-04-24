@@ -26,10 +26,11 @@ import Prelude hiding (read)
 
 import Spiral.Array
 import Spiral.Array.Operators.Permute
-import Spiral.Array.Program
 import Spiral.Array.Repr.Compute
 import Spiral.Array.Repr.Virtual
 import Spiral.Exp
+import Spiral.Program.Monad
+import Spiral.Monad
 
 data T
 
@@ -41,7 +42,7 @@ instance IsArray T sh a where
     extent (G a) = extent a
     extent (S a) = extent a
 
-instance Compute T sh a where
+instance Computable T sh a where
     computeP y (G x) = computeP y x
     computeP y (S x) = computeP y x
 
@@ -53,9 +54,9 @@ instance Permute T where
     permute p a     = backpermute (invert p) a
 
 -- | Ensure that a transform is in a form that can be used as a source.
-gather :: (Typed a, Num (Exp a), MonadP m)
+gather :: (Typed a, Num (Exp a), MonadSpiral m)
        => Vector T (Exp a)
-       -> m (Vector DS (Exp a))
+       -> P m (Vector DS (Exp a))
 gather (G x) =
     return x
 

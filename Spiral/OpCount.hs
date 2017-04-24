@@ -30,8 +30,8 @@ import Text.PrettyPrint.Mainland
 import Spiral.Exp
 import Spiral.Monad (MonadSpiral)
 import Spiral.Program
-import Spiral.Program.Syntax
 import Spiral.SPL
+import Spiral.SPL.Run
 
 data OpCount a = OpCount
     { unops  :: Map Unop a

@@ -24,13 +24,15 @@ library
     Spiral
     Spiral.Array
     Spiral.Array.Base
+    Spiral.Array.Computable
+    Spiral.Array.Mutable
     Spiral.Array.Operators.IndexSpace
     Spiral.Array.Operators.Mapping
     Spiral.Array.Operators.Permute
     Spiral.Array.Operators.Reduction
-    Spiral.Array.Program
     Spiral.Array.Repr.Complex
     Spiral.Array.Repr.Compute
+    Spiral.Array.Repr.Concrete
     Spiral.Array.Repr.Slice
     Spiral.Array.Repr.Transform
     Spiral.Array.Repr.Virtual

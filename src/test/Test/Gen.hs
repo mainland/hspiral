@@ -41,8 +41,8 @@ import Spiral (Spiral,
                runSpiralWith)
 import Spiral.Config
 import Spiral.Exp
-import Spiral.Program
 import Spiral.SPL
+import Spiral.SPL.Run
 
 genComplexTransform :: Config
                     -> String

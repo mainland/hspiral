@@ -21,8 +21,9 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as MV
 
 import Spiral.Array
-import Spiral.Array.Program
 import Spiral.Exp
+import Spiral.Monad
+import Spiral.Program.Monad
 
 -- | Type tag for a virtual array.
 data V
@@ -45,10 +46,10 @@ instance (Shape sh, Typed a, Num (Exp a)) => MArray V sh (Exp a) where
 
 -- | Replicate the given value according to the specified shape to produce a
 -- virtual array.
-replicateV :: (Shape sh, MonadP m) => sh -> Exp a -> m (Array V sh (Exp a))
+replicateV :: (Shape sh, MonadSpiral m) => sh -> Exp a -> P m (Array V sh (Exp a))
 replicateV sh x = V sh <$> MV.replicate (size sh) x
 
-freezeV :: MonadP m => Array V sh (Exp a) -> m (Array M sh (Exp a))
+freezeV :: MonadSpiral m => Array V sh (Exp a) -> P m (Array M sh (Exp a))
 freezeV (V sh mv) = do
     v <- V.freeze mv
     return $ M sh v

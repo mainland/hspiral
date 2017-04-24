@@ -53,9 +53,6 @@ module Spiral.Backend.C.Monad (
     appendComment,
 
     cacheConst,
-    cacheCExp,
-    insertCachedCExp,
-    lookupCExp,
 
     extendVars,
     insertVar,
@@ -108,8 +105,6 @@ data CgState = CgState
       vars :: Map Var CExp
     , -- | Cached compiler constants
       cinitCache :: Map C.Initializer C.Exp
-    , -- | Cached compiled expressions
-      cexpCache :: Map CExp CExp
     }
 
 defaultCgState :: CgState
@@ -117,7 +112,6 @@ defaultCgState = CgState
     { code       = mempty
     , vars       = mempty
     , cinitCache = mempty
-    , cexpCache  = mempty
     }
 
 -- | The 'Cg' monad transformer.
@@ -346,59 +340,6 @@ cacheConst cinits ctau = do
                     modify $ \s -> s { cinitCache = Map.insert cinits ce (cinitCache s) }
                     return ce
 
--- | Cache a 'CExp'. This generates a local binding for the value of the 'CExp'.
-cacheCExp :: forall m . MonadSpiral m => Type -> CExp -> Cg m CExp
-cacheCExp tau ce0 | shouldCacheCExp ce0 = do
-    maybe_ce <- gets (Map.lookup ce0 . cexpCache)
-    case maybe_ce of
-      Just ce -> return ce
-      Nothing -> go ce0
-  where
-    go (CComplex cr ci) | not useComplexType = do
-        cr' <- cacheCExp DoubleT cr
-        ci' <- cacheCExp DoubleT ci
-        return $ CComplex cr' ci'
-
-    go (CInit ini) = do
-        ce <- cacheConst ini (cgType tau)
-        return $ CExp ce
-
-    go ce = do
-        ctemp <- cgTemp tau Nothing
-        -- cgAssign will modify the cache
-        cgAssign tau ctemp ce
-        return ctemp
-
-cacheCExp _ ce =
-    return ce
-
--- | Return 'True' if a 'CExp' is worth caching.
-shouldCacheCExp :: CExp -> Bool
-shouldCacheCExp CInt{}                = False
-shouldCacheCExp CDouble{}             = False
-shouldCacheCExp (CComplex ce1 ce2)    = shouldCacheCExp ce1 || shouldCacheCExp ce2
-shouldCacheCExp (CExp [cexp|$id:_|])  = False
-shouldCacheCExp (CExp [cexp|-$id:_|]) = False
-shouldCacheCExp _                     = True
-
--- | @'insertCachedCExp' ce1 ce2@ adds @ce2@ as the cached version of @ce1@.
-insertCachedCExp :: forall m . MonadSpiral m
-                 => CExp
-                 -> CExp
-                 -> Cg m ()
-insertCachedCExp ce1 ce2 =
-    modify $ \s -> s { cexpCache = Map.insert ce1 ce2 (cexpCache s) }
-
--- | Look up the cached C expression corresponding to a 'CExp'. If the 'CExp'
--- has not been cached, we return it without caching it.
-lookupCExp :: forall m . MonadSpiral m
-           => CExp -> Cg m CExp
-lookupCExp ce = do
-    maybe_ce' <- gets (Map.lookup ce . cexpCache)
-    case maybe_ce' of
-      Just ce' -> return ce'
-      Nothing  -> return ce
-
 -- | Generate a unique C identifier name using the given prefix.
 cgId :: MonadUnique m => String -> Cg m C.Id
 cgId = gensym
@@ -427,32 +368,14 @@ cgArrayType tau sh = foldl cidx (cgType tau) (listOfShape sh)
     cidx :: C.Type -> Int -> C.Type
     cidx ctau i = [cty|$ty:ctau[$int:i]|]
 
--- | Generate code to allocate a temporary value. A name for the temporary is
--- optionally provided.
-cgTemp :: MonadSpiral m => Type -> Maybe Var -> Cg m CExp
-cgTemp (ComplexT DoubleT) _ | not useComplexType = do
-    ct1 <- cgTemp DoubleT Nothing
-    ct2 <- cgTemp DoubleT Nothing
-    return $ CComplex ct1 ct2
-
-cgTemp tau maybe_v = do
-    ct <- case maybe_v of
-            Nothing -> cgId "t"
-            Just v  -> return $ C.toIdent v noLoc
-    appendFunDecl [cdecl|$ty:(cgType tau) $id:ct;|]
-    return $ CExp [cexp|$id:ct|]
-
 -- | Compile an assignment.
 cgAssign :: MonadSpiral m => Type -> CExp -> CExp -> Cg m ()
 cgAssign (ComplexT DoubleT) ce1 ce2 | not useComplexType = do
-    insertCachedCExp cr2 cr1
-    insertCachedCExp ci2 ci1
     appendStm [cstm|$cr1 = $cr2;|]
     appendStm [cstm|$ci1 = $ci2;|]
   where
     (cr1, ci1) = unComplex ce1
     (cr2, ci2) = unComplex ce2
 
-cgAssign _ ce1 ce2 = do
-    insertCachedCExp ce2 ce1
+cgAssign _ ce1 ce2 =
     appendStm [cstm|$ce1 = $ce2;|]

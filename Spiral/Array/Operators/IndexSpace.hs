@@ -22,8 +22,9 @@ import Text.PrettyPrint.Mainland
 import Spiral.Array
 import Spiral.Array.Operators.Mapping
 import Spiral.Array.Operators.Reduction
-import Spiral.Array.Program
 import Spiral.Exp
+import Spiral.Monad
+import Spiral.Program.Monad
 
 row :: SArray r DIM2 a
     => Matrix r a
@@ -37,7 +38,7 @@ row a i = fromSFunction (Z :. n) g
 
 -- | Compute the matrix-vector product, @y = A x@.
 mvP :: forall r1 r2 r3 a m .
-       ( MonadP m
+       ( MonadSpiral m
        , Num (Exp a)
        , Typed a
        , IArray r1 DIM2 (Exp a)
@@ -47,7 +48,7 @@ mvP :: forall r1 r2 r3 a m .
     => Matrix r1 (Exp a) -- ^ The matrix @A@
     -> Vector r2 (Exp a) -- ^ The vector @x@
     -> Vector r3 (Exp a) -- ^ The vector @y@
-    -> m ()
+    -> P m ()
 mvP a x y = do
     when (n' /= n) $
       faildoc $ text "mvP: mismatched dimensions in input. Expected" <+> ppr n <+> text "but got" <+> ppr n'
@@ -58,7 +59,7 @@ mvP a x y = do
 
     go :: Vector r3 (Exp a)
        -> Bool
-       -> m ()
+       -> P m ()
     go y True =
         computeP y (fromSFunction (Z :. m) f)
       where

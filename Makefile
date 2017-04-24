@@ -50,13 +50,15 @@ SRC = \
 	Spiral.hs \
 	Spiral/Array.hs \
 	Spiral/Array/Base.hs \
+	Spiral/Array/Computable.hs \
+	Spiral/Array/Mutable.hs \
 	Spiral/Array/Operators/IndexSpace.hs \
 	Spiral/Array/Operators/Mapping.hs \
 	Spiral/Array/Operators/Permute.hs \
 	Spiral/Array/Operators/Reduction.hs \
-	Spiral/Array/Program.hs \
 	Spiral/Array/Repr/Complex.hs \
 	Spiral/Array/Repr/Compute.hs \
+	Spiral/Array/Repr/Concrete.hs \
 	Spiral/Array/Repr/Slice.hs \
 	Spiral/Array/Repr/Transform.hs \
 	Spiral/Array/Repr/Virtual.hs \
@@ -78,6 +80,7 @@ SRC = \
 	Spiral/OpCount.hs \
 	Spiral/Program.hs \
 	Spiral/Program/Monad.hs \
+	Spiral/Program/Monad.hs-boot \
 	Spiral/Program/Syntax.hs \
 	Spiral/SPL.hs \
 	Spiral/SPL/Run.hs \

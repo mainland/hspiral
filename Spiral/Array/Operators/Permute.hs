@@ -32,7 +32,6 @@ import Prelude hiding (read)
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
-import Spiral.Array.Program
 import Spiral.Exp
 
 -- | A permutation function.

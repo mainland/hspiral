@@ -23,7 +23,6 @@ import Prelude hiding (read)
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
-import Spiral.Array.Program
 import Spiral.Exp
 
 -- | Type tag for a vector slice.
@@ -56,7 +55,7 @@ instance MArray r DIM1 e => MArray (S r) DIM1 e where
     read  (S a b s _len) (Z :. ci) = read  a (Z :. b + ci * fromIntegral s)
     write (S a b s _len) (Z :. ci) = write a (Z :. b + ci * fromIntegral s)
 
-instance SArray r DIM1 a => Compute (S r) DIM1 a where
+instance SArray r DIM1 a => Computable (S r) DIM1 a where
     computeP a b =
         forShapeP (extent b) $ \ix ->
             write a ix (indexS b ix)

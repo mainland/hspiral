@@ -18,7 +18,8 @@ import Prelude hiding ((!!))
 import Control.Monad (foldM)
 
 import Spiral.Array
-import Spiral.Array.Program
+import Spiral.Monad
+import Spiral.Program.Monad
 import Spiral.Exp
 
 foldP :: forall a b r m .
@@ -27,12 +28,12 @@ foldP :: forall a b r m .
          , Num (Exp a)
          , Num (Exp b)
          , SArray r DIM1 (Exp a)
-         , MonadP m
+         , MonadSpiral m
          )
       => (Exp b -> Exp a -> Exp b)
       -> Exp b
       -> Array r DIM1 (Exp a)
-      -> m (Exp b)
+      -> P m (Exp b)
 foldP f z xs =
     shouldUnroll n >>= go
   where
@@ -42,7 +43,7 @@ foldP f z xs =
         es <- mapM idx [0..n-1]
         foldM g z es
       where
-        idx :: Int -> m (Exp a)
+        idx :: Int -> P m (Exp a)
         idx i = cache e
           where
             e = xs !! i
@@ -59,8 +60,8 @@ foldP f z xs =
 sumP :: ( Num (Exp a)
         , Typed a
         , SArray r DIM1 (Exp a)
-        , MonadP m
+        , MonadSpiral m
         )
       => Array r DIM1 (Exp a)
-      -> m (Exp a)
+      -> P m (Exp a)
 sumP = foldP (+) 0

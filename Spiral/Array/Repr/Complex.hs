@@ -28,7 +28,6 @@ import Data.Complex (Complex)
 import Text.PrettyPrint.Mainland
 
 import Spiral.Array
-import Spiral.Array.Program
 import Spiral.Exp
 
 data RE r
@@ -73,7 +72,7 @@ instance (Typed a, Num (Exp a), MArray r (sh :. Int) (Exp (Complex a))) => MArra
           then write a (sh :. i `quot` 2) (ComplexE e im)
           else write a (sh :. i `quot` 2) (ComplexE re e)
 
-instance SArray r (sh :. Int) (Exp (Complex a)) => Compute (RE r) (sh :. Int) (Exp a) where
+instance SArray r (sh :. Int) (Exp (Complex a)) => Computable (RE r) (sh :. Int) (Exp a) where
     computeP a b =
         forShapeP (extent b) $ \ix ->
             write a ix (indexS b ix)
@@ -108,5 +107,5 @@ instance (Typed a, Num (Exp a), MArray r (sh :. Int) (Exp a)) => MArray (CMPLX r
       where
         (er, ei) = unComplexE e
 
-instance (Typed a, Num (Exp a), Compute r (sh :. Int) (Exp a)) => Compute (CMPLX r) (sh :. Int) (Exp (Complex a)) where
+instance (Typed a, Num (Exp a), Computable r (sh :. Int) (Exp a)) => Computable (CMPLX r) (sh :. Int) (Exp (Complex a)) where
     computeP a (CMPLX b) = computeP (toRealArray a) b

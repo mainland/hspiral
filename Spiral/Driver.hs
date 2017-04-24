@@ -43,8 +43,8 @@ import Spiral.Config
 import Spiral.Driver.Monad
 import Spiral.Driver.Opts
 import Spiral.Exp
-import Spiral.Program
 import Spiral.SPL
+import Spiral.SPL.Run
 import Spiral.Util.Uniq
 
 defaultMain :: ([String] -> Spiral ()) -> IO ()
