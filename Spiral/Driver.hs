@@ -43,7 +43,9 @@ import Spiral.Config
 import Spiral.Driver.Monad
 import Spiral.Driver.Opts
 import Spiral.Exp
+import Spiral.Program
 import Spiral.SPL
+import Spiral.Util.Uniq
 
 defaultMain :: ([String] -> Spiral ()) -> IO ()
 defaultMain = defaultMainWith mempty
@@ -64,8 +66,10 @@ codegenC :: (Typed a, Num (Exp a))
          => String
          -> SPL (Exp a)
          -> Spiral ()
-codegenC name e = do
-    defs <- evalCg $ codegen name e
+codegenC fname e = do
+    t <- toProgram fname e
+    resetUnique
+    defs <- evalCg $ cgProgram t
     writeOutput (toList defs)
 
 writeOutput :: Pretty a

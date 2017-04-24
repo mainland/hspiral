@@ -61,19 +61,16 @@ module Spiral.Backend.C.Monad (
     insertVar,
     lookupVar,
 
+    cgId,
     cgType,
     cgArrayType,
-    cgExp
+    cgAssign
   ) where
 
 import Control.Monad.Exception (MonadException(..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Primitive (PrimMonad(..))
 import Control.Monad.Ref (MonadRef(..))
-import Control.Monad.Reader (MonadReader(..),
-                             ReaderT,
-                             asks,
-                             runReaderT)
 import Control.Monad.State (MonadState(..),
                             StateT,
                             execStateT,
@@ -89,28 +86,20 @@ import qualified Data.Map as Map
 import Data.Monoid
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
-import Data.String (fromString)
 import Language.C.Pretty ()
 import qualified Language.C.Quote as C
 import Language.C.Quote.C
 import Text.PrettyPrint.Mainland hiding (flatten)
 
 import Spiral.Array
-import Spiral.Array.Program
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
-import Spiral.Backend.C.Util
 import Spiral.Config
 import Spiral.Driver.Globals
 import Spiral.Driver.Monad (MonadSpiral)
 import Spiral.Exp
 import Spiral.Util.Trace
 import Spiral.Util.Uniq
-
-data CgEnv = CgEnv { unroll :: Bool }
-
-defaultCgEnv :: CgEnv
-defaultCgEnv = CgEnv { unroll = False }
 
 data CgState = CgState
     { -- | Generated code
@@ -132,17 +121,16 @@ defaultCgState = CgState
     }
 
 -- | The 'Cg' monad transformer.
-newtype Cg m a = Cg { unCg :: StateT CgState (ReaderT CgEnv m) a }
+newtype Cg m a = Cg { unCg :: StateT CgState m a }
     deriving (Functor, Applicative, Monad, MonadIO,
               MonadException,
-              MonadReader CgEnv,
               MonadState CgState,
               MonadUnique,
               MonadTrace,
               MonadConfig)
 
 instance MonadTrans Cg where
-    lift = Cg . lift . lift
+    lift = Cg . lift
 
 deriving instance MonadRef IORef m => MonadRef IORef (Cg m)
 
@@ -155,7 +143,7 @@ instance MonadSpiral m => MonadSpiral (Cg m) where
 -- | Evaluate a 'Cg' action and return a list of 'C.Definition's.
 evalCg :: Monad m => Cg m () -> m (Seq C.Definition)
 evalCg m = do
-    s <- runReaderT (execStateT (unCg m) defaultCgState) defaultCgEnv
+    s <- execStateT (unCg m) defaultCgState
     return $ (codeDefs . code) s <> (codeFunDefs . code) s
 
 -- | Add generated code.
@@ -352,7 +340,7 @@ cacheConst cinits ctau = do
     maybe_ce <- gets (Map.lookup cinits . cinitCache)
     case maybe_ce of
       Just ce -> return ce
-      Nothing -> do ctemp  <- cgVar "K"
+      Nothing -> do ctemp  <- cgId "K"
                     let ce =  [cexp|$id:ctemp|]
                     appendTopDecl [cdecl|$ty:ctau $id:ctemp = $init:cinits;|]
                     modify $ \s -> s { cinitCache = Map.insert cinits ce (cinitCache s) }
@@ -412,212 +400,8 @@ lookupCExp ce = do
       Nothing  -> return ce
 
 -- | Generate a unique C identifier name using the given prefix.
-cgVar :: MonadUnique m => String -> Cg m C.Id
-cgVar = gensym
-
--- | Generate code to allocate a temporary value. A name for the temporary is
--- optionally provided.
-cgTemp :: MonadSpiral m => Type -> Maybe Var -> Cg m CExp
-cgTemp (ComplexT DoubleT) _ | not useComplexType = do
-    ct1 <- cgTemp DoubleT Nothing
-    ct2 <- cgTemp DoubleT Nothing
-    return $ CComplex ct1 ct2
-
-cgTemp tau maybe_v = do
-    ct <- case maybe_v of
-            Nothing -> cgVar "t"
-            Just v  -> return $ C.toIdent v noLoc
-    appendFunDecl [cdecl|$ty:(cgType tau) $id:ct;|]
-    return $ CExp [cexp|$id:ct|]
-
-instance MonadSpiral m => MonadP (Cg m) where
-    -- | Always unroll loop in the continuation.
-    alwaysUnroll = local $ \env -> env { unroll = True }
-
-    -- | Should we unroll a loop of the given size?
-    shouldUnroll n = do
-        always <- asks unroll
-        maxun  <- asksConfig maxUnroll
-        return $ always || n <= maxun
-
-    comment doc =
-        whenDynFlag GenComments $
-            appendComment doc
-
-    forP lo hi k = do
-        should <- shouldUnroll (hi - lo)
-        if should
-          then mapM_ k [intE i | i <- [lo..hi-1::Int]]
-          else do
-            i <- gensym "i"
-            items <- inNewBlock_ $
-                     extendVars [(i, CExp [cexp|$id:i|])] $
-                     k (VarE i)
-            appendStm [cstm|for (int $id:i = $int:lo; $id:i < $int:hi; ++$id:i) $stm:(toStm items)|]
-
-    tempP :: forall a . Typed a => Cg m (Exp a)
-    tempP = do
-        t  <- gensym "t"
-        ct <- cgTemp tau (Just t)
-        insertVar t ct
-        return $ VarE t
-      where
-        tau :: Type
-        tau = typeOf (undefined :: a)
-
-    newArray :: forall sh a . (Shape sh, Typed a)
-             => sh
-             -> Cg m (Array C sh (Exp a))
-    newArray sh = do
-        v      <- gensym "V"
-        let cv =  CExp [cexp|$id:v|]
-        insertVar v cv
-        appendFunDecl [cdecl|$ty:ctau $id:v;|]
-        return $ C sh v
-      where
-        ctau :: C.Type
-        ctau = cgArrayType (typeOf (undefined :: a)) sh
-
-    assignP :: forall a . Typed a => Exp a -> Exp a -> Cg m ()
-    assignP e1 e2 = do
-        ce1 <- cgExp e1
-        ce2 <- cgExp e2
-        cgAssign tau ce1 ce2
-      where
-        tau :: Type
-        tau = typeOf (undefined :: a)
-
-    mustCache e = do
-        ce <- cgCacheExp e
-        t  <- gensymFromC "t" ce
-        insertVar t ce
-        return $ VarE t
-
-    cacheArray (arr :: Array r sh (Exp a)) = do
-        cinit <- arrayInit (manifest arr)
-        ct    <- CExp <$> cacheConst cinit [cty|static const $ty:ctau |]
-        t     <- gensymFromC "K" ct
-        insertVar t ct
-        return $ C sh t
-      where
-        sh = extent arr
-
-        ctau :: C.Type
-        ctau = cgArrayType (typeOf (undefined :: a)) sh
-
-gensymFromC :: MonadUnique m => String -> CExp -> m Var
-gensymFromC _ (CExp [cexp|$id:t|]) =
-    return $ fromString t
-
-gensymFromC t _ =
-    gensym t
-
-arrayInit :: forall a sh m . (Shape sh, Typed a, MonadSpiral m)
-          => Array M sh (Exp a)
-          -> Cg m C.Initializer
-arrayInit a = do
-    inits <- f (reverse (listOfShape (extent a))) []
-    case inits of
-      [init] -> return init
-      _      -> return [cinit|{ $inits:inits }|]
-  where
-    f :: [Int] -> [Int] -> Cg m [C.Initializer]
-    f [] ix = do
-        ce <- cgExp (index a (shapeOfList ix))
-        return $ cgElem ce
-      where
-        cgElem :: CExp -> [C.Initializer]
-        cgElem (CComplex ce1 ce2) | not useComplexType =
-            [toInitializer ce1, toInitializer ce2]
-
-        cgElem ce =
-            [toInitializer ce]
-
-    f (n:ix) ix' = do
-        inits <- mapM (\i -> f ix (i : ix')) [0..n-1]
-        return [[cinit|{ $inits:(concat inits) }|]]
-
--- | Compile an assignment.
-cgAssign :: MonadSpiral m => Type -> CExp -> CExp -> Cg m ()
-cgAssign (ComplexT DoubleT) ce1 ce2 | not useComplexType = do
-    insertCachedCExp cr2 cr1
-    insertCachedCExp ci2 ci1
-    appendStm [cstm|$cr1 = $cr2;|]
-    appendStm [cstm|$ci1 = $ci2;|]
-  where
-    (cr1, ci1) = unComplex ce1
-    (cr2, ci2) = unComplex ce2
-
-cgAssign _ ce1 ce2 = do
-    insertCachedCExp ce2 ce1
-    appendStm [cstm|$ce1 = $ce2;|]
-
--- | Compiled a value of type 'Const a'.
-cgConst :: Const a -> CExp
-cgConst (IntC x)         = CInt x
-cgConst (IntegerC x)     = CInt (fromIntegral x)
-cgConst (RationalC x)    = CDouble x
-cgConst (DoubleC x)      = CDouble (toRational x)
-cgConst (ComplexC e1 e2) = CComplex (cgConst e1) (cgConst e2)
-cgConst (PiC x)          = CDouble (toRational (fromRational x * pi :: Double))
-cgConst e@RouC{}         = cgConst (flatten e)
-
--- | Compile an 'Exp a' and cache the result. If we try to compile the same
--- expression again, we will re-use the cached value.
-cgCacheExp :: forall a m . Typed a => MonadSpiral m => Exp a -> Cg m CExp
-cgCacheExp e = cgExp e >>= cacheCExp (typeOf (undefined :: a))
-
--- | Compile an 'Exp a'.
-cgExp :: forall a m . (Typed a, MonadSpiral m) => Exp a -> Cg m CExp
-cgExp (ConstE c) = return $ cgConst c
-cgExp (VarE v)   = lookupVar v
-
-cgExp (UnopE op e) =
-    cgExp e >>= go op
-  where
-    go Neg ce    = return $ -ce
-    go Abs ce    = return $ abs ce
-    go Signum ce = return $ signum ce
-
-cgExp (BinopE op e1 e2) = do
-    ce1 <- cgExp e1
-    ce2 <- cgExp e2
-    go op ce1 ce2
-  where
-    go Add  ce1 ce2 = return $ ce1 + ce2
-    go Sub  ce1 ce2 = return $ ce1 - ce2
-    go Mul  ce1 ce2 = return $ ce1 * ce2
-    go Quot ce1 ce2 = return $ ce1 `quot` ce2
-    go Rem  ce1 ce2 = return $ ce1 `rem` ce2
-    go Div  _   _   = fail "Can't happen"
-
-cgExp (IdxE v es) =
-    case typeOf (undefined :: a) of
-      ComplexT DoubleT | not useComplexType -> mkComplexIdx v es
-      _                                     -> mkIdx v es
-
-cgExp (ComplexE er ei) =
-    CComplex <$> cgExp er <*> cgExp ei
-
-cgExp (ReE e) = do
-    (cr, _ci) <- unComplex <$> cgExp e
-    return cr
-
-cgExp (ImE e) = do
-    (_cr, ci) <- unComplex <$> cgExp e
-    return ci
-
-mkIdx :: MonadSpiral m => Var -> [Exp Int] -> Cg m CExp
-mkIdx v es = do
-    cv  <- lookupVar v
-    ces <- mapM cgExp es
-    return $ CExp $ foldr cidx [cexp|$cv|] ces
-  where
-    cidx ci ce = [cexp|$ce[$ci]|]
-
-mkComplexIdx :: MonadSpiral m => Var -> [Exp Int] -> Cg m CExp
-mkComplexIdx cv []       = return $ CComplex (CExp [cexp|$id:cv[0]|]) (CExp [cexp|$id:cv[1]|])
-mkComplexIdx cv (ci:cis) = CComplex <$> mkIdx cv (2*ci:cis) <*> mkIdx cv (2*ci+1:cis)
+cgId :: MonadUnique m => String -> Cg m C.Id
+cgId = gensym
 
 -- | Compile a type.
 cgType :: Type -> C.Type
@@ -642,3 +426,33 @@ cgArrayType tau sh = foldl cidx (cgType tau) (listOfShape sh)
   where
     cidx :: C.Type -> Int -> C.Type
     cidx ctau i = [cty|$ty:ctau[$int:i]|]
+
+-- | Generate code to allocate a temporary value. A name for the temporary is
+-- optionally provided.
+cgTemp :: MonadSpiral m => Type -> Maybe Var -> Cg m CExp
+cgTemp (ComplexT DoubleT) _ | not useComplexType = do
+    ct1 <- cgTemp DoubleT Nothing
+    ct2 <- cgTemp DoubleT Nothing
+    return $ CComplex ct1 ct2
+
+cgTemp tau maybe_v = do
+    ct <- case maybe_v of
+            Nothing -> cgId "t"
+            Just v  -> return $ C.toIdent v noLoc
+    appendFunDecl [cdecl|$ty:(cgType tau) $id:ct;|]
+    return $ CExp [cexp|$id:ct|]
+
+-- | Compile an assignment.
+cgAssign :: MonadSpiral m => Type -> CExp -> CExp -> Cg m ()
+cgAssign (ComplexT DoubleT) ce1 ce2 | not useComplexType = do
+    insertCachedCExp cr2 cr1
+    insertCachedCExp ci2 ci1
+    appendStm [cstm|$cr1 = $cr2;|]
+    appendStm [cstm|$ci1 = $ci2;|]
+  where
+    (cr1, ci1) = unComplex ce1
+    (cr2, ci2) = unComplex ce2
+
+cgAssign _ ce1 ce2 = do
+    insertCachedCExp ce2 ce1
+    appendStm [cstm|$ce1 = $ce2;|]

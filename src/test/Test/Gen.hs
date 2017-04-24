@@ -41,6 +41,7 @@ import Spiral (Spiral,
                runSpiralWith)
 import Spiral.Config
 import Spiral.Exp
+import Spiral.Program
 import Spiral.SPL
 
 genComplexTransform :: Config
@@ -82,7 +83,8 @@ withCompiledTransform :: (Typed a, Num (Exp a))
                       -> IO c
 withCompiledTransform conf fname e k = do
     runSpiralWith conf $ do
-        c <- C.evalCg $ C.codegen fname e
+        t <- toProgram fname e
+        c <- C.evalCg $ C.cgProgram t
         when True $ writeOutput dotc (toList c)
     callProcess "gcc" ["-o", dotso, "-fPIC", "-shared", dotc]
     dlInit

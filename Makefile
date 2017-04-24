@@ -75,6 +75,9 @@ SRC = \
 	Spiral/ExtendedFloat.hs \
 	Spiral/FFT.hs \
 	Spiral/OpCount.hs \
+	Spiral/Program.hs \
+	Spiral/Program/Monad.hs \
+	Spiral/Program/Syntax.hs \
 	Spiral/SPL.hs \
 	Spiral/SPL/Run.hs \
 	Spiral/Util/MaplePretty.hs \
