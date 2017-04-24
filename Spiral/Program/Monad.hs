@@ -154,7 +154,13 @@ instance MonadSpiral m => MonadP (P m) where
         tau :: Type
         tau = typeOf (undefined :: a)
 
-    assignP e1 e2 = appendStm $ AssignS e1 e2
+    assignP e1 e2 = do
+        appendStm $ AssignS e1 e2
+        update e1 e2
+      where
+        update :: Exp a -> Exp a -> P m ()
+        update (VarE v) e = modify $ \s -> s { ecache = Map.insert (Some e) v (ecache s) }
+        update _        _ = return ()
 
     mustCache e@VarE{} =
         return e
@@ -162,18 +168,13 @@ instance MonadSpiral m => MonadP (P m) where
     mustCache e@(UnopE Neg VarE{}) =
         return e
 
-    mustCache (e :: Exp a) = do
+    mustCache e = do
         maybe_v <- Map.lookup (Some e) <$> gets ecache
         case maybe_v of
-          Just v  -> do return $ VarE v
-          Nothing -> do v <- gensym "t"
-                        modify $ \s -> s { ecache = Map.insert (Some e) v (ecache s) }
-                        appendDecl $ VarD v tau
-                        assignP (VarE v) e
-                        return $ VarE v
-      where
-        tau :: Type
-        tau = typeOf (undefined :: a)
+          Just v  -> return $ VarE v
+          Nothing -> do temp <- tempP
+                        assignP temp e
+                        return temp
 
     cacheArray arr = do
         v <- gensym "K"
