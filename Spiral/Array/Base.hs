@@ -127,12 +127,12 @@ instance Shape sh => IArray M sh e where
 instance Functor (Array M sh) where
     fmap f (M sh es) = M sh (fmap f es)
 
-instance Pretty e => Pretty (Matrix M e) where
-      ppr a =
-          brackets $ align $
-          folddoc (\d1 d2 -> d1 <> comma </> d2) $
-          map ppr $
-          toLists a
+instance (Shape sh, Pretty e) => Pretty (Array M sh e) where
+    ppr arr = go (reverse (listOfShape (extent arr))) []
+        where
+          go :: [Int] -> [Int] -> Doc
+          go []     ix  = ppr (index arr (shapeOfList ix))
+          go (n:ix) ix' = brackets $ align $ commasep $ map (\i -> go ix (i : ix')) [0..n-1]
 
 -- | Create a matrix from a list of lists of values.
 fromLists :: [[e]] -> Matrix M e
