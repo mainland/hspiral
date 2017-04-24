@@ -163,7 +163,7 @@ tempP = do
     appendDecl $ VarD v tau
     return $ VarE v
   where
-    tau :: Type
+    tau :: Type a
     tau = typeOf (undefined :: a)
 
 -- | An alias for 'assignP'.
@@ -265,7 +265,7 @@ newArray sh = do
     appendDecl $ ArrD v sh tau
     return $ C sh v
   where
-    tau :: Type
+    tau :: Type a
     tau = typeOf (undefined :: a)
 
 -- | Cache the contents of a matrix, returning it as a concrete matrix.

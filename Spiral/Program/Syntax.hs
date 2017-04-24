@@ -36,8 +36,8 @@ data Program a = Program
     }
 
 data Decl where
-    VarD :: Var -> Type -> Decl
-    ArrD :: Shape sh => Var -> sh -> Type -> Decl
+    VarD :: Var -> Type a -> Decl
+    ArrD :: Shape sh => Var -> sh -> Type a -> Decl
     ConstArrD :: (Shape sh, Typed a, IArray r sh (Exp a)) => Var -> Array r sh (Exp a) -> Decl
 
 type Decls = Seq Decl
@@ -70,7 +70,7 @@ instance Pretty Decl where
     ppr (ConstArrD v (a :: Array r sh (Exp a))) =
         ppr tau <> ppr (listOfShape (extent a)) <+> ppr v <+> char '=' <+> ppr m <> semi
       where
-        tau :: Type
+        tau :: Type a
         tau = typeOf (undefined :: a)
 
         m :: Array M sh (Exp a)

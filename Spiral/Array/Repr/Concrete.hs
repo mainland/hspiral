@@ -54,5 +54,5 @@ instance Shape sh => Computable C sh (Exp a) where
 instance (Shape sh, Typed a) => Pretty (Array C sh (Exp a)) where
     ppr (C sh v) = ppr tau <> ppr (listOfShape sh) <+> ppr v
       where
-        tau :: Type
+        tau :: Type a
         tau = typeOf (undefined :: a)

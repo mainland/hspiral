@@ -386,20 +386,24 @@ instance Pretty (Exp a) where
         text "im" <> parens (ppr e)
 
 -- | Representation of types.
-data Type = IntT
-          | IntegerT
-          | DoubleT
-          | ComplexT Type
-  deriving (Eq, Ord, Show)
+data Type a where
+    IntT     :: Type Int
+    IntegerT :: Type Integer
+    DoubleT  :: Type Double
+    ComplexT :: Type a -> Type (Complex a)
 
-instance Pretty Type where
+deriving instance Eq (Type a)
+deriving instance Ord (Type a)
+deriving instance Show (Type a)
+
+instance Pretty (Type a) where
     ppr IntT           = text "int"
     ppr IntegerT       = text "integer"
     ppr DoubleT        = text "double"
     ppr (ComplexT tau) = text "complex" <+> ppr tau
 
 class Typed a where
-    typeOf :: a -> Type
+    typeOf :: a -> Type a
 
 instance Typed Int where
     typeOf _ = IntT

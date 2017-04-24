@@ -61,7 +61,7 @@ void $id:f(const $ty:(mkParamType (cgArrayType tau n)) $id:cx,
   $items:items
 }|]
    where
-     tau :: Type
+     tau :: Type a
      tau = typeOf (undefined :: a)
 
      mkParamType :: C.Type -> C.Type
@@ -126,7 +126,7 @@ cgStm (AssignS (e1 :: Exp a) (e2 :: Exp a)) = do
     ce2 <- cgExp e2
     cgAssign tau ce1 ce2
   where
-    tau :: Type
+    tau :: Type a
     tau = typeOf (undefined :: a)
 
 cgStm (CommentS doc) =

@@ -345,7 +345,7 @@ cgId :: MonadUnique m => String -> Cg m C.Id
 cgId = gensym
 
 -- | Compile a type.
-cgType :: Type -> C.Type
+cgType :: Type a -> C.Type
 cgType IntT     = [cty|int|]
 cgType IntegerT = [cty|int|]
 cgType DoubleT  = [cty|double|]
@@ -357,7 +357,7 @@ cgType (ComplexT DoubleT)
 cgType tau@ComplexT{} = errordoc $ text "Illegal type:" <+> (text . show) tau
 
 -- | Compile an array type.
-cgArrayType :: forall sh . Shape sh => Type -> sh -> C.Type
+cgArrayType :: forall sh a . Shape sh => Type a -> sh -> C.Type
 cgArrayType (ComplexT DoubleT) sh | not useComplexType =
     case listOfShape sh of
       n:sh0 -> cgArrayType DoubleT (shapeOfList (2*n:sh0) :: sh)
@@ -369,7 +369,7 @@ cgArrayType tau sh = foldl cidx (cgType tau) (listOfShape sh)
     cidx ctau i = [cty|$ty:ctau[$int:i]|]
 
 -- | Compile an assignment.
-cgAssign :: MonadSpiral m => Type -> CExp -> CExp -> Cg m ()
+cgAssign :: MonadSpiral m => Type a -> CExp -> CExp -> Cg m ()
 cgAssign (ComplexT DoubleT) ce1 ce2 | not useComplexType = do
     appendStm [cstm|$cr1 = $cr2;|]
     appendStm [cstm|$ci1 = $ci2;|]
