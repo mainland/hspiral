@@ -27,10 +27,6 @@ import Spiral.Util.Pretty (Assoc(..),
                            infixl_,
                            precOf)
 
-appPrec, appPrec1 :: Int
-appPrec  = 5
-appPrec1 = appPrec + 1
-
 addPrec, addPrec1 :: Int
 addPrec  = 8
 addPrec1 = addPrec + 1
@@ -106,7 +102,7 @@ instance MaplePretty (Const a) where
                char '/' <>
                pprm (denominator r)
 
-    pprm (PiC r) = pprmPrec appPrec1 r <+> char '*' <+> pprm "Pi"
+    pprm (PiC r) = pprmPrec mulPrec1 r <+> char '*' <+> pprm "Pi"
 
 instance MaplePretty Var where
     pprm = ppr
@@ -134,7 +130,7 @@ instance MaplePretty (Exp a) where
         infixop p op e1 e2
 
     pprmPrec _ (IdxE ev eis) =
-        pprmPrec appPrec1 ev <> (brackets . commasep) [pprm (ix+1) | ix <- eis]
+        pprm ev <> (brackets . commasep) [pprm (ix+1) | ix <- eis]
 
     pprmPrec p (ComplexE er ei) =
         parensIf (p > addPrec) $

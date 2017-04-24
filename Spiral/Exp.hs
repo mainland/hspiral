@@ -120,20 +120,20 @@ instance Arbitrary (Const (Complex Double)) where
     arbitrary = ComplexC <$> arbitrary <*> arbitrary
 
 instance Pretty (Const a) where
-    ppr (IntC x)      = ppr x
-    ppr (IntegerC x)  = ppr x
-    ppr (DoubleC x)   = ppr x
-    ppr (RationalC x) = ppr x
+    pprPrec _ (IntC x)      = ppr x
+    pprPrec _ (IntegerC x)  = ppr x
+    pprPrec _ (DoubleC x)   = ppr x
+    pprPrec _ (RationalC x) = ppr x
 
-    ppr x@(ComplexC r i)
+    pprPrec p x@(ComplexC r i)
         | r == 0 && i == 0    = char '0'
         | r == 0 && i == 1    = char 'i'
         | r == 0 && i == (-1) = text "-i"
         | r == 0              = ppr i <> char 'i'
         | i == 0              = ppr r
-        | otherwise           = pprComplex (lower x)
+        | otherwise           = pprComplex p (lower x)
 
-    ppr (RouC r)
+    pprPrec _ (RouC r)
         | denominator r <= 4 = ppr (flatten (RouC r))
         | r < 0              = text "exp" <> parens (char '-' <> go (negate r))
         | otherwise          = text "exp" <> parens (go r)
@@ -143,14 +143,18 @@ instance Pretty (Const a) where
                char '/' <>
                ppr (denominator r)
 
-    ppr (PiC r) = pprPrec appPrec1 r <+> ppr "pi"
+    pprPrec _ (PiC r) = pprPrec mulPrec1 r <> char '*' <> text "pi"
 
 instance ExtendedFloat (Const (Complex Double)) where
     rootOfUnity = normalize . RouC
 
-pprComplex :: (Eq a, Num a, Pretty a) => Complex a -> Doc
-pprComplex (r :+ 0) = ppr r
-pprComplex (r :+ i) = ppr r <+> text "+" <+> pprPrec appPrec1 i <> char 'i'
+pprComplex :: (Eq a, Num a, Pretty a) => Int -> Complex a -> Doc
+pprComplex _ (r :+ 0)    = ppr r
+pprComplex _ (0 :+ 1)    = char 'i'
+pprComplex _ (0 :+ (-1)) = text "-i"
+pprComplex _ (0 :+ i)    = pprPrec mulPrec i <> char 'i'
+pprComplex p (r :+ i)    = parensIf (p > addPrec) $
+                           pprPrec addPrec r <+> text "+" <+> pprPrec mulPrec i <> char 'i'
 
 -- | Convert a 'Complex Double' to a 'Constant'
 fromComplex :: Complex Double -> Const (Complex Double)
@@ -373,16 +377,13 @@ instance Pretty (Exp a) where
         ppr ev <> mconcat [brackets (ppr ei) | ei <- eis]
 
     pprPrec p (ComplexE er ei) =
-        parensIf (p > addPrec) $
-        pprComplex (er :+ ei)
+        pprComplex p (er :+ ei)
 
-    pprPrec p (ReE e) =
-        parensIf (p > appPrec) $
-        text "re" <+> pprPrec appPrec1 e
+    pprPrec _ (ReE e) =
+        text "re" <> parens (ppr e)
 
-    pprPrec p (ImE e) =
-        parensIf (p > appPrec) $
-        text "im" <+> pprPrec appPrec1 e
+    pprPrec _ (ImE e) =
+        text "im" <> parens (ppr e)
 
 -- | Representation of types.
 data Type = IntT

@@ -17,10 +17,10 @@ module Spiral.Util.Pretty (
 
     infixop,
 
-    appPrec,
-    appPrec1,
     addPrec,
-    addPrec1
+    addPrec1,
+    mulPrec,
+    mulPrec1
   ) where
 
 import Text.PrettyPrint.Mainland
@@ -75,10 +75,10 @@ infixop prec op l r =
 
     Fixity opAssoc opPrec = fixity op
 
-appPrec, appPrec1 :: Int
-appPrec  = 5
-appPrec1 = appPrec + 1
-
 addPrec, addPrec1 :: Int
 addPrec  = 8
 addPrec1 = addPrec + 1
+
+mulPrec, mulPrec1 :: Int
+mulPrec  = 9
+mulPrec1 = mulPrec + 1

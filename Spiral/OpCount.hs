@@ -486,12 +486,10 @@ instance Pretty CExp where
         pprComplex er ei
 
     pprPrec p (ReCE e) =
-        parensIf (p > appPrec) $
-        text "re" <+> pprPrec appPrec1 e
+        text "re" <> parens (ppr e)
 
     pprPrec p (ImCE e) =
-        parensIf (p > appPrec) $
-        text "im" <+> pprPrec appPrec1 e
+        text "im" <> parens (ppr e)
 
 pprComplex :: Pretty a => a -> a -> Doc
-pprComplex r i = ppr r <+> text "+" <+> pprPrec appPrec1 i <> char 'i'
+pprComplex r i = ppr r <+> text "+" <+> pprPrec addPrec1 i <> char 'i'
