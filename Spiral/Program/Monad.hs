@@ -189,11 +189,11 @@ tempP = go tau
 
 -- | An alias for 'assignP'.
 infix 4 .:=.
-(.:=.) :: (MonadSpiral m, Typed a) => Exp a -> Exp a -> P m ()
+(.:=.) :: (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a -> P m ()
 (.:=.) = assignP
 
 -- | Assign one expression to another.
-assignP :: forall a m . (Typed a, MonadSpiral m) => Exp a -> Exp a -> P m ()
+assignP :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a -> P m ()
 assignP e1 e2 = do
     appendStm $ AssignS e1 e2
     update e1 e2
@@ -278,7 +278,7 @@ mustCache e = do
                     return temp
 
 -- | Create a new concrete array of the given shape.
-newArray :: forall sh a m . (Shape sh, Typed a, MonadSpiral m)
+newArray :: forall sh a m . (Shape sh, Typed a, Num (Exp a), MonadSpiral m)
          => (sh :. Int)
          -> P m (Array H (sh :. Int) (Exp a))
 newArray (sh :. i) = do

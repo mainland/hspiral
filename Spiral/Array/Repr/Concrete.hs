@@ -42,7 +42,7 @@ instance Shape sh => IArray C sh (Exp e) where
 instance Shape sh => SArray C sh (Exp e) where
     indexS (C _sh v) ix = IdxE v (listOfExpShape ix)
 
-instance (Shape sh, Typed a) => MArray C sh (Exp a) where
+instance (Shape sh, Typed a, Num (Exp a)) => MArray C sh (Exp a) where
     read  (C _sh v) ix = return $ IdxE v (listOfExpShape ix)
     write (C _sh v) ix = assignP (IdxE v (listOfExpShape ix))
 

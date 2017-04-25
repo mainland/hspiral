@@ -44,6 +44,6 @@ instance Monad m => Monad (P m) where
 
 instance MonadIO m => MonadIO (P m) where
 
-assignP :: (Typed a, MonadSpiral m) => Exp a -> Exp a -> P m ()
+assignP :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a -> P m ()
 
 forP :: MonadSpiral m => Int -> Int -> (Exp Int -> P m ()) -> P m ()
