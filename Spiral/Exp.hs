@@ -530,7 +530,14 @@ liftNum2Exp Mul _ e1 e2
 
 liftNum2Exp Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
 liftNum2Exp Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
-liftNum2Exp Mul _ (ComplexE a b) (ComplexE c d) = ComplexE (a*c - b*d) (b*c + a*d)
+
+liftNum2Exp Mul _ (ComplexE a b) (ComplexE c d)
+  | minimizeAdds = ComplexE (a*c - b*d) (b*c + a*d)
+  | otherwise    = ComplexE (t1 - t2) (t1 + t3)
+  where
+    t1 = a*(c+d)
+    t2 = d*(b+a)
+    t3 = c*(b-a)
 
 -- If we aren't using an explicit complex type in the code generator, then
 -- we want to make sure that both arguments to the operator have explicit
