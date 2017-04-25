@@ -41,7 +41,7 @@ type PermFun = forall a . Integral a => a -> a
 class (Show (Perm r), Pretty (Perm r)) => Permutation r where
     data Perm r
 
-    -- | Convert a permutation into an explicit index-mappoing function.
+    -- | Convert a permutation into an explicit index-mapping function.
     fromPermutation :: Perm r -> PermFun
 
     dim :: Perm r -> Int
