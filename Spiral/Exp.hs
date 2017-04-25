@@ -202,6 +202,9 @@ deriving instance Eq (Exp a)
 deriving instance Ord (Exp a)
 deriving instance Show (Exp a)
 
+instance IsString (Exp a) where
+    fromString s = VarE (fromString s)
+
 instance ExtendedFloat (Exp (Complex Double)) where
     rootOfUnity = ConstE . rootOfUnity
 
