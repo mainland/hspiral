@@ -158,7 +158,6 @@ cgConst (RationalC x)    = CDouble x
 cgConst (DoubleC x)      = CDouble (toRational x)
 cgConst (ComplexC e1 e2) = CComplex (cgConst e1) (cgConst e2)
 cgConst (PiC x)          = CDouble (toRational (fromRational x * pi :: Double))
-cgConst (CosPiC x)       = CDouble (toRational (cos (fromRational x * pi :: Double)))
 cgConst e@RouC{}         = cgConst (flatten e)
 
 -- | Compile an 'Exp a'.
