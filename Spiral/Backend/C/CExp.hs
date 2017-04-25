@@ -13,6 +13,7 @@
 
 module Spiral.Backend.C.CExp (
     CExp(..),
+    isComplex,
     unComplex
   ) where
 
@@ -54,6 +55,10 @@ instance Eq CExp where
     CInt x   == CDouble x'    = x' == fromIntegral x
 
     _ == _ = False
+
+isComplex :: CExp -> Bool
+isComplex CComplex{} = True
+isComplex _          = False
 
 unComplex :: CExp -> (CExp, CExp)
 unComplex (CComplex r i) = (r, i)

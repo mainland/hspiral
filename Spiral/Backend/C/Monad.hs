@@ -92,7 +92,6 @@ import Spiral.Array
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
 import Spiral.Config
-import Spiral.Driver.Globals
 import Spiral.Exp
 import Spiral.Monad (MonadSpiral)
 import Spiral.Util.Trace
@@ -350,19 +349,14 @@ cgType IntT     = [cty|int|]
 cgType IntegerT = [cty|int|]
 cgType DoubleT  = [cty|double|]
 
-cgType (ComplexT DoubleT)
-    | useComplexType = [cty|double _Complex|]
-    | otherwise      = error "Cannot convert complex double to C type"
+cgType (ComplexT DoubleT) =
+    [cty|double _Complex|]
 
-cgType tau@ComplexT{} = errordoc $ text "Illegal type:" <+> (text . show) tau
+cgType tau@ComplexT{} =
+    errordoc $ text "Illegal type:" <+> (text . show) tau
 
 -- | Compile an array type.
 cgArrayType :: forall sh a . Shape sh => Type a -> sh -> C.Type
-cgArrayType (ComplexT DoubleT) sh | not useComplexType =
-    case listOfShape sh of
-      n:sh0 -> cgArrayType DoubleT (shapeOfList (2*n:sh0) :: sh)
-      _     -> error "zero-dimensional array of Complex Double"
-
 cgArrayType tau sh = foldl cidx (cgType tau) (listOfShape sh)
   where
     cidx :: C.Type -> Int -> C.Type
@@ -370,7 +364,7 @@ cgArrayType tau sh = foldl cidx (cgType tau) (listOfShape sh)
 
 -- | Compile an assignment.
 cgAssign :: MonadSpiral m => Type a -> CExp -> CExp -> Cg m ()
-cgAssign (ComplexT DoubleT) ce1 ce2 | not useComplexType = do
+cgAssign _ ce1 ce2 | isComplex ce1 || isComplex ce2 = do
     appendStm [cstm|$cr1 = $cr2;|]
     appendStm [cstm|$ci1 = $ci2;|]
   where

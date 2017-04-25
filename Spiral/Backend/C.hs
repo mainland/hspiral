@@ -35,7 +35,6 @@ import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad
 import Spiral.Backend.C.Util
 import Spiral.Config
-import Spiral.Driver.Globals
 import Spiral.Exp
 import Spiral.Monad (MonadSpiral)
 import Spiral.Program.Syntax
@@ -90,13 +89,6 @@ cgDecls :: forall m a . MonadSpiral m => Decls -> Cg m a -> Cg m a
 cgDecls decls k = foldr cgDecl k (toList decls)
 
 cgDecl :: MonadSpiral m => Decl -> Cg m a -> Cg m a
-cgDecl (VarD v (ComplexT DoubleT)) k | not useComplexType = do
-    cr <- cgVar v
-    ci <- cgVar v
-    appendDecl [cdecl|double $id:cr;|]
-    appendDecl [cdecl|double $id:ci;|]
-    extendVars [(v, CComplex (CExp [cexp|$id:cr|]) (CExp [cexp|$id:ci|]))] k
-
 cgDecl (VarD v tau) k = do
     cv <- cgVar v
     appendDecl [cdecl|$ty:(cgType tau) $id:cv;|]
@@ -152,14 +144,7 @@ cgArrayInit a = do
     f :: [Int] -> [Int] -> Cg m [C.Initializer]
     f [] ix = do
         ce <- cgExp (index a (shapeOfList ix))
-        return $ cgElem ce
-      where
-        cgElem :: CExp -> [C.Initializer]
-        cgElem (CComplex ce1 ce2) | not useComplexType =
-            [toInitializer ce1, toInitializer ce2]
-
-        cgElem ce =
-            [toInitializer ce]
+        return [toInitializer ce]
 
     f (n:ix) ix' = do
         inits <- mapM (\i -> f ix (i : ix')) [0..n-1]
@@ -199,10 +184,12 @@ cgExp (BinopE op e1 e2) = do
     go Rem  ce1 ce2 = return $ ce1 `rem` ce2
     go Div  _   _   = fail "Can't happen"
 
-cgExp (IdxE v es) =
-    case typeOf (undefined :: a) of
-      ComplexT DoubleT | not useComplexType -> mkComplexIdx v es
-      _                                     -> mkIdx v es
+cgExp (IdxE v es) = do
+    cv  <- lookupVar v
+    ces <- mapM cgExp es
+    return $ CExp $ foldr cidx [cexp|$cv|] ces
+  where
+    cidx ci ce = [cexp|$ce[$ci]|]
 
 cgExp (ComplexE er ei) =
     CComplex <$> cgExp er <*> cgExp ei
@@ -214,18 +201,6 @@ cgExp (ReE e) = do
 cgExp (ImE e) = do
     (_cr, ci) <- unComplex <$> cgExp e
     return ci
-
-mkIdx :: MonadSpiral m => Var -> [Exp Int] -> Cg m CExp
-mkIdx v es = do
-    cv  <- lookupVar v
-    ces <- mapM cgExp es
-    return $ CExp $ foldr cidx [cexp|$cv|] ces
-  where
-    cidx ci ce = [cexp|$ce[$ci]|]
-
-mkComplexIdx :: MonadSpiral m => Var -> [Exp Int] -> Cg m CExp
-mkComplexIdx cv []       = return $ CComplex (CExp [cexp|$id:cv[0]|]) (CExp [cexp|$id:cv[1]|])
-mkComplexIdx cv (ci:cis) = CComplex <$> mkIdx cv (2*ci:cis) <*> mkIdx cv (2*ci+1:cis)
 
 -- | Generate a unique C identifier name for the given variable.
 cgVar :: MonadUnique m => Var -> Cg m C.Id
