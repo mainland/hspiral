@@ -18,7 +18,7 @@ import System.Console.GetOpt
 import System.Environment (getProgName)
 
 import Spiral.Config
-import Spiral.Driver.Globals
+import Spiral.Globals
 
 options :: forall m . Monad m => [OptDescr (Config -> m Config)]
 options =

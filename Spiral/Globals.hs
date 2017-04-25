@@ -1,11 +1,11 @@
 -- |
--- Module      : Spiral.Driver.Globals
+-- Module      : Spiral.Globals
 -- Copyright   : (c) 2016 Drexel University
 -- License     : BSD-style
 -- Author      : Geoffrey Mainland <mainland@drexel.edu>
 -- Maintainer  : Geoffrey Mainland <mainland@drexel.edu>
 
-module Spiral.Driver.Globals (
+module Spiral.Globals (
     setUseComplexType,
     useComplexType
   ) where

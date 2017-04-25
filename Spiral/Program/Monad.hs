@@ -63,8 +63,8 @@ import Spiral.Array.Repr.Hidden
 import Spiral.Array.Repr.Complex
 import Spiral.Array.Repr.Concrete
 import Spiral.Config
-import Spiral.Driver.Globals
 import Spiral.Exp
+import Spiral.Globals
 import Spiral.Monad (MonadSpiral)
 import Spiral.Program.Syntax
 import Spiral.Util.Trace

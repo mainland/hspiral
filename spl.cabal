@@ -47,6 +47,7 @@ library
     Spiral.Exp
     Spiral.ExtendedFloat
     Spiral.FFT
+    Spiral.Globals
     Spiral.Monad
     Spiral.OpCount
     Spiral.Program
@@ -58,7 +59,6 @@ library
   other-modules:
     Data.Heterogeneous
     Spiral.Driver
-    Spiral.Driver.Globals
     Spiral.Driver.Monad
     Spiral.Driver.Opts
     Spiral.Util.MaplePretty

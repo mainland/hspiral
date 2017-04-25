@@ -49,8 +49,8 @@ import Test.QuickCheck (Arbitrary(..))
 import Text.PrettyPrint.Mainland hiding (flatten)
 
 import Data.Heterogeneous
-import Spiral.Driver.Globals
 import Spiral.ExtendedFloat
+import Spiral.Globals
 import Spiral.Util.Name
 import Spiral.Util.Pretty
 import Spiral.Util.Uniq
