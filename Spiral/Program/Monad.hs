@@ -9,6 +9,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Spiral.Program.Monad
@@ -58,8 +59,11 @@ import Text.PrettyPrint.Mainland
 
 import Data.Heterogeneous
 import Spiral.Array
+import Spiral.Array.Repr.Hidden
+import Spiral.Array.Repr.Complex
 import Spiral.Array.Repr.Concrete
 import Spiral.Config
+import Spiral.Driver.Globals
 import Spiral.Exp
 import Spiral.Monad (MonadSpiral)
 import Spiral.Program.Syntax
@@ -158,13 +162,21 @@ forP lo hi k = do
 
 -- | Generate a temporary of the given type.
 tempP :: forall a m . (Typed a, MonadSpiral m) => P m (Exp a)
-tempP = do
-    v <- gensym "t"
-    appendDecl $ VarD v tau
-    return $ VarE v
+tempP = go tau
   where
     tau :: Type a
     tau = typeOf (undefined :: a)
+
+    go :: Type b -> P m (Exp b)
+    go (ComplexT tau') | not useComplexType = do
+        er <- go tau'
+        ei <- go tau'
+        return $ ComplexE er ei
+
+    go tau = do
+        v <- gensym "t"
+        appendDecl $ VarD v tau
+        return $ VarE v
 
 -- | An alias for 'assignP'.
 infix 4 .:=.
@@ -258,21 +270,34 @@ mustCache e = do
 
 -- | Create a new concrete array of the given shape.
 newArray :: forall sh a m . (Shape sh, Typed a, MonadSpiral m)
-         => sh
-         -> P m (Array C sh (Exp a))
-newArray sh = do
+         => (sh :. Int)
+         -> P m (Array H (sh :. Int) (Exp a))
+newArray (sh :. i) = do
     v <- gensym "V"
-    appendDecl $ ArrD v sh tau
-    return $ C sh v
+    go v (typeOf (undefined :: a))
   where
-    tau :: Type a
-    tau = typeOf (undefined :: a)
+    go :: Var -> Type a -> P m (Array H (sh :. Int) (Exp a))
+    go v (ComplexT tau) | not useComplexType = do
+        appendDecl $ ArrD v (sh :. 2*i) tau
+        return $ H $ CMPLX $ C (sh :. 2*i) v
+
+    go v tau = do
+        appendDecl $ ArrD v (sh :. i) tau
+        return $ H $ C (sh :. i) v
 
 -- | Cache the contents of a matrix, returning it as a concrete matrix.
-cacheArray :: (Typed a, Num (Exp a), IArray r sh (Exp a), MonadSpiral m)
-           => Array r sh (Exp a)
-           -> P m (Array C sh (Exp a))
+cacheArray :: forall a r sh m . (Typed a, Num (Exp a), Shape sh, IArray r (sh :. Int) (Exp a), MonadSpiral m)
+           => Array r (sh :. Int) (Exp a)
+           -> P m (Array H (sh :. Int) (Exp a))
 cacheArray arr = do
     v <- gensym "K"
-    appendDecl $ ConstArrD v arr
-    return $ C (extent arr) v
+    go v (typeOf (undefined :: a))
+  where
+    go :: Var -> Type a -> P m (Array H (sh :. Int) (Exp a))
+    go v ComplexT{} | not useComplexType = do
+        appendDecl $ ConstArrD v (RE arr)
+        return $ H $ CMPLX $ C (extent (RE arr)) v
+
+    go v _ = do
+        appendDecl $ ConstArrD v arr
+        return $ H $ C (extent arr) v

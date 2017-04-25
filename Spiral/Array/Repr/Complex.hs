@@ -45,14 +45,14 @@ instance IsArray r (sh :. Int) (Exp (Complex a)) => IsArray (RE r) (sh :. Int) (
 instance Pretty (Array r (sh :. Int) (Exp (Complex a))) => Pretty (Array (RE r) (sh :. Int) (Exp a)) where
     ppr (RE a) = text "Re" <> parens (ppr a)
 
-instance (Shape sh, IArray r (sh :. Int) (Exp (Complex a))) => IArray (RE r) (sh :. Int) (Exp a) where
+instance (Num (Exp a), Shape sh, IArray r (sh :. Int) (Exp (Complex a))) => IArray (RE r) (sh :. Int) (Exp a) where
     index (RE a) (sh :. i)
         | i `rem` 2 == 0 = re
         | otherwise      = im
       where
         (re, im) = unComplexE (index a (sh :. i `quot` 2))
 
-instance SArray r (sh :. Int) (Exp (Complex a)) => SArray (RE r) (sh :. Int) (Exp a) where
+instance (Num (Exp a), SArray r (sh :. Int) (Exp (Complex a))) => SArray (RE r) (sh :. Int) (Exp a) where
     indexS (RE a) (sh :. i)
         | i `rem` 2 == 0 = re
         | otherwise      = im
@@ -72,7 +72,7 @@ instance (Typed a, Num (Exp a), MArray r (sh :. Int) (Exp (Complex a))) => MArra
           then write a (sh :. i `quot` 2) (ComplexE e im)
           else write a (sh :. i `quot` 2) (ComplexE re e)
 
-instance SArray r (sh :. Int) (Exp (Complex a)) => Computable (RE r) (sh :. Int) (Exp a) where
+instance (Num (Exp a), SArray r (sh :. Int) (Exp (Complex a))) => Computable (RE r) (sh :. Int) (Exp a) where
     computeP a b =
         forShapeP (extent b) $ \ix ->
             write a ix (indexS b ix)

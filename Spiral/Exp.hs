@@ -193,8 +193,8 @@ data Exp a where
     IdxE   :: Var -> [Exp Int] -> Exp a
 
     ComplexE :: (Typed a, Num (Exp a)) => Exp a -> Exp a -> Exp (Complex a)
-    ReE :: Exp (Complex a) -> Exp a
-    ImE :: Exp (Complex a) -> Exp a
+    ReE :: Num (Exp a) => Exp (Complex a) -> Exp a
+    ImE :: Num (Exp a) => Exp (Complex a) -> Exp a
 
 deriving instance Eq (Exp a)
 deriving instance Ord (Exp a)
@@ -390,7 +390,7 @@ data Type a where
     IntT     :: Type Int
     IntegerT :: Type Integer
     DoubleT  :: Type Double
-    ComplexT :: Type a -> Type (Complex a)
+    ComplexT :: (Typed a, Num (Exp a)) => Type a -> Type (Complex a)
 
 deriving instance Eq (Type a)
 deriving instance Ord (Type a)
@@ -414,7 +414,7 @@ instance Typed Integer where
 instance Typed Double where
     typeOf _ = DoubleT
 
-instance Typed a => Typed (Complex a) where
+instance (Typed a, Num (Exp a)) => Typed (Complex a) where
     typeOf _ = ComplexT (typeOf (undefined :: a))
 
 --------------------------------------------------------------------------------
@@ -820,7 +820,7 @@ ensureComplexE e = ComplexE er ei
     (er, ei) = unComplexE e
 
 -- | Extract the complex and real portions of an 'Exp (Complex a)'.
-unComplexE :: Exp (Complex a) -> (Exp a, Exp a)
+unComplexE :: Num (Exp a) => Exp (Complex a) -> (Exp a, Exp a)
 unComplexE (ConstE (ComplexC r i)) = (ConstE r, ConstE i)
 unComplexE (ConstE (RouC r))       = (ConstE (cos (PiC (2*r))), ConstE (sin (PiC (2*r))))
 unComplexE (ComplexE r i )         = (r, i)
