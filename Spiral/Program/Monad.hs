@@ -55,7 +55,7 @@ import Data.IORef (IORef)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Sequence ((|>))
-import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland hiding (flatten)
 
 import Data.Heterogeneous
 import Spiral.Array
@@ -195,87 +195,133 @@ infix 4 .:=.
 -- | Assign one expression to another.
 assignP :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a -> P m ()
 assignP e1 e2 = do
-    appendStm $ AssignS e1 e2
-    update e1 e2
+    appendStm $ AssignS e1 e2'
+    update e1 e2'
   where
+    e2' :: Exp a
+    e2' = simplify e2
+
     update :: Exp a -> Exp a -> P m ()
     update (VarE v) e = insertCachedExp v e
     update _        _ = return ()
 
--- | Cache the given expression. This serves as a hint that it will be used
--- more than once.
-cache :: (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> P m (Exp a)
-cache e@ConstE{} =
-    return e
+simplify :: forall a . Num (Exp a) => Exp a -> Exp a
+simplify (BinopE op e1 e2) = go op (simplify e1) (simplify e2)
+  where
+    go :: Binop -> Exp a -> Exp a -> Exp a
+    go Add e1 (UnopE Neg e2) =
+        simplify (e1 - e2)
 
-cache e@VarE{} =
-    return e
+    go Sub e1 (UnopE Neg e2) =
+        simplify (e1 + e2)
 
-cache (ComplexE er ei) = do
-    er' <- cache er
-    ei' <- cache ei
-    return (ComplexE er' ei')
+    go Add e1 (BinopE Mul c2 e2) | isNeg c2 =
+        simplify (e1 - ((-c2) * e2))
 
-cache (BinopE Add e1 (UnopE Neg e2)) =
-    cache (e1 - e2)
+    go Sub e1 (BinopE Mul c2 e2) | isNeg c2 =
+        simplify (e1 + ((-c2) * e2))
 
-cache (BinopE Add e1 (BinopE Mul c2 e2)) | isNeg c2 =
-    cache (e1 - ((-c2) * e2))
+    go Add (BinopE Mul c1 e1) (BinopE Mul c2 e2)
+      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 ~== x2 =
+        simplify (c1 * simplify (e1 + e2))
 
-cache (BinopE Sub e1 (BinopE Mul c2 e2)) | isNeg c2 =
-    cache (e1 + ((-c2) * e2))
+    go Sub (BinopE Mul c1 e1) (BinopE Mul c2 e2)
+      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 ~== x2 =
+        simplify (c1 * simplify (e1 - e2))
 
-cache (BinopE Add (BinopE Mul c1 e1) (BinopE Mul c2 e2))
-  | ConstE (DoubleC x1) <- c1, ConstE (DoubleC x2) <- c2, epsDiff x1 x2 = do
-    e12 <- cache (e1 + e2)
-    cache (c1 * e12)
+    go Add (BinopE Mul c1 e1) (BinopE Mul c2 e2)
+      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 < 0, x1 ~== -x2 =
+        simplify (c1 * simplify (e1 - e2))
 
-cache (BinopE Add (BinopE Mul c1 e1) (BinopE Mul c2 e2))
-  | ConstE (DoubleC x1) <- c1, ConstE (DoubleC x2) <- c2, x1 < 0, epsDiff x1 (-x2) = do
-    e12 <- cache (e1 - e2)
-    cache (c1 * e12)
+    go Sub (BinopE Mul c1 e1) (BinopE Mul c2 e2)
+      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 < 0, x1 ~== -x2 =
+        simplify (c1 * simplify (e1 + e2))
 
-cache (BinopE Sub (BinopE Mul c1 e1) (BinopE Mul c2 e2))
-  | ConstE (DoubleC x1) <- c1, ConstE (DoubleC x2) <- c2, x1 < 0, epsDiff x1 (-x2) = do
-    e12 <- cache (e1 + e2)
-    cache (c1 * e12)
+    -- When multiplying by a constant, make constant the first term
+    go Mul e1 e2@ConstE{} =
+        go Mul e2 e1
 
-cache (BinopE op e1 e2) = do
-    e1' <- cache e1
-    e2' <- cache e2
-    mustCache (BinopE op e1' e2')
+    go Mul c1@ConstE{} (BinopE Sub e1 e2) | isNeg c1 =
+        simplify ((-c1) * (e2 - e1))
 
-cache (UnopE op e) = do
-    e' <- cache e
-    mustCache (UnopE op e')
+    go op e1 e2 =
+        BinopE op e1 e2
 
-cache e =
-    mustCache e
+simplify (UnopE op e) = go op (simplify e)
+  where
+    go :: Unop -> Exp a -> Exp a
+    go Neg (UnopE Neg e) =
+        simplify e
+
+    go Neg (BinopE Sub e1 e2) =
+        simplify (e2 - e1)
+
+    go op e =
+        UnopE op e
+
+simplify e = e
+
+fromDouble :: Exp a -> Maybe Double
+fromDouble (ConstE (DoubleC x)) = return x
+fromDouble (ConstE (PiC c))     = return (pi*fromRational c)
+fromDouble _                    = fail "Not a double constant"
 
 isNeg :: Exp a -> Bool
-isNeg (ConstE (DoubleC x)) = x < 0
-isNeg _                    = False
+isNeg e | Just c <- fromDouble e = c < 0
+isNeg _                          = False
 
-epsDiff :: (Ord a, Fractional a) => a -> a -> Bool
-epsDiff x y = abs (x - y) < eps
+infix 4 ~==
+
+-- | Return 'True' is two numbers are approximately equal
+(~==) :: (Ord a, Fractional a) => a -> a -> Bool
+x ~== y = abs (x - y) < eps
   where
     eps = 1e-15
 
--- | Really cache the expression.
-mustCache :: (Typed a, Num (Exp a), MonadSpiral m ) => Exp a -> P m (Exp a)
-mustCache e@VarE{} =
-    return e
+-- | Cache the given expression. This serves as a hint that it will be used
+-- more than once.
+cache :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> P m (Exp a)
+cache e = go (simplify e)
+  where
+    go :: Exp a -> P m (Exp a)
+    go e@ConstE{} =
+        return e
 
-mustCache e@(UnopE Neg VarE{}) =
-    return e
+    go e@VarE{} =
+        return e
 
-mustCache e = do
-    maybe_v <- lookupCachedExp e
-    case maybe_v of
-      Just v  -> return $ VarE v
-      Nothing -> do temp <- tempP
-                    assignP temp e
-                    return temp
+    go (ComplexE er ei) = do
+        er' <- cache er
+        ei' <- cache ei
+        return (ComplexE er' ei')
+
+    go e@(UnopE Neg VarE{}) =
+        return e
+
+    go (UnopE op e) = do
+        e' <- cache e
+        mustCache (UnopE op e')
+
+    -- Don't cache subexpression when we are just multiplying by a constant
+    go (BinopE op e1@ConstE{} e2) =
+        mustCache (BinopE op e1 e2)
+
+    go (BinopE op e1 e2) = do
+        e1' <- cache e1
+        e2' <- cache e2
+        mustCache (BinopE op e1' e2')
+
+    go e =
+        mustCache e
+
+    mustCache :: Exp a -> P m (Exp a)
+    mustCache e = do
+        maybe_v <- lookupCachedExp e
+        case maybe_v of
+          Just v  -> return $ VarE v
+          Nothing -> do temp <- tempP
+                        assignP temp e
+                        return temp
 
 -- | Create a new concrete array of the given shape.
 newArray :: forall sh a m . (Shape sh, Typed a, Num (Exp a), MonadSpiral m)
