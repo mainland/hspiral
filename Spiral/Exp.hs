@@ -200,7 +200,6 @@ data Exp a where
 
 deriving instance Eq (Exp a)
 deriving instance Ord (Exp a)
-deriving instance Show (Exp a)
 
 instance IsString (Exp a) where
     fromString s = VarE (fromString s)
@@ -388,6 +387,9 @@ instance Pretty (Exp a) where
 
     pprPrec _ (ImE e) =
         text "im" <> parens (ppr e)
+
+instance Show (Exp a) where
+    showsPrec p = displayS . renderCompact . pprPrec p
 
 -- | Representation of types.
 data Type a where
