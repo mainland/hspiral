@@ -81,6 +81,9 @@ data Const a where
     -- Multiple of $\pi$
     PiC :: Rational -> Const Double
 
+    -- Cosine of a multiple of $\pi$
+    CosPiC :: Rational -> Const Double
+
 deriving instance Eq (Const a)
 deriving instance Show (Const a)
 
@@ -93,6 +96,7 @@ lower (RationalC x)  = x
 lower (ComplexC r i) = lower r :+ lower i
 lower (RouC r)       = lower (cos (PiC (2*r))) :+ lower (sin (PiC (2*r)))
 lower (PiC r)        = pi*fromRational r
+lower (CosPiC r)     = cos (pi*fromRational r)
 
 instance Ord (Const a) where
     compare x y =
@@ -145,6 +149,8 @@ instance Pretty (Const a) where
 
     pprPrec _ (PiC r) = pprPrec mulPrec1 r <> char '*' <> text "pi"
 
+    pprPrec _ (CosPiC r) = text "cos" <> parens (ppr (PiC r))
+
 instance ExtendedFloat (Const (Complex Double)) where
     rootOfUnity = normalize . RouC
 
@@ -180,9 +186,10 @@ normalize c =
 
 -- | Flatten a constant's representation.
 flatten :: Const a -> Const a
-flatten (RouC r) = fromComplex (lower (normalize (RouC r)))
-flatten (PiC r)  = DoubleC (fromRational r * pi)
-flatten e        = e
+flatten (RouC r)   = fromComplex (lower (normalize (RouC r)))
+flatten (PiC r)    = DoubleC (fromRational r * pi)
+flatten (CosPiC r) = DoubleC (cos (fromRational r * pi))
+flatten e          = e
 
 -- | Representation of scalar constants.
 data Exp a where
@@ -215,6 +222,7 @@ instance HEq Const where
     heq (ComplexC r1 i1) (ComplexC r2 i2) = r1 == r2 && i1 == i2
     heq (RouC x)         (RouC y)         = x == y
     heq (PiC x)          (PiC y)          = x == y
+    heq (CosPiC x)       (CosPiC y)       = x == y
     heq _                _                = False
 
 instance HEq Exp where
@@ -262,8 +270,17 @@ instance HOrd Const where
     hcompare (RouC x)         (RouC y)         = compare x y
     hcompare RouC{}           _                = LT
 
+    hcompare PiC{}            IntC{}           = GT
+    hcompare PiC{}            IntegerC{}       = GT
+    hcompare PiC{}            DoubleC{}        = GT
+    hcompare PiC{}            RationalC{}      = GT
+    hcompare PiC{}            ComplexC{}       = GT
+    hcompare PiC{}            RouC{}           = GT
     hcompare (PiC x)          (PiC y)          = compare x y
-    hcompare PiC{}            _                = GT
+    hcompare PiC{}            _                = LT
+
+    hcompare (CosPiC x)       (CosPiC y)       = compare x y
+    hcompare CosPiC{}         _                = GT
 
 instance HOrd Exp where
     hcompare (ConstE c1)          (ConstE c2)          = hcompare c1 c2
@@ -466,6 +483,7 @@ liftNum2Opt op f x y = liftNum2 op f x y
 instance LiftNum (Const a) where
     liftNum Neg _ (ComplexC a b) = ComplexC (-a) (-b)
     liftNum Neg _ (RouC r)       = RouC (r + 1 % 2)
+    liftNum Neg _ (PiC r)        = PiC (-r)
 
     liftNum _  f (IntC x)      = IntC (f x)
     liftNum _  f (IntegerC x)  = IntegerC (f x)
@@ -790,11 +808,12 @@ instance Floating (Const Double) where
     sin x = lift sin x
 
     cos (PiC x)
-      | x >  1    = cos (PiC (x - 2))
-      | x < -1    = cos (PiC (x + 2))
-      | x == -1   = -1
-      | x == -1/2 = 0
+      | x < 0     = cos (PiC (-x))
+      | x > 1     = cos (PiC (x - 2))
+      | x > 1/2   = -cos (PiC (1 - x))
       | x == 0    = 1
+      | x == 1/2  = 0
+      | otherwise = CosPiC x
 
     cos x = lift cos x
 

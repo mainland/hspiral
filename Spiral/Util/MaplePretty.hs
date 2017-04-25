@@ -104,6 +104,8 @@ instance MaplePretty (Const a) where
 
     pprm (PiC r) = pprmPrec mulPrec1 r <+> char '*' <+> pprm "Pi"
 
+    pprm (CosPiC r) = text "Cos" <> parens (ppr (PiC r))
+
 instance MaplePretty Var where
     pprm = ppr
 
