@@ -26,6 +26,8 @@ module Spiral.Exp (
     fromComplex,
     flatten,
 
+    simplify,
+
     LiftNum(..),
     liftNumOpt,
     liftNum2Opt,
@@ -416,6 +418,85 @@ instance Typed Double where
 
 instance (Typed a, Num (Exp a)) => Typed (Complex a) where
     typeOf _ = ComplexT (typeOf (undefined :: a))
+
+--------------------------------------------------------------------------------
+--
+-- Simplification
+--
+--------------------------------------------------------------------------------
+
+simplify :: forall a . Num (Exp a) => Exp a -> Exp a
+simplify (BinopE op e1 e2) = go op (simplify e1) (simplify e2)
+  where
+    go :: Binop -> Exp a -> Exp a -> Exp a
+    go Add e1 (UnopE Neg e2) =
+        simplify (e1 - e2)
+
+    go Sub e1 (UnopE Neg e2) =
+        simplify (e1 + e2)
+
+    go Add e1 (BinopE Mul c2 e2) | isNeg c2 =
+        simplify (e1 - ((-c2) * e2))
+
+    go Sub e1 (BinopE Mul c2 e2) | isNeg c2 =
+        simplify (e1 + ((-c2) * e2))
+
+    go Add (BinopE Mul c1 e1) (BinopE Mul c2 e2)
+      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 ~== x2 =
+        simplify (c1 * simplify (e1 + e2))
+
+    go Sub (BinopE Mul c1 e1) (BinopE Mul c2 e2)
+      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 ~== x2 =
+        simplify (c1 * simplify (e1 - e2))
+
+    go Add (BinopE Mul c1 e1) (BinopE Mul c2 e2)
+      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 < 0, x1 ~== -x2 =
+        simplify (c1 * simplify (e1 - e2))
+
+    go Sub (BinopE Mul c1 e1) (BinopE Mul c2 e2)
+      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 < 0, x1 ~== -x2 =
+        simplify (c1 * simplify (e1 + e2))
+
+    -- When multiplying by a constant, make constant the first term
+    go Mul e1 e2@ConstE{} =
+        go Mul e2 e1
+
+    go Mul c1@ConstE{} (BinopE Sub e1 e2) | isNeg c1 =
+        simplify ((-c1) * (e2 - e1))
+
+    go op e1 e2 =
+        BinopE op e1 e2
+
+simplify (UnopE op e) = go op (simplify e)
+  where
+    go :: Unop -> Exp a -> Exp a
+    go Neg (UnopE Neg e) =
+        simplify e
+
+    go Neg (BinopE Sub e1 e2) =
+        simplify (e2 - e1)
+
+    go op e =
+        UnopE op e
+
+simplify e = e
+
+fromDouble :: Exp a -> Maybe Double
+fromDouble (ConstE (DoubleC x)) = return x
+fromDouble (ConstE (PiC c))     = return (pi*fromRational c)
+fromDouble _                    = fail "Not a double constant"
+
+isNeg :: Exp a -> Bool
+isNeg e | Just c <- fromDouble e = c < 0
+isNeg _                          = False
+
+infix 4 ~==
+
+-- | Return 'True' is two numbers are approximately equal
+(~==) :: (Ord a, Fractional a) => a -> a -> Bool
+x ~== y = abs (x - y) < eps
+  where
+    eps = 1e-15
 
 --------------------------------------------------------------------------------
 --
