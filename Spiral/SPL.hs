@@ -227,6 +227,9 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec _ F2         = text "F_2"
     pprPrec _ (DFT n)    = text "DFT_" <> ppr n
 
+instance (Num e, Pretty e) => Show (SPL e) where
+    showsPrec p = displayS . renderCompact . pprPrec p
+
 data MatrixBinop = KOp
                  | DSOp
                  | POp
