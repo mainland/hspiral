@@ -76,16 +76,16 @@ defaultPEnv :: PEnv
 defaultPEnv = PEnv { unroll = False }
 
 data PState = PState
-    { ecache :: Map (Some Exp) Var
-    , decls  :: Decls
+    { decls  :: Decls
     , stms   :: Stms
+    , ecache :: Map (Some Exp) Var
     }
 
 defaultPState :: PState
 defaultPState = PState
-    { ecache = mempty
-    , decls  = mempty
+    { decls  = mempty
     , stms   = mempty
+    , ecache = mempty
     }
 
 newtype P m a = P { unP :: StateT PState (ReaderT PEnv m) a}
@@ -131,6 +131,15 @@ inNewBlock k = do
 
 inNewBlock_ :: Monad m => P m a -> P m Block
 inNewBlock_ m = fst <$> inNewBlock m
+
+-- | Look up an expression in the expression cache.
+lookupCachedExp :: Monad m => Exp a -> P m (Maybe Var)
+lookupCachedExp e = Map.lookup (Some e) <$> gets ecache
+
+-- | Insert an expression into the expression cache.
+insertCachedExp :: Monad m => Var -> Exp a -> P m ()
+insertCachedExp v e =
+    modify $ \s -> s { ecache = Map.insert (Some e) v (ecache s) }
 
 -- | Always unroll loops in the given computation.
 alwaysUnroll :: Monad m => P m a -> P m a
@@ -190,7 +199,7 @@ assignP e1 e2 = do
     update e1 e2
   where
     update :: Exp a -> Exp a -> P m ()
-    update (VarE v) e = modify $ \s -> s { ecache = Map.insert (Some e) v (ecache s) }
+    update (VarE v) e = insertCachedExp v e
     update _        _ = return ()
 
 -- | Cache the given expression. This serves as a hint that it will be used
@@ -261,7 +270,7 @@ mustCache e@(UnopE Neg VarE{}) =
     return e
 
 mustCache e = do
-    maybe_v <- Map.lookup (Some e) <$> gets ecache
+    maybe_v <- lookupCachedExp e
     case maybe_v of
       Just v  -> return $ VarE v
       Nothing -> do temp <- tempP
