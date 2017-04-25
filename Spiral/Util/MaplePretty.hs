@@ -111,6 +111,12 @@ instance MaplePretty (Exp a) where
     pprmPrec p (ConstE c) = pprmPrec p c
     pprmPrec p (VarE v)   = pprmPrec p v
 
+    pprmPrec p (UnopE op@(Pow n) e) =
+        parensIf (p > opPrec) $
+        pprPrec (opPrec+1) e <> char '^' <> ppr n
+      where
+        opPrec = precOf op
+
     pprmPrec _ (UnopE Abs e) =
         text "abs" <> parens (pprm e)
 
@@ -143,9 +149,10 @@ instance MaplePretty (Exp a) where
         text "Im" <> parens (pprm e)
 
 instance MaplePretty Unop where
-    pprm Neg    = char '-'
-    pprm Abs    = text "abs" <> space
-    pprm Signum = text "signum" <> space
+    pprm Neg     = char '-'
+    pprm Abs     = text "abs" <> space
+    pprm Signum  = text "signum" <> space
+    pprm (Pow n) = char '^' <> ppr n
 
 instance MaplePretty Binop where
     pprm Add  = char '+'

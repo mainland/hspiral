@@ -168,9 +168,10 @@ cgExp (VarE v)   = lookupVar v
 cgExp (UnopE op e) =
     cgExp e >>= go op
   where
-    go Neg ce    = return $ -ce
-    go Abs ce    = return $ abs ce
-    go Signum ce = return $ signum ce
+    go Neg ce     = return $ -ce
+    go Abs ce     = return $ abs ce
+    go Signum ce  = return $ signum ce
+    go (Pow n) ce = return $ CExp [cexp|pow($ce, $int:n)|]
 
 cgExp (BinopE op e1 e2) = do
     ce1 <- cgExp e1

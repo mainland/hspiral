@@ -98,9 +98,10 @@ instance LiftNum CExp where
     liftNum Neg _ (CComplex cr ci)    = CComplex (-cr) (-ci)
     liftNum Neg _ (CExp [cexp|-$ce|]) = CExp ce
 
-    liftNum Neg    _ ce  = CExp [cexp|-$ce|]
-    liftNum Abs    _ _ce = error "LiftNum CExp: cannot lift abs"
-    liftNum Signum _ ce  = CExp [cexp|$ce == 0 ? 0 : ($ce > 0 ? 1 : -1)|]
+    liftNum Neg     _ ce  = CExp [cexp|-$ce|]
+    liftNum Abs     _ _ce = error "LiftNum CExp: cannot lift abs"
+    liftNum Signum  _ ce  = CExp [cexp|$ce == 0 ? 0 : ($ce > 0 ? 1 : -1)|]
+    liftNum (Pow n) _ ce  = CExp [cexp|pow($ce, $int:n)|]
 
     liftNum2 _ f (CInt x)    (CInt y)    = CInt (f x y)
     liftNum2 _ f (CLLInt x)  (CLLInt y)  = CLLInt (f x y)

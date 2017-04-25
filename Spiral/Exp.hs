@@ -329,7 +329,8 @@ instance HOrd Exp where
 data Unop = Neg
           | Abs
           | Signum
-  deriving (Eq, Ord, Show, Enum)
+          | Pow Integer
+  deriving (Eq, Ord, Show)
 
 -- | Binary operators
 data Binop = Add
@@ -344,6 +345,7 @@ instance HasFixity Unop where
     fixity Neg    = infixr_ 10
     fixity Abs    = infixr_ 10
     fixity Signum = infixr_ 10
+    fixity Pow{}  = infixr_ 10
 
 instance HasFixity Binop where
     fixity Add  = infixl_ 8
@@ -354,9 +356,10 @@ instance HasFixity Binop where
     fixity Div  = infixl_ 9
 
 instance Pretty Unop where
-    ppr Neg    = text "-"
-    ppr Abs    = text "abs" <> space
-    ppr Signum = text "signum" <> space
+    ppr Neg     = text "-"
+    ppr Abs     = text "abs" <> space
+    ppr Signum  = text "signum" <> space
+    ppr (Pow n) = char '^' <> ppr n
 
 instance Pretty Binop where
     ppr Add  = text "+"
@@ -369,6 +372,12 @@ instance Pretty Binop where
 instance Pretty (Exp a) where
     pprPrec p (ConstE c) = pprPrec p c
     pprPrec p (VarE v)   = pprPrec p v
+
+    pprPrec p (UnopE op@(Pow n) e) =
+        parensIf (p > opPrec) $
+        pprPrec (opPrec+1) e <> char '^' <> ppr n
+      where
+        opPrec = precOf op
 
     pprPrec p (UnopE op e) =
         unop p op e
@@ -612,6 +621,14 @@ liftNum2Exp Mul _ e1 e2
   | e2 ==  1 = e1
   | e1 == -1 = -e2
   | e2 == -1 = -e1
+
+liftNum2Exp Mul _ e1 e2 | Just (x, n) <- fromPow e1, Just (y, m) <- fromPow e2, x == y =
+    UnopE (Pow (n+m)) x
+  where
+    fromPow :: Exp a -> Maybe (Exp a, Integer)
+    fromPow (UnopE (Pow n) x@VarE{}) = return (x, n)
+    fromPow x@VarE{}                 = return (x, 1)
+    fromPow _                        = fail "Can't destruct power"
 
 liftNum2Exp Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
 liftNum2Exp Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
