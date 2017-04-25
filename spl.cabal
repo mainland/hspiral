@@ -33,6 +33,7 @@ library
     Spiral.Array.Repr.Complex
     Spiral.Array.Repr.Compute
     Spiral.Array.Repr.Concrete
+    Spiral.Array.Repr.Hidden
     Spiral.Array.Repr.Slice
     Spiral.Array.Repr.Transform
     Spiral.Array.Repr.Virtual

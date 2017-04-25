@@ -59,6 +59,7 @@ SRC = \
 	Spiral/Array/Repr/Complex.hs \
 	Spiral/Array/Repr/Compute.hs \
 	Spiral/Array/Repr/Concrete.hs \
+	Spiral/Array/Repr/Hidden.hs \
 	Spiral/Array/Repr/Slice.hs \
 	Spiral/Array/Repr/Transform.hs \
 	Spiral/Array/Repr/Virtual.hs \
