@@ -369,8 +369,7 @@ instance Pretty (Exp a) where
     pprPrec p (VarE v)   = pprPrec p v
 
     pprPrec p (UnopE op e) =
-        parensIf (p > precOf op) $
-        ppr op <> pprPrec (precOf op) e
+        unop p op e
 
     pprPrec p (BinopE op e1 e2) =
         infixop p op e1 e2

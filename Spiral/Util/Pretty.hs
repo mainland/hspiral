@@ -15,6 +15,7 @@ module Spiral.Util.Pretty (
 
     precOf,
 
+    unop,
     infixop,
 
     addPrec,
@@ -55,6 +56,15 @@ precOf op =
     p
   where
     Fixity _ p = fixity op
+
+unop :: (Pretty a, Pretty op, HasFixity op)
+     => Int -- ^ precedence of context
+     -> op  -- ^ operator
+     -> a
+     -> Doc
+unop prec op x =
+    parensIf (prec > precOf op) $
+    ppr op <> pprPrec (precOf op) x
 
 -- | Pretty-print an infix operator.
 infixop :: (Pretty a, Pretty b, Pretty op, HasFixity op)
