@@ -94,6 +94,14 @@ lift f (RationalC x) = RationalC (f x)
 lift f x@ComplexC{}  = fromComplex (f (lower x))
 lift f x             = lift f (flatten x)
 
+lift2 :: (a -> a -> a) -> Const a -> Const a -> Const a
+lift2 f (IntC x)      (IntC y)      = IntC (f x y)
+lift2 f (IntegerC x)  (IntegerC y)  = IntegerC (f x y)
+lift2 f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
+lift2 f (RationalC x) (RationalC y) = RationalC (f x y)
+lift2 f x@ComplexC{}  y@ComplexC{}  = fromComplex (f (lower x) (lower y))
+lift2 f x             y             = lift2 f (flatten x) (flatten y)
+
 -- | Lower a 'Const a' to the value of type 'a' that it represents.
 lower :: Const a -> a
 lower (IntC x)       = x
@@ -565,17 +573,12 @@ liftNum2Opt Mul _ (-1) x    = -x
 
 liftNum2Opt op f x y = liftNum2 op f x y
 
-instance LiftNum (Const a) where
+instance Num a => LiftNum (Const a) where
     liftNum Neg _ (ComplexC a b) = ComplexC (-a) (-b)
     liftNum Neg _ (RouC r)       = RouC (r + 1 % 2)
     liftNum Neg _ (PiC r)        = PiC (-r)
 
-    liftNum _  f (IntC x)      = IntC (f x)
-    liftNum _  f (IntegerC x)  = IntegerC (f x)
-    liftNum _  f (DoubleC x)   = DoubleC (f x)
-    liftNum _  f (RationalC x) = RationalC (f x)
-    liftNum _  f x@ComplexC{}  = fromComplex (f (lower x))
-    liftNum op f c             = liftNum op f (flatten c)
+    liftNum _op f c = lift f (flatten c)
 
     liftNum2 Add _ (ComplexC a b) (ComplexC c d) = ComplexC (a + c) (b + d)
     liftNum2 Sub _ (ComplexC a b) (ComplexC c d) = ComplexC (a - c) (b - d)
@@ -588,12 +591,7 @@ instance LiftNum (Const a) where
     liftNum2 Mul f (RouC x) (ComplexC 0   (-1)) = liftNum2Opt Mul f (RouC x) (RouC (3 % 4))
     liftNum2 Mul f x        y@RouC{}            = liftNum2Opt Mul f y x
 
-    liftNum2 _  f (IntC x)      (IntC y)      = IntC (f x y)
-    liftNum2 _  f (IntegerC x)  (IntegerC y)  = IntegerC (f x y)
-    liftNum2 _  f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
-    liftNum2 _  f (RationalC x) (RationalC y) = RationalC (f x y)
-    liftNum2 _  f x@ComplexC{}  y@ComplexC{}  = fromComplex $ f (lower x) (lower y)
-    liftNum2 op f x             y             = liftNum2 op f (flatten x) (flatten y)
+    liftNum2 _op f x y = lift2 f (flatten x) (flatten y)
 
 -- | "Optimizing" version of 'liftNum' for expressions.
 liftNumExp :: (Ord (Exp a), Num (Exp a), LiftNum (Exp a))
