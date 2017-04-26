@@ -842,8 +842,32 @@ instance Integral (Exp Int) where
 --
 --------------------------------------------------------------------------------
 
+-- | Class to lift 'Fractional' operators.
+class LiftFrac b where
+    -- | Lift a binary operation on 'Num' to the type 'b
+    liftFrac2 :: Binop -> (forall a . Fractional a => a -> a -> a) -> b -> b -> b
+
+instance (Fractional a, Num (Const a)) => LiftFrac (Const a) where
+    liftFrac2 Div _ c1 1    = c1
+    liftFrac2 Div _ c1 (-1) = -c1
+
+    liftFrac2 Div _ 1 (RouC y) = normalize $ RouC (-y)
+
+    liftFrac2 _op f c1 c2 = lift2 f c1 c2
+
+instance (LiftFrac (Const a), Num (Exp a)) => LiftFrac (Exp a) where
+    liftFrac2 op f (ConstE c1) (ConstE c2) = ConstE $ liftFrac2 op f c1 c2
+
+    liftFrac2 Div _ e 1    = e
+    liftFrac2 Div _ e (-1) = -e
+
+    liftFrac2 Div _ 1 x@VarE{}                 = UnopE (Pow (-1)) x
+    liftFrac2 Div _ 1 (UnopE (Pow n) x@VarE{}) = UnopE (Pow (-n)) x
+
+    liftFrac2 op _ e1 e2 = BinopE op e1 e2
+
 instance Fractional (Const Double) where
-    (/) = lift2 (/)
+    (/) = liftFrac2 Div (/)
 
     fromRational = DoubleC . fromRational
 
@@ -873,6 +897,21 @@ instance Floating (Const Double) where
       | x == 1/2  = 0
 
     cos x = lift cos x
+
+instance Fractional (Const (Complex Double)) where
+    (/) = liftFrac2 Div (/)
+
+    fromRational x = ComplexC (DoubleC (fromRational x)) 0
+
+instance Fractional (Exp Double) where
+    (/) = liftFrac2 Div (/)
+
+    fromRational = ConstE . DoubleC . fromRational
+
+instance Fractional (Exp (Complex Double)) where
+    (/) = liftFrac2 Div (/)
+
+    fromRational x = ConstE (ComplexC (fromRational x) 0)
 
 --------------------------------------------------------------------------------
 --
