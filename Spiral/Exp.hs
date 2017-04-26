@@ -615,9 +615,11 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
         UnopE (Pow (n+m)) x
       where
         fromPow :: Exp a -> Maybe (Exp a, Integer)
-        fromPow (UnopE (Pow n) x@VarE{}) = return (x, n)
-        fromPow x@VarE{}                 = return (x, 1)
-        fromPow _                        = fail "Can't destruct power"
+        fromPow (UnopE (Pow n) x@VarE{})                = return (x, n)
+        fromPow (BinopE Div 1 (UnopE (Pow n) x@VarE{})) = return (x, -n)
+        fromPow x@VarE{}                                = return (x, 1)
+        fromPow (BinopE Div 1 x@VarE{})                 = return (x, -1)
+        fromPow _                                       = fail "Can't destruct power"
 
     liftNum2 Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
     liftNum2 Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
