@@ -150,9 +150,8 @@ instance Pretty (Const a) where
         | otherwise           = pprComplex p (lower x)
 
     pprPrec _ (RouC r)
-        | denominator r <= 4 = ppr (flatten (RouC r))
-        | r < 0              = text "exp" <> parens (char '-' <> go (negate r))
-        | otherwise          = text "exp" <> parens (go r)
+        | r < 0     = text "exp" <> parens (char '-' <> go (negate r))
+        | otherwise = text "exp" <> parens (go r)
       where
         go r = text "2*pi*i*" <>
                ppr (numerator r) <>
