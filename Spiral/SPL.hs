@@ -79,6 +79,9 @@ data SPL a where
     -- The nxn DFT matrix
     DFT :: ExtendedFloat a => Int -> SPL a
 
+    -- The nxn rotated DFT matrix
+    RDFT :: ExtendedFloat a => Int -> a -> SPL a
+
 -- | Embed any 'Array' as an SPL term.
 spl :: (IArray r DIM2 e, Pretty (Array r DIM2 e))
     => Array r DIM2 e
@@ -122,6 +125,8 @@ splExtent (Re a) = ix2 (2*m) (2*n)
 splExtent F2 = ix2 2 2
 
 splExtent (DFT n) = ix2 n n
+
+splExtent (RDFT n _) = ix2 n n
 
 -- | Convert an SPL transform to an explicit matrix.
 toMatrix :: forall e . Num e => SPL e -> Matrix M e
@@ -205,13 +210,11 @@ toMatrix F2 =
     matrix [[1,  1],
             [1, -1]]
 
-toMatrix (DFT n) = manifest $ fromFunction (ix2 n n) f
+toMatrix (DFT n) = toMatrix (RDFT n (omega n))
+
+toMatrix (RDFT n w) = manifest $ fromFunction (ix2 n n) f
   where
-    f :: forall a . ExtendedFloat a => DIM2 -> a
     f (Z :. i :. j) = w ^ (i*j)
-      where
-        w :: a
-        w = omega n
 
 instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (E a)      = pprPrec p a
@@ -226,6 +229,7 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec _ (Re a)     = text "Re" <> parens (ppr a)
     pprPrec _ F2         = text "F_2"
     pprPrec _ (DFT n)    = text "DFT_" <> ppr n
+    pprPrec _ (RDFT n w) = text "DFT_" <> ppr n <> parens (ppr w)
 
 instance (Num e, Pretty e) => Show (SPL e) where
     showsPrec p = displayS . renderCompact . pprPrec p
