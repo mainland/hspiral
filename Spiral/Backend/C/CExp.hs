@@ -128,16 +128,16 @@ instance LiftNum CExp where
     liftNum2 Div  _ ce1 ce2 = CExp [cexp|$ce1 / $ce2|]
 
 instance Num CExp where
-    (+) = liftNum2Opt Add (+)
-    (-) = liftNum2Opt Sub (-)
-    (*) = liftNum2Opt Mul (*)
+    (+) = liftNum2 Add (+)
+    (-) = liftNum2 Sub (-)
+    (*) = liftNum2 Mul (*)
 
-    abs ce@CInt{} = liftNumOpt Abs abs ce
+    abs ce@CInt{} = liftNum Abs abs ce
     abs ce        = CExp [cexp|abs($ce)|]
 
-    negate = liftNumOpt Neg negate
+    negate = liftNum Neg negate
 
-    signum  = liftNumOpt Signum signum
+    signum  = liftNum Signum signum
 
     fromInteger = CInt . fromIntegral
 
