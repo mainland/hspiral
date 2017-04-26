@@ -178,13 +178,13 @@ fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
 -- | Normalize an expression's representation.
 normalize :: Const a -> Const a
 normalize c@(RouC r)
-    | r > 1 || r < -1 = normalize (RouC ((n `rem` d) % d))
-    | r < 0           = normalize (RouC (1 + r))
-    | r == 0          = ComplexC 1 0
-    | r == 1 % 4      = ComplexC 0 1
-    | r == 1 % 2      = ComplexC (-1) 0
-    | r == 3 % 4      = ComplexC 0 (-1)
-    | otherwise       = c
+    | r >= 1 || r < -1 = normalize (RouC ((n `rem` d) % d))
+    | r < 0            = normalize (RouC (1 + r))
+    | r == 0           = ComplexC 1 0
+    | r == 1 % 4       = ComplexC 0 1
+    | r == 1 % 2       = ComplexC (-1) 0
+    | r == 3 % 4       = ComplexC 0 (-1)
+    | otherwise        = c
   where
     n, d :: Integer
     n = numerator r
