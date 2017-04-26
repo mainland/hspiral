@@ -86,6 +86,14 @@ data Const a where
 deriving instance Eq (Const a)
 deriving instance Show (Const a)
 
+lift :: (a -> a) -> Const a -> Const a
+lift f (IntC x)      = IntC (f x)
+lift f (IntegerC x)  = IntegerC (f x)
+lift f (DoubleC x)   = DoubleC (f x)
+lift f (RationalC x) = RationalC (f x)
+lift f x@ComplexC{}  = fromComplex (f (lower x))
+lift f x             = lift f (flatten x)
+
 -- | Lower a 'Const a' to the value of type 'a' that it represents.
 lower :: Const a -> a
 lower (IntC x)       = x
@@ -877,9 +885,6 @@ instance Fractional (Const Double) where
     fromRational = DoubleC . fromRational
 
     x / y = DoubleC $ lower x / lower y
-
-lift :: (Double -> Double) -> Const Double -> Const Double
-lift f = DoubleC . f . lower
 
 instance Floating (Const Double) where
     pi = PiC 1
