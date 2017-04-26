@@ -544,7 +544,7 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
       | e == 0 = 0
 
     liftNum Neg _ (ComplexC a b) = ComplexC (-a) (-b)
-    liftNum Neg _ (RouC r)       = RouC (r + 1 % 2)
+    liftNum Neg _ (RouC r)       = normalize $ RouC (r + 1 % 2)
     liftNum Neg _ (PiC r)        = PiC (-r)
 
     liftNum _op f c = lift f (flatten c)
