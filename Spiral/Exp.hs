@@ -841,9 +841,9 @@ instance Integral (Exp Int) where
 --------------------------------------------------------------------------------
 
 instance Fractional (Const Double) where
-    fromRational = DoubleC . fromRational
+    (/) = lift2 (/)
 
-    x / y = DoubleC $ lower x / lower y
+    fromRational = DoubleC . fromRational
 
 instance Floating (Const Double) where
     pi = PiC 1
