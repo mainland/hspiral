@@ -102,7 +102,7 @@ instance MaplePretty (Const a) where
                char '/' <>
                pprm (denominator r)
 
-    pprm (PiC r) = pprmPrec mulPrec1 r <+> char '*' <+> pprm "Pi"
+    pprm (PiC r) = pprmPrec mulPrec1 r <+> char '*' <+> text "Pi"
 
 instance MaplePretty Var where
     pprm = ppr
