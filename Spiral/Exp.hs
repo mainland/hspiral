@@ -517,6 +517,18 @@ isNeg :: Exp a -> Bool
 isNeg e | Just c <- fromDouble e = c < 0
 isNeg _                          = False
 
+toPow :: Num (Exp a) => Exp a -> Integer -> Exp a
+toPow _ 0 = 1
+toPow e 1 = e
+toPow e n = UnopE (Pow n) e
+
+fromPow :: Num (Exp a) => Exp a -> Maybe (Exp a, Integer)
+fromPow (UnopE (Pow n) x@VarE{})                = return (x, n)
+fromPow (BinopE Div 1 (UnopE (Pow n) x@VarE{})) = return (x, -n)
+fromPow x@VarE{}                                = return (x, 1)
+fromPow (BinopE Div 1 x@VarE{})                 = return (x, -1)
+fromPow _                                       = fail "Can't destruct power"
+
 infix 4 ~==
 
 -- | Return 'True' is two numbers are approximately equal
@@ -612,14 +624,7 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
       | e2 == -1 = -e1
 
     liftNum2 Mul _ e1 e2 | Just (x, n) <- fromPow e1, Just (y, m) <- fromPow e2, x == y =
-        UnopE (Pow (n+m)) x
-      where
-        fromPow :: Exp a -> Maybe (Exp a, Integer)
-        fromPow (UnopE (Pow n) x@VarE{})                = return (x, n)
-        fromPow (BinopE Div 1 (UnopE (Pow n) x@VarE{})) = return (x, -n)
-        fromPow x@VarE{}                                = return (x, 1)
-        fromPow (BinopE Div 1 x@VarE{})                 = return (x, -1)
-        fromPow _                                       = fail "Can't destruct power"
+        toPow x (n+m)
 
     liftNum2 Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
     liftNum2 Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
@@ -861,8 +866,11 @@ instance (LiftFrac (Const a), Num (Exp a)) => LiftFrac (Exp a) where
     liftFrac2 Div _ e 1    = e
     liftFrac2 Div _ e (-1) = -e
 
-    liftFrac2 Div _ 1 x@VarE{}                 = UnopE (Pow (-1)) x
-    liftFrac2 Div _ 1 (UnopE (Pow n) x@VarE{}) = UnopE (Pow (-n)) x
+    liftFrac2 Div _ 1 e | Just (x, n) <- fromPow e =
+        toPow x (-n)
+
+    liftFrac2 Div _ e1 e2 | Just (x, m) <- fromPow e1, Just (x', n) <- fromPow e2, x' == x =
+        toPow x (m-n)
 
     liftFrac2 op _ e1 e2 = BinopE op e1 e2
 
