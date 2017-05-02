@@ -34,6 +34,8 @@ import Spiral (Config(..),
 import Spiral.Array
 import Spiral.Exp
 import qualified Spiral.FFT as FFT
+import Spiral.FFT.CooleyTukey
+import Spiral.FFT.GoodThomas
 import Spiral.SPL
 
 import qualified Test.FFTW as FFTW
@@ -112,7 +114,10 @@ directSumTest = testCase "Direct sum (⊕)" $
 
 dftTests :: Test
 dftTests = testGroup "DFT tests"
-    [f2Test, f4Test, f8Test, testProperty "DFT" prop_DFT]
+    [ f2Test, f4Test, f8Test
+    , ck_5_7_test
+    , gt_5_7_test
+    , testProperty "DFT" prop_DFT]
 
 -- | Test that 'FFT.f' produces correct DFT matrices.
 prop_DFT :: SmallPowerOfTwo -> Property
@@ -159,6 +164,22 @@ f8Test = testCase "F_8" $ manifestComplex (toMatrix (FFT.f 8)) @?= manifestCompl
         i = complexE (0 :+ 1)
 
         w = FFT.omega (8 :: Int)
+
+-- Test Cooley-Tukey with factors 5 and 7
+ck_5_7_test :: Test
+ck_5_7_test = testCase "CooleyTukey(5,7)" $
+    toMatrix (cooleyTukey 5 7 w) @?= toMatrix (RDFT 35 w)
+  where
+    w :: Exp (Complex Double)
+    w = FFT.omega (35 :: Int)
+
+-- Test Good-Thomas with factors 5 and 7
+gt_5_7_test :: Test
+gt_5_7_test = testCase "GoodThomas(5,7)" $
+    toMatrix (goodThomas 5 7 w) @?= toMatrix (RDFT 35 w)
+  where
+    w :: Exp (Complex Double)
+    w = FFT.omega (35 :: Int)
 
 genDFTTests :: Config -> IO Test
 genDFTTests conf =

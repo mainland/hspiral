@@ -47,6 +47,8 @@ library
     Spiral.Exp
     Spiral.ExtendedFloat
     Spiral.FFT
+    Spiral.FFT.CooleyTukey
+    Spiral.FFT.GoodThomas
     Spiral.Globals
     Spiral.Monad
     Spiral.OpCount

@@ -76,6 +76,8 @@ SRC = \
 	Spiral/Exp.hs \
 	Spiral/ExtendedFloat.hs \
 	Spiral/FFT.hs \
+	Spiral/FFT/CooleyTukey.hs \
+	Spiral/FFT/GoodThomas.hs \
 	Spiral/Globals.hs \
 	Spiral/Monad.hs \
 	Spiral/OpCount.hs \
