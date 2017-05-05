@@ -14,6 +14,7 @@ import Data.Sequence (Seq)
 import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
 import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 -- | Contains generated code.
 data Code = Code

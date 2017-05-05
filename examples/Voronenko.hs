@@ -5,6 +5,7 @@ module Main (main) where
 import Control.Monad.IO.Class (liftIO)
 import Data.Complex
 import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 import Spiral
 import Spiral.Config

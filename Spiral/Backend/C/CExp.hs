@@ -19,7 +19,7 @@ module Spiral.Backend.C.CExp (
 
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
-import Text.PrettyPrint.Mainland hiding (flatten)
+import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Backend.C.Util
 import Spiral.Exp
@@ -30,7 +30,7 @@ data CExp -- A known integer constant
           -- A known long long (at least 64 bit) constant
           | CLLInt Integer
           -- A known double constant
-          | CDouble Rational
+          | CDouble Double
           -- A complex number.
           | CComplex CExp CExp
           -- C expression

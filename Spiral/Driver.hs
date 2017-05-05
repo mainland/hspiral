@@ -37,6 +37,7 @@ import System.IO (IOMode(..),
                   stderr,
                   stdout)
 import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Backend.C
 import Spiral.Config

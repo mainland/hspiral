@@ -13,6 +13,7 @@ import Data.Symbol
 import Language.C.Quote (ToIdent(..))
 import qualified Language.C.Syntax as C
 import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Util.Uniq
 

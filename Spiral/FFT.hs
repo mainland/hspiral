@@ -14,7 +14,7 @@ module Spiral.FFT (
     f
   ) where
 
-import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array
 import Spiral.Array.Operators.Permute

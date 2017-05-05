@@ -47,6 +47,7 @@ import Data.Symbol
 import Language.C.Quote (ToIdent(..))
 import Test.QuickCheck (Arbitrary(..))
 import Text.PrettyPrint.Mainland hiding (flatten)
+import Text.PrettyPrint.Mainland.Class
 
 import Data.Heterogeneous
 import Spiral.ExtendedFloat

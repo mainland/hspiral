@@ -22,6 +22,7 @@ import Control.Monad (unless)
 import Data.Complex
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array
 import Spiral.Array.Operators.IndexSpace

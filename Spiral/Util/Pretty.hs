@@ -25,6 +25,7 @@ module Spiral.Util.Pretty (
   ) where
 
 import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 -- | Operator fixity.
 data Fixity = Fixity Assoc Int

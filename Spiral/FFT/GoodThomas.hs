@@ -19,6 +19,7 @@ module Spiral.FFT.GoodThomas (
   ) where
 
 import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 import Spiral.ExtendedFloat
 import Spiral.SPL

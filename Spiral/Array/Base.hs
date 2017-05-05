@@ -43,6 +43,7 @@ module Spiral.Array.Base (
 
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array.Shape
 import Spiral.Exp

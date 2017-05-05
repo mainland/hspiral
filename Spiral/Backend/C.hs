@@ -28,6 +28,7 @@ import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
 import Text.PrettyPrint.Mainland hiding (flatten)
+import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array
 import Spiral.Array.Repr.Concrete
@@ -154,10 +155,10 @@ cgArrayInit a = do
 cgConst :: Const a -> CExp
 cgConst (IntC x)         = CInt x
 cgConst (IntegerC x)     = CInt (fromIntegral x)
-cgConst (RationalC x)    = CDouble x
-cgConst (DoubleC x)      = CDouble (toRational x)
+cgConst (RationalC x)    = CDouble (fromRational x)
+cgConst (DoubleC x)      = CDouble x
 cgConst (ComplexC e1 e2) = CComplex (cgConst e1) (cgConst e2)
-cgConst (PiC x)          = CDouble (toRational (fromRational x * pi :: Double))
+cgConst (PiC x)          = CDouble (fromRational x * pi)
 cgConst e@RouC{}         = cgConst (flatten e)
 
 -- | Compile an 'Exp a'.

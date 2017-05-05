@@ -21,7 +21,7 @@ module Spiral.Array.Repr.Hidden (
 
 import Prelude hiding (read)
 
-import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array
 import Spiral.Exp

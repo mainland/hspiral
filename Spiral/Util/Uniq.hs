@@ -36,7 +36,7 @@ import Data.Loc (Located,
 import Data.Monoid (Monoid)
 #endif /* !MIN_VERSION_base(4,8,0) */
 import qualified Language.C.Syntax as C
-import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 -- | A unique value.
 newtype Uniq = Uniq Int
