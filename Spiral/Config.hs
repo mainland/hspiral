@@ -142,12 +142,6 @@ instance MonadConfig m => MonadConfig (ContT r m) where
     askConfig   = lift askConfig
     localConfig = Cont.liftLocal askConfig localConfig
 
-#if !MIN_VERSION_base(4,8,0)
-instance (Error e, MonadConfig m) => MonadConfig (ErrorT e m) where
-    askConfig       = lift askConfig
-    localConfig f m = ErrorT $ localConfig f (runErrorT m)
-#endif /* !MIN_VERSION_base(4,8,0) */
-
 instance (MonadConfig m) => MonadConfig (ExceptT e m) where
     askConfig       = lift askConfig
     localConfig f m = ExceptT $ localConfig f (runExceptT m)

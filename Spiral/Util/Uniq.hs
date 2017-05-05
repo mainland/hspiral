@@ -15,9 +15,6 @@ module Spiral.Util.Uniq (
     Gensym(..)
   ) where
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Monad.Error (Error, ErrorT(..))
-#endif /* !MIN_VERSION_base(4,8,0) */
 import Control.Monad.Except (ExceptT(..))
 import Control.Monad.Exception (ExceptionT(..))
 import Control.Monad.Reader (ReaderT(..))
@@ -32,9 +29,6 @@ import Data.Loc (Located,
                  Loc,
                  noLoc,
                  srclocOf)
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (Monoid)
-#endif /* !MIN_VERSION_base(4,8,0) */
 import qualified Language.C.Syntax as C
 import Text.PrettyPrint.Mainland.Class
 
@@ -60,12 +54,6 @@ instance MonadUnique m => MonadUnique (MaybeT m) where
 instance MonadUnique m => MonadUnique (ContT r m) where
     newUnique   = lift newUnique
     resetUnique = lift resetUnique
-
-#if !MIN_VERSION_base(4,8,0)
-instance (Error e, MonadUnique m) => MonadUnique (ErrorT e m) where
-    newUnique   = lift newUnique
-    resetUnique = lift resetUnique
-#endif /* !MIN_VERSION_base(4,8,0) */
 
 instance MonadUnique m => MonadUnique (ExceptT e m) where
     newUnique   = lift newUnique

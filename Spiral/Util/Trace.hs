@@ -17,9 +17,6 @@ module Spiral.Util.Trace (
   ) where
 
 import Control.Monad (when)
-#if !MIN_VERSION_base(4,8,0)
-import Control.Monad.Error (Error, ErrorT(..))
-#endif /* !MIN_VERSION_base(4,8,0) */
 import Control.Monad.Except (ExceptT(..), runExceptT)
 import Control.Monad.Exception (ExceptionT(..), runExceptionT)
 import Control.Monad.Reader (ReaderT(..))
@@ -31,9 +28,6 @@ import qualified Control.Monad.Trans.Cont as Cont
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad.Writer (WriterT(..))
 import qualified Control.Monad.Writer.Strict as S (WriterT(..))
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (Monoid)
-#endif /* !MIN_VERSION_base(4,8,0) */
 import System.IO (hPutStrLn,
                   stderr)
 import System.IO.Unsafe (unsafePerformIO)
@@ -52,12 +46,6 @@ instance MonadTrace m => MonadTrace (MaybeT m) where
 instance MonadTrace m => MonadTrace (ContT r m) where
     askTraceDepth   = lift askTraceDepth
     localTraceDepth = Cont.liftLocal askTraceDepth localTraceDepth
-
-#if !MIN_VERSION_base(4,8,0)
-instance (Error e, MonadTrace m) => MonadTrace (ErrorT e m) where
-    askTraceDepth       = lift askTraceDepth
-    localTraceDepth f m = ErrorT $ localTraceDepth f (runErrorT m)
-#endif /* !MIN_VERSION_base(4,8,0) */
 
 instance (MonadTrace m) => MonadTrace (ExceptT e m) where
     askTraceDepth       = lift askTraceDepth
