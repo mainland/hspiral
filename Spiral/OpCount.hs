@@ -99,6 +99,16 @@ countExp (ComplexE er ei) = do
 countExp (ReE e) = countExp e
 countExp (ImE e) = countExp e
 
+countExp (BBinopE _op e1 e2) = do
+    countExp e1
+    countExp e2
+
+countExp (IfE e1 e2 e3) = do
+    countExp e1
+    c2 <- collect_ $ countExp e2
+    c3 <- collect_ $ countExp e3
+    tell $ max c2 c3
+
 newtype OpState = OpState { counts :: OpCount Int }
 
 defaultOpState :: OpState

@@ -1,7 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -19,6 +21,7 @@ module Spiral.Exp (
     Exp(..),
     Unop(..),
     Binop(..),
+    BBinop(..),
 
     Type(..),
     Typed(..),
@@ -30,12 +33,19 @@ module Spiral.Exp (
 
     LiftNum(..),
 
+    IfThenElse(..),
+    IsEq(..),
+    IsOrd(..),
+
     rootOfUnity,
 
     intE,
     complexE,
     ensureComplexE,
-    unComplexE
+    unComplexE,
+
+    true,
+    false
   ) where
 
 import Data.Complex
@@ -70,6 +80,7 @@ instance Gensym Var where
 
 -- | Representation of scalar expressions.
 data Const a where
+    BoolC     :: Bool -> Const Bool
     IntC      :: Int -> Const Int
     IntegerC  :: Integer -> Const Integer
     DoubleC   :: Double -> Const Double
@@ -103,6 +114,7 @@ lift2 f x             y             = lift2 f (flatten x) (flatten y)
 
 -- | Lower a 'Const a' to the value of type 'a' that it represents.
 lower :: Const a -> a
+lower (BoolC x)      = x
 lower (IntC x)       = x
 lower (IntegerC x)   = x
 lower (DoubleC x)    = x
@@ -137,6 +149,7 @@ instance Arbitrary (Const (Complex Double)) where
     arbitrary = ComplexC <$> arbitrary <*> arbitrary
 
 instance Pretty (Const a) where
+    pprPrec _ (BoolC x)     = if x then text "true" else text "false"
     pprPrec _ (IntC x)      = ppr x
     pprPrec _ (IntegerC x)  = ppr x
     pprPrec _ (DoubleC x)   = ppr x
@@ -205,16 +218,24 @@ data Exp a where
     ConstE :: Const a -> Exp a
     VarE   :: Var -> Exp a
     UnopE  :: Unop -> Exp a -> Exp a
-    BinopE :: Binop -> Exp a -> Exp a -> Exp a
+    BinopE :: Num (Exp a) => Binop -> Exp a -> Exp a -> Exp a
     IdxE   :: Var -> [Exp Int] -> Exp a
 
     ComplexE :: (Typed a, Num (Exp a)) => Exp a -> Exp a -> Exp (Complex a)
     ReE :: Num (Exp a) => Exp (Complex a) -> Exp a
     ImE :: Num (Exp a) => Exp (Complex a) -> Exp a
 
-deriving instance Eq (Exp a)
-deriving instance Ord (Exp a)
+    BBinopE :: Typed a => BBinop -> Exp a -> Exp a -> Exp Bool
+    IfE     :: Exp Bool -> Exp a -> Exp a -> Exp a
+
 deriving instance Show (Exp a)
+
+instance Eq (Exp a) where
+    (==) = heq
+    (/=) = hne
+
+instance Ord (Exp a) where
+    compare = hcompare
 
 instance IsString (Exp a) where
     fromString s = VarE (fromString s)
@@ -227,6 +248,7 @@ instance ExtendedFloat (Exp (Complex Double)) where
 --
 
 instance HEq Const where
+    heq (BoolC x)        (BoolC y)        = x == y
     heq (IntC x)         (IntC y)         = x == y
     heq (IntegerC x)     (IntegerC y)     = x == y
     heq (DoubleC x)      (DoubleC y)      = x == y
@@ -237,35 +259,44 @@ instance HEq Const where
     heq _                _                = False
 
 instance HEq Exp where
-    heq (ConstE c1)          (ConstE c2)          = heq c1 c2
-    heq (VarE x)             (VarE y)             = x == y
-    heq (UnopE op1 e1)       (UnopE op2 e2)       = op1 == op2 && heq e1 e2
-    heq (BinopE op1 e1a e1b) (BinopE op2 e2a e2b) = op1 == op2 && heq e1a e2a && heq e1b e2b
-    heq (IdxE v1 es1)        (IdxE v2 es2)        = v1 == v2 && es1 == es2
-    heq (ComplexE r1 i1)     (ComplexE r2 i2)     = heq r1 r2 && heq i1 i2
-    heq (ReE e1)             (ReE e2)             = heq e1 e2
-    heq (ImE e1)             (ImE e2)             = heq e1 e2
-    heq _                    _                    = False
+    heq (ConstE c1)           (ConstE c2)           = heq c1 c2
+    heq (VarE x)              (VarE y)              = x == y
+    heq (UnopE op1 e1)        (UnopE op2 e2)        = op1 == op2 && heq e1 e2
+    heq (BinopE op1 e1a e1b)  (BinopE op2 e2a e2b)  = op1 == op2 && heq e1a e2a && heq e1b e2b
+    heq (IdxE v1 es1)         (IdxE v2 es2)         = v1 == v2 && es1 == es2
+    heq (ComplexE r1 i1)      (ComplexE r2 i2)      = heq r1 r2 && heq i1 i2
+    heq (ReE e1)              (ReE e2)              = heq e1 e2
+    heq (ImE e1)              (ImE e2)              = heq e1 e2
+    heq (BBinopE op1 e1a e1b) (BBinopE op2 e2a e2b) = op1 == op2 && heq e1a e2a && heq e1b e2b
+    heq _                     _                     = False
 
 instance HOrd Const where
+    hcompare (BoolC x)         (BoolC y)       = compare x y
+    hcompare BoolC{}           _               = LT
+
+    hcompare IntC{}           BoolC{}          = GT
     hcompare (IntC x)         (IntC y)         = compare x y
     hcompare IntC{}           _                = LT
 
+    hcompare IntegerC{}       BoolC{}          = GT
     hcompare IntegerC{}       IntC{}           = GT
     hcompare (IntegerC x)     (IntegerC y)     = compare x y
     hcompare IntegerC{}       _                = LT
 
+    hcompare DoubleC{}        BoolC{}          = GT
     hcompare DoubleC{}        IntC{}           = GT
     hcompare DoubleC{}        IntegerC{}       = GT
     hcompare (DoubleC x)      (DoubleC y)      = compare x y
     hcompare DoubleC{}        _                = LT
 
+    hcompare RationalC{}      BoolC{}          = GT
     hcompare RationalC{}      IntC{}           = GT
     hcompare RationalC{}      IntegerC{}       = GT
     hcompare RationalC{}      DoubleC{}        = GT
     hcompare (RationalC x)    (RationalC y)    = compare x y
     hcompare RationalC{}      _                = LT
 
+    hcompare ComplexC{}       BoolC{}          = GT
     hcompare ComplexC{}       IntC{}           = GT
     hcompare ComplexC{}       IntegerC{}       = GT
     hcompare ComplexC{}       DoubleC{}        = GT
@@ -273,6 +304,7 @@ instance HOrd Const where
     hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
     hcompare ComplexC{}       _                = LT
 
+    hcompare RouC{}           BoolC{}          = GT
     hcompare RouC{}           IntC{}           = GT
     hcompare RouC{}           IntegerC{}       = GT
     hcompare RouC{}           DoubleC{}        = GT
@@ -337,8 +369,37 @@ instance HOrd Exp where
     hcompare (ReE e1)             (ReE e2)             = hcompare e1 e2
     hcompare ReE{}                _                    = LT
 
+    hcompare ImE{}                ConstE{}             = GT
+    hcompare ImE{}                VarE{}               = GT
+    hcompare ImE{}                UnopE{}              = GT
+    hcompare ImE{}                BinopE{}             = GT
+    hcompare ImE{}                IdxE{}               = GT
+    hcompare ImE{}                ComplexE{}           = GT
+    hcompare ImE{}                ReE{}                = GT
     hcompare (ImE e1)             (ImE e2)             = hcompare e1 e2
-    hcompare ImE{}                _                    = GT
+    hcompare ImE{}                _                    = LT
+
+    hcompare BBinopE{}             ConstE{}              = GT
+    hcompare BBinopE{}             VarE{}                = GT
+    hcompare BBinopE{}             UnopE{}               = GT
+    hcompare BBinopE{}             BinopE{}              = GT
+    hcompare BBinopE{}             IdxE{}                = GT
+    hcompare BBinopE{}             ComplexE{}            = GT
+    hcompare BBinopE{}             ReE{}                 = GT
+    hcompare BBinopE{}             ImE{}                 = GT
+    hcompare (BBinopE op1 e1a e1b) (BBinopE op2 e2a e2b) = case compare op1 op2 of
+                                                             EQ -> case hcompare e1a e2a of
+                                                                     EQ -> hcompare e1b e2b
+                                                                     other -> other
+                                                             other -> other
+    hcompare BBinopE{}              _                    = LT
+
+    hcompare (IfE e1a e1b e1c) (IfE e2a e2b e2c) = case compare e1a e2a of
+                                                     EQ -> case hcompare e1b e2b of
+                                                             EQ -> hcompare e1c e2c
+                                                             other -> other
+                                                     other -> other
+    hcompare IfE{}             _                 = GT
 
 -- | Unary operators
 data Unop = Neg
@@ -356,6 +417,15 @@ data Binop = Add
            | Div
   deriving (Eq, Ord, Show, Enum)
 
+-- | Boolean binary operators
+data BBinop = Eq
+            | Ne
+            | Lt
+            | Le
+            | Ge
+            | Gt
+  deriving (Eq, Ord, Show, Enum)
+
 instance HasFixity Unop where
     fixity Neg    = infixr_ 10
     fixity Abs    = infixr_ 10
@@ -370,6 +440,14 @@ instance HasFixity Binop where
     fixity Rem  = infixl_ 9
     fixity Div  = infixl_ 9
 
+instance HasFixity BBinop where
+    fixity Eq = infix_ 4
+    fixity Ne = infix_ 4
+    fixity Lt = infix_ 4
+    fixity Le = infix_ 4
+    fixity Ge = infix_ 4
+    fixity Gt = infix_ 4
+
 instance Pretty Unop where
     ppr Neg     = text "-"
     ppr Abs     = text "abs" <> space
@@ -383,6 +461,14 @@ instance Pretty Binop where
     ppr Quot = text "`quot`"
     ppr Rem  = text "`rem`"
     ppr Div  = text "/"
+
+instance Pretty BBinop where
+    ppr Eq = text "=="
+    ppr Ne = text "/="
+    ppr Lt = text "<"
+    ppr Le = text "<="
+    ppr Ge = text ">="
+    ppr Gt = text ">"
 
 instance Pretty (Exp a) where
     pprPrec p (ConstE c) = pprPrec p c
@@ -412,8 +498,17 @@ instance Pretty (Exp a) where
     pprPrec _ (ImE e) =
         text "im" <> parens (ppr e)
 
+    pprPrec p (BBinopE op e1 e2) =
+        infixop p op e1 e2
+
+    pprPrec _ (IfE e1 e2 e3) =
+        text "if" <+> ppr e1 <+>
+        text "then" <+> ppr e2 <+>
+        text "else" <+> ppr e3
+
 -- | Representation of types.
 data Type a where
+    BoolT    :: Type Bool
     IntT     :: Type Int
     IntegerT :: Type Integer
     DoubleT  :: Type Double
@@ -424,6 +519,7 @@ deriving instance Ord (Type a)
 deriving instance Show (Type a)
 
 instance Pretty (Type a) where
+    ppr BoolT          = text "bool"
     ppr IntT           = text "int"
     ppr IntegerT       = text "integer"
     ppr DoubleT        = text "double"
@@ -431,6 +527,9 @@ instance Pretty (Type a) where
 
 class Typed a where
     typeOf :: a -> Type a
+
+instance Typed Bool where
+    typeOf _ = BoolT
 
 instance Typed Int where
     typeOf _ = IntT
@@ -450,7 +549,7 @@ instance (Typed a, Num (Exp a)) => Typed (Complex a) where
 --
 --------------------------------------------------------------------------------
 
-simplify :: forall a . Num (Exp a) => Exp a -> Exp a
+simplify :: forall a . Exp a -> Exp a
 simplify (BinopE op e1 e2) = go op (simplify e1) (simplify e2)
   where
     go :: Binop -> Exp a -> Exp a -> Exp a
@@ -491,6 +590,9 @@ simplify (BinopE op e1 e2) = go op (simplify e1) (simplify e2)
 
     go op e1 e2 =
         BinopE op e1 e2
+
+simplify (BBinopE op e1 e2) =
+    BBinopE op (simplify e1) (simplify e2)
 
 simplify (UnopE op e) = go op (simplify e)
   where
@@ -921,6 +1023,45 @@ instance Fractional (Exp (Complex Double)) where
 
 --------------------------------------------------------------------------------
 --
+-- Staged operations
+--
+--------------------------------------------------------------------------------
+
+class IfThenElse a b where
+    ifThenElse :: a -> b -> b -> b
+
+instance IfThenElse Bool a where
+    ifThenElse c t e = if c then t else e
+
+infix 4 .==., ./=.
+
+class IsEq a b | a -> b where
+    (.==.) :: a -> a -> b
+    (./=.) :: a -> a -> b
+
+infix 4 .<., .<=., .>=., .>.
+
+class IsEq a b => IsOrd a b where
+    (.<.)  :: a -> a -> b
+    (.<=.) :: a -> a -> b
+    (.>=.) :: a -> a -> b
+    (.>.)  :: a -> a -> b
+
+instance (Typed a, Eq a) => IsEq (Exp a) (Exp Bool) where
+    e1 .==. e2 = BBinopE Eq e1 e2
+    e1 ./=. e2 = BBinopE Ne e1 e2
+
+instance (Typed a, Eq a) => IsOrd (Exp a) (Exp Bool) where
+    e1 .<.  e2 = BBinopE Lt e1 e2
+    e1 .<=. e2 = BBinopE Le e1 e2
+    e1 .>.  e2 = BBinopE Gt e1 e2
+    e1 .>=. e2 = BBinopE Ge e1 e2
+
+instance IfThenElse (Exp Bool) (Exp a) where
+    ifThenElse = IfE
+
+--------------------------------------------------------------------------------
+--
 -- Smart constructors
 --
 --------------------------------------------------------------------------------
@@ -946,3 +1087,7 @@ unComplexE (ConstE (ComplexC r i)) = (ConstE r, ConstE i)
 unComplexE (ConstE (RouC r))       = (ConstE (cos (PiC (2*r))), ConstE (sin (PiC (2*r))))
 unComplexE (ComplexE r i )         = (r, i)
 unComplexE e                       = (ReE e, ImE e)
+
+true, false :: Exp Bool
+true  = ConstE (BoolC True)
+false = ConstE (BoolC False)

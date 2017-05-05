@@ -181,3 +181,16 @@ instance Fractional CExp where
 
     ce1 / ce2 =
         CExp [cexp|$ce1 / $ce2|]
+
+instance IsEq CExp CExp where
+    ce1 .==. ce2 = CExp [cexp|$ce1 == $ce2|]
+    ce1 ./=. ce2 = CExp [cexp|$ce1 != $ce2|]
+
+instance IsOrd CExp CExp where
+    ce1 .<.  ce2 = CExp [cexp|$ce1 <  $ce2|]
+    ce1 .<=. ce2 = CExp [cexp|$ce1 <= $ce2|]
+    ce1 .>=. ce2 = CExp [cexp|$ce1 >= $ce2|]
+    ce1 .>.  ce2 = CExp [cexp|$ce1 >  $ce2|]
+
+instance IfThenElse CExp CExp where
+    ifThenElse ce1 ce2 ce3 = CExp [cexp|$ce1 ? $ce2 : $ce3|]

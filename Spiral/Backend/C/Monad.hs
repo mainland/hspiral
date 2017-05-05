@@ -346,6 +346,7 @@ cgId = gensym
 
 -- | Compile a type.
 cgType :: Type a -> C.Type
+cgType BoolT    = [cty|int|]
 cgType IntT     = [cty|int|]
 cgType IntegerT = [cty|int|]
 cgType DoubleT  = [cty|double|]

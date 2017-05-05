@@ -54,6 +54,10 @@ instance MaplePretty a => MaplePretty [a] where
     pprm     = pprmList
     pprmPrec = pprmPrecList
 
+instance MaplePretty Bool where
+    pprm True  = text "true"
+    pprm False = text "false"
+
 instance MaplePretty Char where
     pprm = char
 
@@ -83,6 +87,7 @@ instance (MaplePretty e, IArray r DIM2 e) => MaplePretty (Matrix r e) where
       pprm m = text "Matrix" <> (parens . pprm . toLists) m
 
 instance MaplePretty (Const a) where
+    pprm (BoolC x)     = pprm x
     pprm (IntC x)      = pprm x
     pprm (IntegerC x)  = pprm x
     pprm (DoubleC x)   = pprm x
@@ -149,6 +154,15 @@ instance MaplePretty (Exp a) where
     pprmPrec _ (ImE e) =
         text "Im" <> parens (pprm e)
 
+    pprmPrec p (BBinopE op e1 e2) =
+        infixop p op e1 e2
+
+    pprmPrec _ (IfE e1 e2 e3) =
+        text "if" <+> pprm e1 <+>
+        text "then" <+> pprm e2 <+>
+        text "else" <+> pprm e3 <+>
+        text "end if"
+
 instance MaplePretty Unop where
     pprm Neg     = char '-'
     pprm Abs     = text "abs" <> space
@@ -162,6 +176,14 @@ instance MaplePretty Binop where
     pprm Quot = text "`div`"
     pprm Rem  = text "`mod`"
     pprm Div  = char '/'
+
+instance MaplePretty BBinop where
+    pprm Eq = text "="
+    pprm Ne = text "<>"
+    pprm Lt = text "<"
+    pprm Le = text "<="
+    pprm Ge = text ">="
+    pprm Gt = text ">"
 
 instance (Num e, MaplePretty e) => MaplePretty (SPL e) where
     pprmPrec _ (I n)      = text "IdentityMatrix" <> parens (pprm n)

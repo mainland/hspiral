@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -153,6 +154,7 @@ cgArrayInit a = do
 
 -- | Compiled a value of type 'Const a'.
 cgConst :: Const a -> CExp
+cgConst (BoolC x)        = CInt $ if x then 1 else 0
 cgConst (IntC x)         = CInt x
 cgConst (IntegerC x)     = CInt (fromIntegral x)
 cgConst (RationalC x)    = CDouble (fromRational x)
@@ -203,6 +205,24 @@ cgExp (ReE e) = do
 cgExp (ImE e) = do
     (_cr, ci) <- unComplex <$> cgExp e
     return ci
+
+cgExp (BBinopE op e1 e2) = do
+    ce1 <- cgExp e1
+    ce2 <- cgExp e2
+    go op ce1 ce2
+  where
+    go Eq ce1 ce2 = return $ ce1 .==. ce2
+    go Ne ce1 ce2 = return $ ce1 ./=. ce2
+    go Lt ce1 ce2 = return $ ce1 .<.  ce2
+    go Le ce1 ce2 = return $ ce1 .<=. ce2
+    go Ge ce1 ce2 = return $ ce1 .>=. ce2
+    go Gt ce1 ce2 = return $ ce1 .>.  ce2
+
+cgExp (IfE e1 e2 e3) = do
+    ce1 <- cgExp e1
+    ce2 <- cgExp e2
+    ce3 <- cgExp e3
+    return $ if ce1 then ce2 else ce3
 
 -- | Generate a unique C identifier name for the given variable.
 cgVar :: MonadUnique m => Var -> Cg m C.Id
