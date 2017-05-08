@@ -89,7 +89,7 @@ import Language.C.Quote.C
 import Text.PrettyPrint.Mainland hiding (flatten)
 import Text.PrettyPrint.Mainland.Class
 
-import Spiral.Array
+import Spiral.Array hiding (toList)
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
 import Spiral.Config

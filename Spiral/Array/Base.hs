@@ -24,6 +24,8 @@ module Spiral.Array.Base (
     SIndex(..),
 
     M,
+    fromList,
+    toList,
     fromLists,
     toLists,
     matrix,
@@ -134,6 +136,18 @@ instance (Shape sh, Pretty e) => Pretty (Array M sh e) where
           go :: [Int] -> [Int] -> Doc
           go []     ix  = ppr (index arr (shapeOfList ix))
           go (n:ix) ix' = brackets $ align $ commasep $ map (\i -> go ix (i : ix')) [0..n-1]
+
+-- | Create a vector from a list of lists of values.
+fromList :: [e] -> Vector M e
+fromList xs = M (ix1 (length xs)) (V.fromList xs)
+
+-- | Convert a vector to a list of elements.
+toList :: IArray r DIM1 e
+       => Vector r e
+       -> [e]
+toList e = V.toList v
+  where
+    M _ v = manifest e
 
 -- | Create a matrix from a list of lists of values.
 fromLists :: [[e]] -> Matrix M e
