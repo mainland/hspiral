@@ -14,6 +14,7 @@ module Spiral.Array.Operators.Mapping (
     zipWithI,
     zipWithS,
 
+    (.+), (.-), (.*),
     (^+), (^-), (^*)
   ) where
 
@@ -73,6 +74,27 @@ zipWithS f a b = fromSFunction (intersectDim (extent a) (extent b)) g
   where
     g :: ExpShapeOf sh -> c
     g ix = f (indexS a ix) (indexS b ix)
+
+infixl 6 .+, .-
+infixl 7 .*
+
+(.+), (.-), (.*) :: ( Shape sh
+                    , Num a
+                    , IArray r1 sh a
+                    , IArray r2 sh a
+                    )
+                 => Array r1 sh a
+                 -> Array r2 sh a
+                 -> Array D  sh a
+-- | Point-wise addition of two arrays. Returns a symbolic delayed array.
+(.+) = zipWithI (+)
+
+-- | Point-wise subtraction of two arrays. Returns a symbolic delayed array.
+(.-) = zipWithI (-)
+
+-- | Point-wise multiplication of two arrays. Returns a symbolic delayed array.
+(.*) = zipWithI (*)
+
 
 infixl 6 ^+, ^-
 infixl 7 ^*
