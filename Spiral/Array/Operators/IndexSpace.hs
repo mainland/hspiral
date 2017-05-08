@@ -69,10 +69,10 @@ mvP a x y = do
             -- XXX we know we are unrolling here, so we can coerce a to a
             -- symbolic array since we know we will only index it with integer
             -- constant indices.
-            t = x .* row (coerceSymbolic a) i
+            t = x ^* row (coerceSymbolic a) i
 
     go y _ = do
         a' <- cacheArray a
         forP 0 m $ \i -> do
-            yi <- sumP $ x .* row a' i
+            yi <- sumP $ x ^* row a' i
             write y (Z :. i) yi

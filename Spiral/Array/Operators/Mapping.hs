@@ -13,7 +13,8 @@ module Spiral.Array.Operators.Mapping (
 
     zipWithI,
     zipWithS,
-    (.+), (.-), (.*)
+
+    (^+), (^-), (^*)
   ) where
 
 import Prelude hiding ((!!))
@@ -73,10 +74,10 @@ zipWithS f a b = fromSFunction (intersectDim (extent a) (extent b)) g
     g :: ExpShapeOf sh -> Exp c
     g ix = f (indexS a ix) (indexS b ix)
 
-infixl 6 .+, .-
-infixl 7 .*
+infixl 6 ^+, ^-
+infixl 7 ^*
 
-(.+), (.-), (.*) :: ( Shape sh
+(^+), (^-), (^*) :: ( Shape sh
                     , Num (Exp a)
                     , SArray r1 sh (Exp a)
                     , SArray r2 sh (Exp a)
@@ -85,10 +86,10 @@ infixl 7 .*
                  -> Array r2 sh (Exp a)
                  -> Array DS sh (Exp a)
 -- | Point-wise addition of two arrays. Returns a symbolic delayed array.
-(.+) = zipWithS (+)
+(^+) = zipWithS (+)
 
 -- | Point-wise subtraction of two arrays. Returns a symbolic delayed array.
-(.-) = zipWithS (-)
+(^-) = zipWithS (-)
 
 -- | Point-wise multiplication of two arrays. Returns a symbolic delayed array.
-(.*) = zipWithS (*)
+(^*) = zipWithS (*)
