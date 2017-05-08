@@ -7,7 +7,7 @@
 
 -- |
 -- Module      :  Spiral.Array.Base
--- Copyright   :  (c) 2016 Drexel University
+-- Copyright   :  (c) 2016-2017 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
@@ -263,13 +263,13 @@ delayS a = DS (extent a) (indexS a)
 -- expressions.
 coerceSymbolic :: forall r sh a .
                   ( Shape sh
-                  , IArray r sh (Exp a)
+                  , IArray r sh a
                   )
-               => Array r sh (Exp a)
-               -> Array DS sh (Exp a)
+               => Array r sh a
+               -> Array DS sh a
 coerceSymbolic x = fromSFunction (extent x) f
   where
-    f :: ExpShapeOf sh -> Exp a
+    f :: ExpShapeOf sh -> a
     f eix = index x (shapeOfList (map unExp (listOfExpShape eix)))
 
     unExp :: Exp Int -> Int
