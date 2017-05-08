@@ -46,45 +46,45 @@ mapS f a = fromSFunction (extent a) g
 
 -- | Zip a function over the elements of an array, returning a delayed array.
 zipWithI :: forall sh r1 r2 a b c .
-            ( IArray r1 sh (Exp a)
-            , IArray r2 sh (Exp b)
+            ( IArray r1 sh a
+            , IArray r2 sh b
             )
-         => (Exp a -> Exp b -> Exp c)
-         -> Array r1 sh (Exp a)
-         -> Array r2 sh (Exp b)
-         -> Array D  sh (Exp c)
+         => (a -> b -> c)
+         -> Array r1 sh a
+         -> Array r2 sh b
+         -> Array D  sh c
 zipWithI f a b = fromFunction (intersectDim (extent a) (extent b)) g
   where
-    g :: sh -> Exp c
+    g :: sh -> c
     g ix = f (index a ix) (index b ix)
 
 -- | Zip a function over the elements of an array, returning a symbolic delayed
 -- array.
 zipWithS :: forall sh r1 r2 a b c .
             ( Shape sh
-            , SArray r1 sh (Exp a)
-            , SArray r2 sh (Exp b)
+            , SArray r1 sh a
+            , SArray r2 sh b
             )
-         => (Exp a -> Exp b -> Exp c)
-         -> Array r1 sh (Exp a)
-         -> Array r2 sh (Exp b)
-         -> Array DS sh (Exp c)
+         => (a -> b -> c)
+         -> Array r1 sh a
+         -> Array r2 sh b
+         -> Array DS sh c
 zipWithS f a b = fromSFunction (intersectDim (extent a) (extent b)) g
   where
-    g :: ExpShapeOf sh -> Exp c
+    g :: ExpShapeOf sh -> c
     g ix = f (indexS a ix) (indexS b ix)
 
 infixl 6 ^+, ^-
 infixl 7 ^*
 
 (^+), (^-), (^*) :: ( Shape sh
-                    , Num (Exp a)
-                    , SArray r1 sh (Exp a)
-                    , SArray r2 sh (Exp a)
+                    , Num a
+                    , SArray r1 sh a
+                    , SArray r2 sh a
                     )
-                 => Array r1 sh (Exp a)
-                 -> Array r2 sh (Exp a)
-                 -> Array DS sh (Exp a)
+                 => Array r1 sh a
+                 -> Array r2 sh a
+                 -> Array DS sh a
 -- | Point-wise addition of two arrays. Returns a symbolic delayed array.
 (^+) = zipWithS (+)
 
