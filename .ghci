@@ -1,4 +1,5 @@
 :set -optP-include -optPdist/build/autogen/cabal_macros.h
+:set -fobject-code
 :set -XFlexibleContexts
 :set -Wno-type-defaults
 :set -interactive-print=Text.PrettyPrint.Mainland.Class.pprint
