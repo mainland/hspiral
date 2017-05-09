@@ -87,13 +87,13 @@ instance (MaplePretty e, IArray r DIM2 e) => MaplePretty (Matrix r e) where
       pprm m = text "Matrix" <> (parens . pprm . toLists) m
 
 instance MaplePretty (Const a) where
-    pprm (BoolC x)     = pprm x
-    pprm (IntC x)      = pprm x
-    pprm (IntegerC x)  = pprm x
-    pprm (DoubleC x)   = pprm x
-    pprm (RationalC x) = pprm x
+    pprmPrec _ (BoolC x)     = pprm x
+    pprmPrec _ (IntC x)      = pprm x
+    pprmPrec _ (IntegerC x)  = pprm x
+    pprmPrec _ (DoubleC x)   = pprm x
+    pprmPrec _ (RationalC x) = pprm x
 
-    pprm (ComplexC r i)
+    pprmPrec _ (ComplexC r i)
         | r == 0 && i == 0    = char '0'
         | r == 0 && i == 1    = char 'I'
         | r == 0 && i == (-1) = text "-I"
@@ -101,14 +101,8 @@ instance MaplePretty (Const a) where
         | i == 0              = pprm r
         | otherwise           = text "Complex" <> pprArgs [pprm r, pprm i]
 
-    pprm (RouC r) = text "exp" <> parens (go r)
-      where
-        go r = text "2*Pi*I*" <>
-               pprm (numerator r) <>
-               char '/' <>
-               pprm (denominator r)
-
-    pprm (PiC r) = pprmPrec mulPrec1 r <+> char '*' <+> text "Pi"
+    pprmPrec p (CycC x) = text (showsPrec p x "")
+    pprmPrec _ (PiC r) = pprmPrec mulPrec1 r <+> char '*' <+> text "Pi"
 
 instance MaplePretty Var where
     pprm = ppr

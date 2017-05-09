@@ -121,12 +121,14 @@ dftTests = testGroup "DFT tests"
 
 -- | Test that 'FFT.f' produces correct DFT matrices.
 prop_DFT :: SmallPowerOfTwo -> Property
-prop_DFT (SmallPowerOfTwo n) =
-    manifestComplex (toMatrix (DFT (2^n))) === manifestComplex (toMatrix (FFT.f (2^n)))
+prop_DFT (SmallPowerOfTwo n) = toMatrix (DFT (2^n)) === toMatrix fft_spl
+  where
+    fft_spl :: SPL (Exp (Complex Double))
+    fft_spl = FFT.f (2^n)
 
 -- $F_2$
 f2Test :: Test
-f2Test = testCase "F_2" $ manifestComplex (toMatrix (FFT.f 2)) @?= manifestComplex f2
+f2Test = testCase "F_2" $ toMatrix (FFT.f 2) @?= f2
   where
     f2 :: Matrix M (Exp (Complex Double))
     f2 = matrix [[1,  1],
@@ -134,7 +136,7 @@ f2Test = testCase "F_2" $ manifestComplex (toMatrix (FFT.f 2)) @?= manifestCompl
 
 -- $F_4$ calculated per "SPL: A Language and Compiler for DSP Algorithms"
 f4Test :: Test
-f4Test = testCase "F_4" $ manifestComplex (toMatrix (FFT.f 4)) @?= manifestComplex f4
+f4Test = testCase "F_4" $ toMatrix (FFT.f 4) @?= f4
   where
     f4 :: Matrix M (Exp (Complex Double))
     f4 = matrix [[1,  1,  1,  1],
@@ -149,7 +151,7 @@ f4Test = testCase "F_4" $ manifestComplex (toMatrix (FFT.f 4)) @?= manifestCompl
 -- See also:
 --   https://en.wikipedia.org/wiki/DFT_matrix
 f8Test :: Test
-f8Test = testCase "F_8" $ manifestComplex (toMatrix (FFT.f 8)) @?= manifestComplex f8
+f8Test = testCase "F_8" $ toMatrix (FFT.f 8) @?= f8
   where
     f8 :: Matrix M (Exp (Complex Double))
     f8 = matrix [[1,  1,  1,  1, 1, 1, 1, 1],
@@ -235,16 +237,3 @@ instance Arbitrary SmallPowerOfTwo where
 
     shrink (SmallPowerOfTwo 0) = []
     shrink (SmallPowerOfTwo n) = [SmallPowerOfTwo (n-1)]
-
--- | An 'Exp (Complex Double)' that is guaranteed to be a root of unity. Useful
--- for property testing.
-newtype RootOfUnity = RootOfUnity (Exp (Complex Double))
-
-instance Arbitrary RootOfUnity where
-    arbitrary = (RootOfUnity . ConstE . RouC) <$> arbitrary
-
-    shrink (RootOfUnity (ConstE (RouC r))) =
-        [RootOfUnity (ConstE (RouC r')) | r' <- shrink r]
-
-    shrink _ =
-        []

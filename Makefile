@@ -15,6 +15,7 @@ GHCFLAGS += \
 	-package base \
 	-package bytestring \
 	-package containers \
+	-package cyclotomic \
 	-package exception-mtl \
 	-package exception-transformers \
 	-package language-c-quote \

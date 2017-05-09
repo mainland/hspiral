@@ -49,8 +49,8 @@ module Spiral.Exp (
   ) where
 
 import Data.Complex
-import Data.Ratio ((%),
-                   denominator,
+import Data.Complex.Cyclotomic hiding (toComplex)
+import Data.Ratio (denominator,
                    numerator)
 import Data.String
 import Data.Symbol
@@ -87,8 +87,8 @@ data Const a where
     RationalC :: Rational -> Const Rational
     ComplexC  :: Const Double -> Const Double -> Const (Complex Double)
 
-    -- Root of unity, $e^{2 \pi i \frac{k}{n}}$
-    RouC :: Rational -> Const (Complex Double)
+    -- Cyclotomic numbers
+    CycC :: Cyclotomic -> Const (Complex Double)
 
     -- Multiple of $\pi$
     PiC :: Rational -> Const Double
@@ -120,7 +120,7 @@ lower (IntegerC x)   = x
 lower (DoubleC x)    = x
 lower (RationalC x)  = x
 lower (ComplexC r i) = lower r :+ lower i
-lower (RouC r)       = lower (cos (PiC (2*r))) :+ lower (sin (PiC (2*r)))
+lower x@CycC{}       = toComplex x
 lower (PiC r)        = pi*fromRational r
 
 instance Ord (Const a) where
@@ -163,19 +163,15 @@ instance Pretty (Const a) where
         | i == 0              = ppr r
         | otherwise           = pprComplex p (lower x)
 
-    pprPrec _ (RouC r)
-        | r < 0     = text "exp" <> parens (char '-' <> go (negate r))
-        | otherwise = text "exp" <> parens (go r)
-      where
-        go r = text "2*pi*i*" <>
-               ppr (numerator r) <>
-               char '/' <>
-               ppr (denominator r)
-
-    pprPrec _ (PiC r) = pprPrec mulPrec1 r <> char '*' <> text "pi"
+    pprPrec p (CycC x) = text (showsPrec p x "")
+    pprPrec _ (PiC r)  = pprPrec mulPrec1 r <> char '*' <> text "pi"
 
 instance ExtendedFloat (Const (Complex Double)) where
-    rootOfUnity = normalize . RouC
+    rootOfUnity q = mkCycC (e n ^^ k)
+      where
+        k, n :: Integer
+        k = numerator q
+        n = denominator q
 
 pprComplex :: (Eq a, Num a, Pretty a) => Int -> Complex a -> Doc
 pprComplex _ (r :+ 0)    = ppr r
@@ -185,31 +181,54 @@ pprComplex _ (0 :+ i)    = pprPrec mulPrec i <> char 'i'
 pprComplex p (r :+ i)    = parensIf (p > addPrec) $
                            pprPrec addPrec r <+> text "+" <+> pprPrec mulPrec i <> char 'i'
 
--- | Convert a 'Complex Double' to a 'Constant'
+-- | Convert a 'Complex Double' to a 'Const (Complex Double)'
 fromComplex :: Complex Double -> Const (Complex Double)
 fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
 
--- | Normalize an expression's representation.
-normalize :: Const a -> Const a
-normalize c@(RouC r)
-    | r >= 1 || r < -1 = normalize (RouC ((n `rem` d) % d))
-    | r < 0            = normalize (RouC (1 + r))
-    | r == 0           = ComplexC 1 0
-    | r == 1 % 4       = ComplexC 0 1
-    | r == 1 % 2       = ComplexC (-1) 0
-    | r == 3 % 4       = ComplexC 0 (-1)
-    | otherwise        = c
+-- | Convert a 'Const (Complex Double)' to a 'Complex Double'
+toComplex :: Const (Complex Double) -> Complex Double
+toComplex x@ComplexC{} = lower x
+-- `Data.Complex.Cyclotomic.toComplex` introduces some error that our method
+-- here prevents. Ugh!
+toComplex (CycC x)     = r :+ i
   where
-    n, d :: Integer
-    n = numerator r
-    d = denominator r
+    Just r = toReal (real x)
+    Just i = toReal (imag x)
 
-normalize c =
-    c
+-- | Ensure that 'Const (Complex Double)' constants are represented as cyclotomic
+-- numbers if possible.
+toCyc :: Monad m => Const a -> m (Const a)
+toCyc (CycC x) =
+    return $ CycC x
+
+toCyc (ComplexC (DoubleC re) (DoubleC im)) | isIntegral re && isIntegral im =
+    return $ CycC $ fromIntegral re' + fromIntegral im' * i
+  where
+    re', im' :: Int
+    re' = truncate re
+    im' = truncate im
+
+toCyc _ =
+    fail "Not a cyclotomic number"
+
+-- | Ensure that a 'Cyclotomic' number is represented using the 'ComplexC' data
+-- constructor if at all possible.
+mkCycC :: Cyclotomic -> Const (Complex Double)
+mkCycC x | isIntegral re && isIntegral im =
+    ComplexC (DoubleC re) (DoubleC im)
+  where
+    re, im :: Double
+    Just re = toReal (real x)
+    Just im = toReal (imag x)
+
+mkCycC x = CycC x
+
+isIntegral :: forall a . (RealFrac a, Eq a) => a -> Bool
+isIntegral x = snd (properFraction x :: (Int, a)) == 0
 
 -- | Flatten a constant's representation.
 flatten :: Const a -> Const a
-flatten (RouC r) = fromComplex (lower (normalize (RouC r)))
+flatten x@CycC{} = fromComplex (toComplex x)
 flatten (PiC r)  = DoubleC (fromRational r * pi)
 flatten e        = e
 
@@ -254,7 +273,7 @@ instance HEq Const where
     heq (DoubleC x)      (DoubleC y)      = x == y
     heq (RationalC x)    (RationalC y)    = x == y
     heq (ComplexC r1 i1) (ComplexC r2 i2) = r1 == r2 && i1 == i2
-    heq (RouC x)         (RouC y)         = x == y
+    heq (CycC x)         (CycC y)         = x == y
     heq (PiC x)          (PiC y)          = x == y
     heq _                _                = False
 
@@ -278,7 +297,7 @@ instance HOrd Const where
     hcompare (DoubleC x)      (DoubleC y)      = compare x y
     hcompare (RationalC x)    (RationalC y)    = compare x y
     hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
-    hcompare (RouC x)         (RouC y)         = compare x y
+    hcompare x@CycC{}         y@CycC{}         = compare (flatten x) (flatten y)
     hcompare (PiC x)          (PiC y)          = compare x y
     hcompare x                y                = compare (tag x) (tag y)
       where
@@ -289,7 +308,7 @@ instance HOrd Const where
         tag DoubleC{}   = 3
         tag RationalC{} = 4
         tag ComplexC{}  = 5
-        tag RouC{}      = 6
+        tag CycC{}      = 6
         tag PiC{}       = 7
 
 instance HOrd Exp where
@@ -534,9 +553,10 @@ isNeg e | Just c <- fromDouble e = c < 0
 isNeg _                          = False
 
 toPow :: Num (Exp a) => Exp a -> Integer -> Exp a
-toPow _ 0 = 1
-toPow e 1 = e
-toPow e n = UnopE (Pow n) e
+toPow _                 0 = 1
+toPow e                 1 = e
+toPow (ConstE (CycC x)) n = ConstE $ mkCycC (x^^n)
+toPow e                 n = UnopE (Pow n) e
 
 fromPow :: Num (Exp a) => Exp a -> Maybe (Exp a, Integer)
 fromPow (UnopE (Pow n) x@VarE{})                = return (x, n)
@@ -572,7 +592,7 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
       | e == 0 = 0
 
     liftNum Neg _ (ComplexC a b) = ComplexC (-a) (-b)
-    liftNum Neg _ (RouC r)       = normalize $ RouC (r + 1 % 2)
+    liftNum Neg _ (CycC c)       = mkCycC (-c)
     liftNum Neg _ (PiC r)        = PiC (-r)
 
     liftNum _op f c = lift f (flatten c)
@@ -597,12 +617,12 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
     liftNum2 Sub _ (ComplexC a b) (ComplexC c d) = ComplexC (a - c) (b - d)
     liftNum2 Mul _ (ComplexC a b) (ComplexC c d) = ComplexC (a*c - b*d) (b*c + a*d)
 
-    liftNum2 Mul _ (RouC x) (RouC y)            = normalize $ RouC (x + y)
-    liftNum2 Mul f (RouC x) (ComplexC 1      0) = liftNum2 Mul f (RouC x) (RouC 0)
-    liftNum2 Mul f (RouC x) (ComplexC (-1)   0) = liftNum2 Mul f (RouC x) (RouC (1 % 2))
-    liftNum2 Mul f (RouC x) (ComplexC 0      1) = liftNum2 Mul f (RouC x) (RouC (1 % 4))
-    liftNum2 Mul f (RouC x) (ComplexC 0   (-1)) = liftNum2 Mul f (RouC x) (RouC (3 % 4))
-    liftNum2 Mul f x        y@RouC{}            = liftNum2 Mul f y x
+    liftNum2 Add _ x y | Just (CycC x') <- toCyc x, Just (CycC y') <- toCyc y =
+        mkCycC (x' + y')
+    liftNum2 Sub _ x y | Just (CycC x') <- toCyc x, Just (CycC y') <- toCyc y =
+        mkCycC (x' + y')
+    liftNum2 Mul _ x y | Just (CycC x') <- toCyc x, Just (CycC y') <- toCyc y =
+        mkCycC (x' * y')
 
     liftNum2 _op f x y = lift2 f (flatten x) (flatten y)
 
@@ -872,7 +892,8 @@ instance (Fractional a, Num (Const a)) => LiftFrac (Const a) where
     liftFrac2 Div _ c1 1    = c1
     liftFrac2 Div _ c1 (-1) = -c1
 
-    liftFrac2 Div _ 1 (RouC y) = normalize $ RouC (-y)
+    liftFrac2 Div _ x y | Just (CycC x') <- toCyc x, Just (CycC y') <- toCyc y =
+        mkCycC (x' / y')
 
     liftFrac2 _op f c1 c2 = lift2 f c1 c2
 
@@ -1000,7 +1021,9 @@ ensureComplexE e = ComplexE er ei
 -- | Extract the complex and real portions of an 'Exp (Complex a)'.
 unComplexE :: Num (Exp a) => Exp (Complex a) -> (Exp a, Exp a)
 unComplexE (ConstE (ComplexC r i)) = (ConstE r, ConstE i)
-unComplexE (ConstE (RouC r))       = (ConstE (cos (PiC (2*r))), ConstE (sin (PiC (2*r))))
+unComplexE (ConstE x@CycC{})       = (ConstE (DoubleC r), ConstE (DoubleC i))
+  where
+    r :+ i = toComplex x
 unComplexE (ComplexE r i )         = (r, i)
 unComplexE e                       = (ReE e, ImE e)
 
