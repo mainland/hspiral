@@ -18,6 +18,7 @@ module Spiral.Array.Operators.Permute (
 
     Permutation(..),
     Perm(..),
+    PermFun,
     L,
     J,
 
