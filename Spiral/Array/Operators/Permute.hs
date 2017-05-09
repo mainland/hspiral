@@ -9,7 +9,7 @@
 
 -- |
 -- Module      :  Spiral.Array.Operators.Permute
--- Copyright   :  (c) 2016 Drexel University
+-- Copyright   :  (c) 2016-2017 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
@@ -42,8 +42,9 @@ type PermFun = forall a . Integral a => a -> a
 class (Show (Perm r), Pretty (Perm r)) => Permutation r where
     data Perm r
 
-    -- | Convert a permutation into an explicit index-mapping function.
-    fromPermutation :: Perm r -> PermFun
+    -- | Convert a permutation into an explicit permutation (scatter)
+    -- index-mapping function.
+    toPermute :: Perm r -> PermFun
 
     dim :: Perm r -> Int
 
@@ -56,11 +57,11 @@ instance Permutation L where
     data Perm L = L Int Int
       deriving (Eq, Ord, Show)
 
-    fromPermutation (L mn n0) = f
+    toPermute (L mn n0) = f
       where
         -- See [Voronenko08] p. 24
         f :: forall b . Integral b => b -> b
-        f i = i `quot` m + n * (i `rem` m)
+        f i = i `quot` n + m * (i `rem` n)
           where
             m, n :: b
             m = fromIntegral (mn `quot` n0)
@@ -82,7 +83,7 @@ instance Permutation J where
     data Perm J = J Int
       deriving (Eq, Ord, Show)
 
-    fromPermutation (J n0) = f
+    toPermute (J n0) = f
       where
         f :: forall b . Integral b => b -> b
         f i = n - i
@@ -106,14 +107,14 @@ class Permute r where
     backpermute p = permute (invert p)
 
 instance Permute D where
-    backpermute p (D sh f) = D sh (f . g)
+    permute p (D sh f) = D sh (f . g)
       where
-        g (Z :. i) = Z :. fromPermutation p i
+        g (Z :. i) = Z :. toPermute p i
 
 instance Permute DS where
-    backpermute p (DS sh f) = DS sh (f . g)
+    permute p (DS sh f) = DS sh (f . g)
       where
-        g (Z :. i) = Z :. fromPermutation p i
+        g (Z :. i) = Z :. toPermute p i
 
 data BP r
 
@@ -149,10 +150,10 @@ instance SArray r DIM1 a => Compute (BP r) DIM1 a where
 -}
 
 instance Permute (BP r) where
-    backpermute p (BP f a) = BP (g . f) a
+    permute p (BP f a) = BP (g . f) a
       where
         g :: PermFun
-        g = fromPermutation p
+        g = toPermute p
 
 -- | Create a backpermuted vector where the permutation is the identity
 -- permutation.

@@ -7,7 +7,7 @@
 
 -- |
 -- Module      :  Spiral.SPL
--- Copyright   :  (c) 2016 Drexel University
+-- Copyright   :  (c) 2016-2017 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
@@ -200,10 +200,10 @@ toMatrix (R alpha) =
 toMatrix (Pi p) =
     manifest $ fromFunction (ix2 (dim p) (dim p)) f
   where
-    f (Z :. i :. j) | j == g i  = 1
+    f (Z :. i :. j) | g j == i  = 1
                     | otherwise = 0
 
-    g = fromPermutation p
+    g = toPermute p
 
 toMatrix (Re a) = manifest (RE (toMatrix a))
 

@@ -44,7 +44,7 @@ instance Computable CP sh a where
     computeP a (CP _ k) = k a
 
 instance Permute CP where
-    permute p (CP sh k) = CP sh (k . backpermute (invert p) . idBackpermute)
+    permute p (CP sh k) = CP sh (k . permute p . idBackpermute)
 
 toCompute :: (ForShape sh, Computable r sh a) => Array r sh a -> Array CP sh a
 toCompute x = fromCompute (extent x) (`computeP` x)
