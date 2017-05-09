@@ -45,6 +45,12 @@ class (Show (Perm r), Pretty (Perm r)) => Permutation r where
     -- | Convert a permutation into an explicit permutation (scatter)
     -- index-mapping function.
     toPermute :: Perm r -> PermFun
+    toPermute = toBackpermute . invert
+
+    -- | Convert a permutation into an explicit backpermutation (gather)
+    -- index-mapping function.
+    toBackpermute :: Perm r -> PermFun
+    toBackpermute = toPermute . invert
 
     dim :: Perm r -> Int
 
@@ -100,21 +106,26 @@ instance Pretty (Perm J) where
 
 -- | Array representations that can be permuted.
 class Permute r where
-    permute :: Permutation p => Perm p -> Vector r b -> Vector r b
-    permute p = backpermute (invert p)
-
+    permute     :: Permutation p => Perm p -> Vector r b -> Vector r b
     backpermute :: Permutation p => Perm p -> Vector r b -> Vector r b
-    backpermute p = permute (invert p)
 
 instance Permute D where
     permute p (D sh f) = D sh (f . g)
       where
         g (Z :. i) = Z :. toPermute p i
 
+    backpermute p (D sh f) = D sh (f . g)
+      where
+        g (Z :. i) = Z :. toBackpermute p i
+
 instance Permute DS where
     permute p (DS sh f) = DS sh (f . g)
       where
         g (Z :. i) = Z :. toPermute p i
+
+    backpermute p (DS sh f) = DS sh (f . g)
+      where
+        g (Z :. i) = Z :. toBackpermute p i
 
 data BP r
 
@@ -154,6 +165,11 @@ instance Permute (BP r) where
       where
         g :: PermFun
         g = toPermute p
+
+    backpermute p (BP f a) = BP (g . f) a
+      where
+        g :: PermFun
+        g = toBackpermute p
 
 -- | Create a backpermuted vector where the permutation is the identity
 -- permutation.
