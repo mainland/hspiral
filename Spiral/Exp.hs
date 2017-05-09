@@ -261,145 +261,61 @@ instance HEq Const where
 instance HEq Exp where
     heq (ConstE c1)           (ConstE c2)           = heq c1 c2
     heq (VarE x)              (VarE y)              = x == y
-    heq (UnopE op1 e1)        (UnopE op2 e2)        = op1 == op2 && heq e1 e2
-    heq (BinopE op1 e1a e1b)  (BinopE op2 e2a e2b)  = op1 == op2 && heq e1a e2a && heq e1b e2b
-    heq (IdxE v1 es1)         (IdxE v2 es2)         = v1 == v2 && es1 == es2
-    heq (ComplexE r1 i1)      (ComplexE r2 i2)      = heq r1 r2 && heq i1 i2
+    heq (UnopE op1 e1)        (UnopE op2 e2)        = (op1, Some e1) == (op2, Some e2)
+    heq (BinopE op1 e1a e1b)  (BinopE op2 e2a e2b)  = (op1, Some e1a, Some e1b) == (op2, Some e2a, Some e2b)
+    heq (IdxE v1 es1)         (IdxE v2 es2)         = (v1, es1) == (v2, es2)
+    heq (ComplexE r1 i1)      (ComplexE r2 i2)      = (Some r1, Some i1) == (Some r2, Some i2)
     heq (ReE e1)              (ReE e2)              = heq e1 e2
     heq (ImE e1)              (ImE e2)              = heq e1 e2
-    heq (BBinopE op1 e1a e1b) (BBinopE op2 e2a e2b) = op1 == op2 && heq e1a e2a && heq e1b e2b
+    heq (BBinopE op1 e1a e1b) (BBinopE op2 e2a e2b) = (op1, Some e1a, Some e1b) == (op2, Some e2a, Some e2b)
+    heq (IfE e1a e1b e1c)     (IfE e2a e2b e2c)     = (Some e1a, Some e1b, Some e1c) == (Some e2a, Some e2b, Some e2c)
     heq _                     _                     = False
 
 instance HOrd Const where
     hcompare (BoolC x)         (BoolC y)       = compare x y
-    hcompare BoolC{}           _               = LT
-
-    hcompare IntC{}           BoolC{}          = GT
     hcompare (IntC x)         (IntC y)         = compare x y
-    hcompare IntC{}           _                = LT
-
-    hcompare IntegerC{}       BoolC{}          = GT
-    hcompare IntegerC{}       IntC{}           = GT
     hcompare (IntegerC x)     (IntegerC y)     = compare x y
-    hcompare IntegerC{}       _                = LT
-
-    hcompare DoubleC{}        BoolC{}          = GT
-    hcompare DoubleC{}        IntC{}           = GT
-    hcompare DoubleC{}        IntegerC{}       = GT
     hcompare (DoubleC x)      (DoubleC y)      = compare x y
-    hcompare DoubleC{}        _                = LT
-
-    hcompare RationalC{}      BoolC{}          = GT
-    hcompare RationalC{}      IntC{}           = GT
-    hcompare RationalC{}      IntegerC{}       = GT
-    hcompare RationalC{}      DoubleC{}        = GT
     hcompare (RationalC x)    (RationalC y)    = compare x y
-    hcompare RationalC{}      _                = LT
-
-    hcompare ComplexC{}       BoolC{}          = GT
-    hcompare ComplexC{}       IntC{}           = GT
-    hcompare ComplexC{}       IntegerC{}       = GT
-    hcompare ComplexC{}       DoubleC{}        = GT
-    hcompare ComplexC{}       RationalC{}      = GT
     hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
-    hcompare ComplexC{}       _                = LT
-
-    hcompare RouC{}           BoolC{}          = GT
-    hcompare RouC{}           IntC{}           = GT
-    hcompare RouC{}           IntegerC{}       = GT
-    hcompare RouC{}           DoubleC{}        = GT
-    hcompare RouC{}           RationalC{}      = GT
-    hcompare RouC{}           ComplexC{}       = GT
     hcompare (RouC x)         (RouC y)         = compare x y
-    hcompare RouC{}           _                = LT
-
     hcompare (PiC x)          (PiC y)          = compare x y
-    hcompare PiC{}            _                = GT
+    hcompare x                y                = compare (tag x) (tag y)
+      where
+        tag :: Const a -> Int
+        tag BoolC{}     = 0
+        tag IntC{}      = 1
+        tag IntegerC{}  = 2
+        tag DoubleC{}   = 3
+        tag RationalC{} = 4
+        tag ComplexC{}  = 5
+        tag RouC{}      = 6
+        tag PiC{}       = 7
 
 instance HOrd Exp where
-    hcompare (ConstE c1)          (ConstE c2)          = hcompare c1 c2
-    hcompare ConstE{}             _                    = LT
-
-    hcompare VarE{}               ConstE{}             = GT
-    hcompare (VarE x)             (VarE y)             = compare x y
-    hcompare VarE{}               _                    = LT
-
-    hcompare UnopE{}              ConstE{}             = GT
-    hcompare UnopE{}              VarE{}               = GT
-    hcompare (UnopE op1 e1)       (UnopE op2 e2)       = case compare op1 op2 of
-                                                           EQ -> hcompare e1 e2
-                                                           other -> other
-    hcompare UnopE{}              _                    = LT
-
-    hcompare BinopE{}             ConstE{}             = GT
-    hcompare BinopE{}             VarE{}               = GT
-    hcompare BinopE{}             UnopE{}              = GT
-    hcompare (BinopE op1 e1a e1b) (BinopE op2 e2a e2b) = case compare op1 op2 of
-                                                           EQ -> case hcompare e1a e2a of
-                                                                   EQ -> hcompare e1b e2b
-                                                                   other -> other
-                                                           other -> other
-    hcompare BinopE{}             _                    = LT
-
-    hcompare IdxE{}               ConstE{}             = GT
-    hcompare IdxE{}               VarE{}               = GT
-    hcompare IdxE{}               UnopE{}              = GT
-    hcompare IdxE{}               BinopE{}             = GT
-    hcompare (IdxE v1 es1)        (IdxE v2 es2)        = case compare v1 v2 of
-                                                           EQ -> compare es1 es2
-                                                           other -> other
-    hcompare IdxE{}               _                    = LT
-
-    hcompare ComplexE{}           ConstE{}             = GT
-    hcompare ComplexE{}           VarE{}               = GT
-    hcompare ComplexE{}           UnopE{}              = GT
-    hcompare ComplexE{}           BinopE{}             = GT
-    hcompare ComplexE{}           IdxE{}               = GT
-    hcompare (ComplexE r1 i1)     (ComplexE r2 i2)     = case hcompare r1 r2 of
-                                                           EQ -> hcompare i1 i2
-                                                           other -> other
-    hcompare ComplexE{}           _                    = LT
-
-    hcompare ReE{}                ConstE{}             = GT
-    hcompare ReE{}                VarE{}               = GT
-    hcompare ReE{}                UnopE{}              = GT
-    hcompare ReE{}                BinopE{}             = GT
-    hcompare ReE{}                IdxE{}               = GT
-    hcompare ReE{}                ComplexE{}           = GT
-    hcompare (ReE e1)             (ReE e2)             = hcompare e1 e2
-    hcompare ReE{}                _                    = LT
-
-    hcompare ImE{}                ConstE{}             = GT
-    hcompare ImE{}                VarE{}               = GT
-    hcompare ImE{}                UnopE{}              = GT
-    hcompare ImE{}                BinopE{}             = GT
-    hcompare ImE{}                IdxE{}               = GT
-    hcompare ImE{}                ComplexE{}           = GT
-    hcompare ImE{}                ReE{}                = GT
-    hcompare (ImE e1)             (ImE e2)             = hcompare e1 e2
-    hcompare ImE{}                _                    = LT
-
-    hcompare BBinopE{}             ConstE{}              = GT
-    hcompare BBinopE{}             VarE{}                = GT
-    hcompare BBinopE{}             UnopE{}               = GT
-    hcompare BBinopE{}             BinopE{}              = GT
-    hcompare BBinopE{}             IdxE{}                = GT
-    hcompare BBinopE{}             ComplexE{}            = GT
-    hcompare BBinopE{}             ReE{}                 = GT
-    hcompare BBinopE{}             ImE{}                 = GT
-    hcompare (BBinopE op1 e1a e1b) (BBinopE op2 e2a e2b) = case compare op1 op2 of
-                                                             EQ -> case hcompare e1a e2a of
-                                                                     EQ -> hcompare e1b e2b
-                                                                     other -> other
-                                                             other -> other
-    hcompare BBinopE{}              _                    = LT
-
-    hcompare (IfE e1a e1b e1c) (IfE e2a e2b e2c) = case compare e1a e2a of
-                                                     EQ -> case hcompare e1b e2b of
-                                                             EQ -> hcompare e1c e2c
-                                                             other -> other
-                                                     other -> other
-    hcompare IfE{}             _                 = GT
+    hcompare (ConstE c1)           (ConstE c2)           = hcompare c1 c2
+    hcompare (VarE x)              (VarE y)              = compare x y
+    hcompare (UnopE op1 e1)        (UnopE op2 e2)        = compare (op1, Some e1)(op2, Some e2)
+    hcompare (BinopE op1 e1a e1b)  (BinopE op2 e2a e2b)  = compare (op1, Some e1a, Some e1b) (op2, Some e2a, Some e2b)
+    hcompare (IdxE v1 es1)         (IdxE v2 es2)         = compare (v1, es1) (v2, es2)
+    hcompare (ComplexE r1 i1)      (ComplexE r2 i2)      = compare (Some r1, Some i1) (Some r2, Some i2)
+    hcompare (ReE e1)              (ReE e2)              = hcompare e1 e2
+    hcompare (ImE e1)              (ImE e2)              = hcompare e1 e2
+    hcompare (BBinopE op1 e1a e1b) (BBinopE op2 e2a e2b) = compare (op1, Some e1a, Some e1b) (op2, Some e2a, Some e2b)
+    hcompare (IfE e1a e1b e1c)     (IfE e2a e2b e2c)     = compare (Some e1a, Some e1b, Some e1c) (Some e2a, Some e2b, Some e2c)
+    hcompare e1                    e2                    = compare (tag e1) (tag e2)
+      where
+        tag :: Exp a -> Int
+        tag ConstE{}   = 0
+        tag VarE{}     = 1
+        tag UnopE{}    = 2
+        tag BinopE{}   = 3
+        tag IdxE{}     = 4
+        tag ComplexE{} = 5
+        tag ReE{}      = 6
+        tag ImE{}      = 7
+        tag BBinopE{}  = 8
+        tag IfE{}      = 9
 
 -- | Unary operators
 data Unop = Neg
