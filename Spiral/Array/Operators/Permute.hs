@@ -19,6 +19,8 @@ module Spiral.Array.Operators.Permute (
     Permutation(..),
     Perm(..),
     PermFun,
+    bruteForceInvert,
+
     L,
     J,
 
@@ -30,6 +32,7 @@ module Spiral.Array.Operators.Permute (
 
 import Prelude hiding (read)
 
+import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
@@ -56,6 +59,15 @@ class (Show (Perm r), Pretty (Perm r)) => Permutation r where
     dim :: Perm r -> Int
 
     invert :: Perm r -> Perm r
+
+bruteForceInvert :: Permutation r => Perm r -> PermFun
+bruteForceInvert pi = \i -> fromIntegral $ v V.! fromIntegral i
+  where
+    f :: Int -> Int
+    f = toPermute pi
+
+    v :: V.Vector Int
+    v = V.replicate (dim pi) 0 V.// [(f i, i) | i <- [0..dim pi-1]]
 
 data L
 

@@ -5,11 +5,11 @@
 
 -- |
 -- Module      :  Test
--- Copyright   :  (c) 2016 Drexel University
+-- Copyright   :  (c) 2016-2017 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module Main (main) where
+module Main where
 
 import Control.Monad (replicateM)
 import Data.Complex
@@ -36,6 +36,7 @@ import Spiral.Exp
 import qualified Spiral.FFT as FFT
 import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas
+import Spiral.FFT.Rader
 import Spiral.SPL
 
 import qualified Test.FFTW as FFTW
@@ -117,6 +118,7 @@ dftTests = testGroup "DFT tests"
     [ f2Test, f4Test, f8Test
     , ck_5_7_test
     , gt_5_7_test
+    , rader_test 7, rader_test 23
     , testProperty "DFT" prop_DFT]
 
 -- | Test that 'FFT.f' produces correct DFT matrices.
@@ -182,6 +184,14 @@ gt_5_7_test = testCase "GoodThomas(5,7)" $
   where
     w :: Exp (Complex Double)
     w = FFT.omega (35 :: Int)
+
+-- Test Rader for given prime
+rader_test :: Int -> Test
+rader_test n = testCase ("Rader(" ++ show n ++ ")") $
+    toMatrix (rader (fromIntegral n) w) @?= toMatrix (RDFT n w)
+  where
+    w :: Exp (Complex Double)
+    w = FFT.omega (n :: Int)
 
 genDFTTests :: Config -> IO Test
 genDFTTests conf =

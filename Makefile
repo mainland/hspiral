@@ -12,6 +12,7 @@ include mk/common.mk
 #
 GHCFLAGS += \
 	-hide-all-packages \
+	-package arithmoi \
 	-package base \
 	-package bytestring \
 	-package containers \
@@ -24,6 +25,7 @@ GHCFLAGS += \
 	-package mtl \
 	-package primitive \
 	-package process \
+	-package random \
 	-package ref-fd \
 	-package srcloc \
 	-package symbol \
@@ -79,8 +81,10 @@ SRC = \
 	Spiral/FFT.hs \
 	Spiral/FFT/CooleyTukey.hs \
 	Spiral/FFT/GoodThomas.hs \
+	Spiral/FFT/Rader.hs \
 	Spiral/Globals.hs \
 	Spiral/Monad.hs \
+	Spiral/NumberTheory.hs \
 	Spiral/OpCount.hs \
 	Spiral/Program.hs \
 	Spiral/Program/Monad.hs \
