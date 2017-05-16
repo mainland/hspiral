@@ -20,6 +20,8 @@ module Spiral.SPL (
     SPL(..),
     spl,
     diag,
+    circ,
+    toep,
 
     splExtent,
 
@@ -71,6 +73,12 @@ data SPL a where
     -- | Matrix product
     Prod :: SPL e -> SPL e -> SPL e
 
+    -- | Circulant matrix given first column
+    Circ :: V.Vector e -> SPL e
+
+    -- | Toeplitz matrix
+    Toep :: V.Vector e -> SPL e
+
     -- | Make a complex transform into a real transform.
     Re :: Num (Exp (Complex a)) => SPL (Exp (Complex a)) -> SPL (Exp a)
 
@@ -92,6 +100,14 @@ spl = E
 -- | Create a diagonal matrix
 diag :: [a] -> SPL a
 diag = Diag . V.fromList
+
+-- | Create a circulant matrix from the first column
+circ :: [a] -> SPL a
+circ = Circ . V.fromList
+
+-- | Create a Toeplitz matrix
+toep :: [a] -> SPL a
+toep = Toep . V.fromList
 
 -- | Return the extent of an SPL transform.
 splExtent :: SPL a -> DIM2
@@ -118,6 +134,14 @@ splExtent (Prod a b) = ix2 m q
   where
     Z :. m  :. _n = splExtent a
     Z :. _p :. q  = splExtent b
+
+splExtent (Circ xs) = ix2 n n
+  where
+    n = length xs
+
+splExtent (Toep xs) = ix2 n n
+  where
+    n = (length xs + 1) `quot` 2
 
 splExtent (Re a) = ix2 (2*m) (2*n)
   where
@@ -187,6 +211,20 @@ toMatrix (Prod a b) =
       where
         (i, j) = k `quotRem` n
 
+toMatrix (Circ xs) =
+    manifest $ fromFunction (ix2 n n) f
+  where
+    n = length xs
+
+    f (Z :. i :. j) = xs V.! ((i-j) `mod` n)
+
+toMatrix (Toep xs) =
+    manifest $ fromFunction (ix2 n n) f
+  where
+    n = (length xs + 1) `quot` 2
+
+    f (Z :. i :. j) = xs V.! (i-j+n-1)
+
 toMatrix (I n) =
     manifest $ fromFunction (ix2 n n) f
   where
@@ -227,6 +265,8 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (Kron a b) = infixop p KOp a b
     pprPrec p (DSum a b) = infixop p DSOp a b
     pprPrec p (Prod a b) = infixop p POp a b
+    pprPrec _ (Circ xs)  = text "circ" <> parens (commasep (map ppr (V.toList xs)))
+    pprPrec _ (Toep xs)  = text "toep" <> parens (commasep (map ppr (V.toList xs)))
     pprPrec _ (Re a)     = text "Re" <> parens (ppr a)
     pprPrec _ F2         = text "F_2"
     pprPrec _ (DFT n)    = text "DFT_" <> ppr n
