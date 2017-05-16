@@ -184,21 +184,17 @@ pprComplex p (r :+ i)    = parensIf (p > addPrec) $
 fromComplex :: Complex Double -> Const (Complex Double)
 fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
 
--- | Ensure that 'Const (Complex Double)' constants are represented as
--- cyclotomic numbers if possible.
-toCyc :: Monad m => Const a -> m (Const a)
-toCyc (CycC x) =
-    return $ CycC x
-
-toCyc (ComplexC (DoubleC re) (DoubleC im)) | isIntegral re && isIntegral im =
-    return $ CycC $ fromIntegral re' + fromIntegral im' * i
+-- | Convert a 'Const (Complex Double)' into a 'Cyclotomic' value
+unCycC :: Monad m => Const (Complex Double) -> m Cyclotomic
+unCycC (ComplexC (DoubleC re) (DoubleC im)) | isIntegral re && isIntegral im =
+    return $ fromIntegral re' + fromIntegral im' * i
   where
     re', im' :: Int
     re' = truncate re
     im' = truncate im
 
-toCyc _ =
-    fail "Not a cyclotomic number"
+unCycC (CycC x) = return x
+unCycC _        = fail "Not a cyclotomic number"
 
 -- | Ensure that a 'Cyclotomic' number is represented using the 'ComplexC' data
 -- constructor if at all possible.
@@ -606,12 +602,9 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
     liftNum2 Sub _ (ComplexC a b) (ComplexC c d) = ComplexC (a - c) (b - d)
     liftNum2 Mul _ (ComplexC a b) (ComplexC c d) = ComplexC (a*c - b*d) (b*c + a*d)
 
-    liftNum2 Add _ x y | Just (CycC x') <- toCyc x, Just (CycC y') <- toCyc y =
-        mkCycC (x' + y')
-    liftNum2 Sub _ x y | Just (CycC x') <- toCyc x, Just (CycC y') <- toCyc y =
-        mkCycC (x' + y')
-    liftNum2 Mul _ x y | Just (CycC x') <- toCyc x, Just (CycC y') <- toCyc y =
-        mkCycC (x' * y')
+    -- Try to perform all operations in the cyclotomic domain
+    liftNum2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = mkCycC (f x y)
+    liftNum2 _op f x0@CycC{}     y0 | Just x <- unCycC x0, Just y <- unCycC y0 = mkCycC (f x y)
 
     liftNum2 _op f x y = lift2 f (flatten x) (flatten y)
 
@@ -881,8 +874,9 @@ instance (Fractional a, Num (Const a)) => LiftFrac (Const a) where
     liftFrac2 Div _ c1 1    = c1
     liftFrac2 Div _ c1 (-1) = -c1
 
-    liftFrac2 Div _ x y | Just (CycC x') <- toCyc x, Just (CycC y') <- toCyc y =
-        mkCycC (x' / y')
+    -- Try to perform all operations in the cyclotomic domain
+    liftFrac2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = mkCycC (f x y)
+    liftFrac2 _op f x0@CycC{}     y0 | Just x <- unCycC x0, Just y <- unCycC y0 = mkCycC (f x y)
 
     liftFrac2 _op f c1 c2 = lift2 f c1 c2
 
