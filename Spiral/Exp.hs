@@ -49,7 +49,7 @@ module Spiral.Exp (
   ) where
 
 import Data.Complex
-import Data.Complex.Cyclotomic hiding (toComplex)
+import Data.Complex.Cyclotomic
 import Data.String
 import Data.Symbol
 import Language.C.Quote (ToIdent(..))
@@ -118,7 +118,12 @@ lower (IntegerC x)   = x
 lower (DoubleC x)    = x
 lower (RationalC x)  = x
 lower (ComplexC r i) = lower r :+ lower i
-lower x@CycC{}       = toComplex x
+-- `Data.Complex.Cyclotomic.toComplex` introduces some error that our method
+-- here prevents. Ugh!
+lower (CycC x)       = r :+ i
+  where
+    Just r = toReal (real x)
+    Just i = toReal (imag x)
 lower (PiC r)        = pi*fromRational r
 
 instance Ord (Const a) where
@@ -179,18 +184,8 @@ pprComplex p (r :+ i)    = parensIf (p > addPrec) $
 fromComplex :: Complex Double -> Const (Complex Double)
 fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
 
--- | Convert a 'Const (Complex Double)' to a 'Complex Double'
-toComplex :: Const (Complex Double) -> Complex Double
-toComplex x@ComplexC{} = lower x
--- `Data.Complex.Cyclotomic.toComplex` introduces some error that our method
--- here prevents. Ugh!
-toComplex (CycC x)     = r :+ i
-  where
-    Just r = toReal (real x)
-    Just i = toReal (imag x)
-
--- | Ensure that 'Const (Complex Double)' constants are represented as cyclotomic
--- numbers if possible.
+-- | Ensure that 'Const (Complex Double)' constants are represented as
+-- cyclotomic numbers if possible.
 toCyc :: Monad m => Const a -> m (Const a)
 toCyc (CycC x) =
     return $ CycC x
@@ -222,7 +217,7 @@ isIntegral x = snd (properFraction x :: (Int, a)) == 0
 
 -- | Flatten a constant's representation.
 flatten :: Const a -> Const a
-flatten x@CycC{} = fromComplex (toComplex x)
+flatten x@CycC{} = fromComplex (lower x)
 flatten (PiC r)  = DoubleC (fromRational r * pi)
 flatten e        = e
 
@@ -1017,7 +1012,7 @@ unComplexE :: Num (Exp a) => Exp (Complex a) -> (Exp a, Exp a)
 unComplexE (ConstE (ComplexC r i)) = (ConstE r, ConstE i)
 unComplexE (ConstE x@CycC{})       = (ConstE (DoubleC r), ConstE (DoubleC i))
   where
-    r :+ i = toComplex x
+    r :+ i = lower x
 unComplexE (ComplexE r i )         = (r, i)
 unComplexE e                       = (ReE e, ImE e)
 
