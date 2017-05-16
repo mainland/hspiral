@@ -37,8 +37,6 @@ module Spiral.Exp (
     IsEq(..),
     IsOrd(..),
 
-    rootOfUnity,
-
     intE,
     complexE,
     ensureComplexE,
