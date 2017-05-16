@@ -50,8 +50,6 @@ module Spiral.Exp (
 
 import Data.Complex
 import Data.Complex.Cyclotomic hiding (toComplex)
-import Data.Ratio (denominator,
-                   numerator)
 import Data.String
 import Data.Symbol
 import Language.C.Quote (ToIdent(..))
@@ -60,8 +58,8 @@ import Text.PrettyPrint.Mainland hiding (flatten)
 import Text.PrettyPrint.Mainland.Class
 
 import Data.Heterogeneous
-import Spiral.ExtendedFloat
 import Spiral.Globals
+import Spiral.RootOfUnity
 import Spiral.Util.Name
 import Spiral.Util.Pretty
 import Spiral.Util.Uniq
@@ -166,12 +164,8 @@ instance Pretty (Const a) where
     pprPrec p (CycC x) = text (showsPrec p x "")
     pprPrec _ (PiC r)  = pprPrec mulPrec1 r <> char '*' <> text "pi"
 
-instance ExtendedFloat (Const (Complex Double)) where
-    rootOfUnity q = mkCycC (e n ^^ k)
-      where
-        k, n :: Integer
-        k = numerator q
-        n = denominator q
+instance RootOfUnity (Const (Complex Double)) where
+    rootOfUnity n k = mkCycC (rootOfUnity n k)
 
 pprComplex :: (Eq a, Num a, Pretty a) => Int -> Complex a -> Doc
 pprComplex _ (r :+ 0)    = ppr r
@@ -259,8 +253,8 @@ instance Ord (Exp a) where
 instance IsString (Exp a) where
     fromString s = VarE (fromString s)
 
-instance ExtendedFloat (Exp (Complex Double)) where
-    rootOfUnity = ConstE . rootOfUnity
+instance RootOfUnity (Exp (Complex Double)) where
+    rootOfUnity n k = ConstE (rootOfUnity n k)
 
 --
 -- Heterogeneous quality and comparison

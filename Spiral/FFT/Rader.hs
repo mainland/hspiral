@@ -21,11 +21,11 @@ import Text.PrettyPrint.Mainland.Class
 import Spiral.Array
 import Spiral.Array.Operators.IndexSpace
 import Spiral.Array.Operators.Permute
-import Spiral.ExtendedFloat
 import Spiral.NumberTheory
+import Spiral.RootOfUnity
 import Spiral.SPL hiding (R)
 
-rader :: forall a . (Pretty a, ExtendedFloat a, Fractional a) => Int -> a -> SPL a
+rader :: forall a . (Pretty a, RootOfUnity a, Fractional a) => Int -> a -> SPL a
 rader p w = Pi (R p a) × (one ⊕ f_pm1 (1/u)) × d_p × (one ⊕ f_pm1 u) × Pi (R' p a')
   where
     a, a' :: Int

@@ -77,7 +77,6 @@ SRC = \
 	Spiral/Driver/Monad.hs \
 	Spiral/Driver/Opts.hs \
 	Spiral/Exp.hs \
-	Spiral/ExtendedFloat.hs \
 	Spiral/FFT.hs \
 	Spiral/FFT/CooleyTukey.hs \
 	Spiral/FFT/GoodThomas.hs \
@@ -90,6 +89,7 @@ SRC = \
 	Spiral/Program/Monad.hs \
 	Spiral/Program/Monad.hs-boot \
 	Spiral/Program/Syntax.hs \
+	Spiral/RootOfUnity.hs \
 	Spiral/SPL.hs \
 	Spiral/SPL/Run.hs \
 	Spiral/Util/MaplePretty.hs \

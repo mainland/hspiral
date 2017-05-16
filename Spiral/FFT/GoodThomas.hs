@@ -21,10 +21,10 @@ module Spiral.FFT.GoodThomas (
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
-import Spiral.ExtendedFloat
+import Spiral.RootOfUnity
 import Spiral.SPL
 
-goodThomas :: forall a . (ExtendedFloat a, Fractional a) => Int -> Int -> a -> SPL a
+goodThomas :: forall a . (RootOfUnity a, Fractional a) => Int -> Int -> a -> SPL a
 goodThomas r s w = _Q' × (RDFT r (w^^er) ⊗ RDFT s (w^^es)) × _Q
   where
     (u, v) = euclid r s

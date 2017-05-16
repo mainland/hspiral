@@ -39,7 +39,7 @@ import Spiral.Array
 import Spiral.Array.Operators.Permute
 import Spiral.Array.Repr.Complex
 import Spiral.Exp
-import Spiral.ExtendedFloat
+import Spiral.RootOfUnity
 import Spiral.Util.Pretty
 
 -- | An SPL transform. The type index is the type of the scalar values in the
@@ -78,10 +78,10 @@ data SPL a where
     F2 :: SPL e
 
     -- The nxn DFT matrix
-    DFT :: ExtendedFloat a => Int -> SPL a
+    DFT :: RootOfUnity a => Int -> SPL a
 
     -- The nxn rotated DFT matrix
-    RDFT :: ExtendedFloat a => Int -> a -> SPL a
+    RDFT :: RootOfUnity a => Int -> a -> SPL a
 
 -- | Embed any 'Array' as an SPL term.
 spl :: (IArray r DIM2 e, Pretty (Array r DIM2 e))

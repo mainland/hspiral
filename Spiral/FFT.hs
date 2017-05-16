@@ -18,17 +18,17 @@ import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array
 import Spiral.Array.Operators.Permute
-import Spiral.ExtendedFloat
+import Spiral.RootOfUnity
 import Spiral.SPL
 
 -- | The $W_m(\omega_n)$ matrix
-w :: ExtendedFloat a => Int -> Int -> SPL a
+w :: RootOfUnity a => Int -> Int -> SPL a
 w m n = diag [w^i | i <- [0..m-1]]
   where
     w = omega n
 
 -- | Twiddle factor matrix $T^{mn}_m$
-t :: ExtendedFloat a => Int -> Int -> SPL a
+t :: RootOfUnity a => Int -> Int -> SPL a
 t mn m = I m ⊕ go (n-1)
   where
     n = mn `quot` m
@@ -37,7 +37,7 @@ t mn m = I m ⊕ go (n-1)
          | otherwise = w m mn ⊕ go (i-1)
 
 -- | DFT matrix $F_n$, for $n$ even
-f :: (ExtendedFloat a, Pretty a) => Int -> SPL a
+f :: (RootOfUnity a, Pretty a) => Int -> SPL a
 f 1 = spl $ matrix [[1]]
 f 2 = F2
 
