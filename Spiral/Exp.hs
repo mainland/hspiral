@@ -83,10 +83,10 @@ data Const a where
     RationalC :: Rational -> Const Rational
     ComplexC  :: Const Double -> Const Double -> Const (Complex Double)
 
-    -- Cyclotomic numbers
+    -- | Cyclotomic numbers
     CycC :: Cyclotomic -> Const (Complex Double)
 
-    -- Multiple of $\pi$
+    -- | Multiple of $\pi$
     PiC :: Rational -> Const Double
 
 deriving instance Eq (Const a)
