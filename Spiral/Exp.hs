@@ -47,7 +47,7 @@ module Spiral.Exp (
   ) where
 
 import Data.Complex
-import Data.Complex.Cyclotomic
+import Data.Complex.Cyclotomic hiding (toComplex)
 import Data.String
 import Data.Symbol
 import Language.C.Quote (ToIdent(..))
@@ -116,12 +116,7 @@ lower (IntegerC x)   = x
 lower (DoubleC x)    = x
 lower (RationalC x)  = x
 lower (ComplexC r i) = lower r :+ lower i
--- `Data.Complex.Cyclotomic.toComplex` introduces some error that our method
--- here prevents. Ugh!
-lower (CycC x)       = r :+ i
-  where
-    Just r = toReal (real x)
-    Just i = toReal (imag x)
+lower (CycC x)       = toComplex x
 lower (PiC r)        = pi*fromRational r
 
 instance Ord (Const a) where
@@ -181,6 +176,15 @@ pprComplex p (r :+ i)    = parensIf (p > addPrec) $
 -- | Convert a 'Complex Double' to a 'Const (Complex Double)'
 fromComplex :: Complex Double -> Const (Complex Double)
 fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
+
+-- | Convert a 'Cyclotomic' value to a 'Double Complex' value.
+-- 'Data.Complex.Cyclotomic.toComplex' introduces some error that this function
+-- avoids. Ugh!
+toComplex :: Cyclotomic -> Complex Double
+toComplex x = r :+ i
+  where
+    Just r = toReal (real x)
+    Just i = toReal (imag x)
 
 -- | Convert a 'Const (Complex Double)' into a 'Cyclotomic' value
 unCycC :: Monad m => Const (Complex Double) -> m Cyclotomic
