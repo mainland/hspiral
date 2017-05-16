@@ -45,42 +45,42 @@ import Spiral.Util.Pretty
 -- | An SPL transform. The type index is the type of the scalar values in the
 -- transformed vector.
 data SPL a where
-    -- An "embedded" array with an unknown representation.
+    -- | An "embedded" array with an unknown representation.
     E :: (IArray r DIM2 e, Pretty (Array r DIM2 e))
       => Array r DIM2 e
       -> SPL e
 
-    -- The $n \times n$ identity matrix.
+    -- | The $n \times n$ identity matrix.
     I :: Int -> SPL e
 
-    -- A permutation
+    -- | A permutation
     Pi :: Permutation p => Perm p -> SPL e
 
-    -- The rotation matrix
+    -- | The rotation matrix
     R :: Floating a => a -> SPL a
 
-    -- A diagonal matrix
+    -- | A diagonal matrix
     Diag :: V.Vector e -> SPL e
 
-    -- Kronecker product
+    -- | Kronecker product
     Kron :: SPL e -> SPL e -> SPL e
 
-    -- Direct sum
+    -- | Direct sum
     DSum :: SPL e -> SPL e -> SPL e
 
-    -- Matrix product
+    -- | Matrix product
     Prod :: SPL e -> SPL e -> SPL e
 
-    -- Make a complex transform into a real transform.
+    -- | Make a complex transform into a real transform.
     Re :: Num (Exp (Complex a)) => SPL (Exp (Complex a)) -> SPL (Exp a)
 
-    -- The 2x2 DFT
+    -- | The 2x2 DFT
     F2 :: SPL e
 
-    -- The nxn DFT matrix
+    -- | The nxn DFT matrix
     DFT :: RootOfUnity a => Int -> SPL a
 
-    -- The nxn rotated DFT matrix
+    -- | The nxn "rotated" DFT matrix
     RDFT :: RootOfUnity a => Int -> a -> SPL a
 
 -- | Embed any 'Array' as an SPL term.
