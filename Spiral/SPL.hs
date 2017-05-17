@@ -198,10 +198,10 @@ toMatrix (DSum a b) =
         (i, j) = k `quotRem` (n+q)
 
 toMatrix (Prod a b) =
-    M (ix2 m q) $ V.generate (m*q) f
+    M (ix2 m n) $ V.generate (m*n) f
   where
-    Z :. m  :. n = extent a'
-    Z :. _p :. q  = extent b'
+    Z :. m  :. _p' = extent a'
+    Z :. _p :. n   = extent b'
 
     a' = toMatrix a
     b' = toMatrix b
