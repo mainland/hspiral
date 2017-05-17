@@ -48,7 +48,7 @@ import Spiral.Util.Pretty
 -- transformed vector.
 data SPL a where
     -- | An "embedded" array with an unknown representation.
-    E :: (IArray r DIM2 e, Pretty (Array r DIM2 e))
+    E :: IArray r DIM2 e
       => Array r DIM2 e
       -> SPL e
 
@@ -92,7 +92,7 @@ data SPL a where
     RDFT :: RootOfUnity a => Int -> a -> SPL a
 
 -- | Embed any 'Array' as an SPL term.
-spl :: (IArray r DIM2 e, Pretty (Array r DIM2 e))
+spl :: IArray r DIM2 e
     => Array r DIM2 e
     -> SPL e
 spl = E
@@ -256,7 +256,7 @@ toMatrix (RDFT n w) = manifest $ fromFunction (ix2 n n) f
     f (Z :. i :. j) = w ^ (i*j)
 
 instance (Num e, Pretty e) => Pretty (SPL e) where
-    pprPrec p (E a)      = pprPrec p a
+    pprPrec p (E a)      = pprPrec p (manifest a)
     pprPrec _ (I n)      = text "I_" <> ppr n
     pprPrec _ (Pi p)     = ppr p
     pprPrec _ (R alpha)  = text "R_" <> ppr alpha
