@@ -5,9 +5,7 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.RootOfUnity (
-    RootOfUnity(..),
-
-    omega
+    RootOfUnity(..)
   ) where
 
 import Data.Complex
@@ -19,6 +17,10 @@ class Num a => RootOfUnity a where
     -- the @k@th power.
     rootOfUnity :: Int -> Int -> a
 
+    -- | Computes the primitive @n@th root of unity.
+    omega :: Int -> a
+    omega n = rootOfUnity n 1
+
 instance RealFloat a => RootOfUnity (Complex a) where
     -- | $e^{-2 \pi i \frac{k}{n}$
     rootOfUnity n k = exp (-2*pi*i/fromIntegral n)^^k
@@ -29,7 +31,3 @@ instance RootOfUnity Cyclotomic where
     -- 'Data.Complex.Cyclotomic.e' computes $e^{2 \pi i/n}$, so we need to take
     -- the reciprocal.
     rootOfUnity n k = (1/e (fromIntegral n))^^k
-
--- | @omega n@ computes the primitive @n@th root of unity
-omega :: (Integral a, RootOfUnity b) => a -> b
-omega n = rootOfUnity (fromIntegral n) 1

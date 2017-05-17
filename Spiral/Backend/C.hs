@@ -160,8 +160,9 @@ cgConst (IntegerC x)     = CInt (fromIntegral x)
 cgConst (RationalC x)    = CDouble (fromRational x)
 cgConst (DoubleC x)      = CDouble x
 cgConst (ComplexC e1 e2) = CComplex (cgConst e1) (cgConst e2)
-cgConst (PiC x)          = CDouble (fromRational x * pi)
+cgConst e@W{}            = cgConst (flatten e)
 cgConst e@CycC{}         = cgConst (flatten e)
+cgConst (PiC x)          = CDouble (fromRational x * pi)
 
 -- | Compile an 'Exp a'.
 cgExp :: forall a m . (Typed a, MonadSpiral m) => Exp a -> Cg m CExp

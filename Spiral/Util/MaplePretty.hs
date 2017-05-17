@@ -101,8 +101,12 @@ instance MaplePretty (Const a) where
         | i == 0              = pprm r
         | otherwise           = text "Complex" <> pprArgs [pprm r, pprm i]
 
+    pprmPrec _ (W _ 0 _) = text "1"
+    pprmPrec _ (W n 1 _) = text "w_" <> ppr n
+    pprmPrec _ (W n k _) = text "w_" <> ppr n <> char '^' <> ppr k
+
     pprmPrec p (CycC x) = text (showsPrec p x "")
-    pprmPrec _ (PiC r) = pprmPrec mulPrec1 r <+> char '*' <+> text "Pi"
+    pprmPrec _ (PiC r)  = pprmPrec mulPrec1 r <+> char '*' <+> text "Pi"
 
 instance MaplePretty Var where
     pprm = ppr

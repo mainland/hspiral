@@ -48,6 +48,7 @@ module Spiral.Exp (
 
 import Data.Complex
 import Data.Complex.Cyclotomic hiding (toComplex)
+import Data.Ratio
 import Data.String
 import Data.Symbol
 import Language.C.Quote (ToIdent(..))
@@ -82,6 +83,9 @@ data Const a where
     DoubleC   :: Double -> Const Double
     RationalC :: Rational -> Const Rational
     ComplexC  :: Const Double -> Const Double -> Const (Complex Double)
+
+    -- | Constant multiple of root of unity tagged with n and k.
+    W :: Fractional (Const a) => !Int -> !Int -> Const a -> Const a
 
     -- | Cyclotomic numbers
     CycC :: Cyclotomic -> Const (Complex Double)
@@ -122,6 +126,7 @@ lower (IntegerC x)   = x
 lower (DoubleC x)    = x
 lower (RationalC x)  = x
 lower (ComplexC r i) = lower r :+ lower i
+lower (W _ _ x)      = lower x
 lower (CycC x)       = toComplex x
 lower (PiC r)        = pi*fromRational r
 
@@ -155,11 +160,15 @@ instance Pretty (Const a) where
         | i == 0              = ppr r
         | otherwise           = pprComplex p (lower x)
 
+    pprPrec _ (W _ 0 _) = text "1"
+    pprPrec _ (W n 1 _) = text "ω_" <> ppr n
+    pprPrec _ (W n k _) = text "ω_" <> ppr n <> char '^' <> ppr k
+
     pprPrec p (CycC x) = text (showsPrec p x "")
     pprPrec _ (PiC r)  = pprPrec mulPrec1 r <> char '*' <> text "pi"
 
 instance RootOfUnity (Const (Complex Double)) where
-    rootOfUnity n k = CycC (rootOfUnity n k)
+    rootOfUnity n k = W n k (CycC (rootOfUnity n k))
 
 pprComplex :: (Eq a, Num a, Pretty a) => Int -> Complex a -> Doc
 pprComplex _ (r :+ 0)    = ppr r
@@ -191,17 +200,19 @@ unCycC (ComplexC (DoubleC re) (DoubleC im)) | isIntegral re && isIntegral im =
     re' = truncate re
     im' = truncate im
 
-unCycC (CycC x) = return x
-unCycC _        = fail "Not a cyclotomic number"
+unCycC (W n k _) = return $ rootOfUnity n k
+unCycC (CycC x)  = return x
+unCycC _         = fail "Not a cyclotomic number"
 
 isIntegral :: forall a . (RealFrac a, Eq a) => a -> Bool
 isIntegral x = snd (properFraction x :: (Int, a)) == 0
 
 -- | Flatten a constant's representation.
 flatten :: Const a -> Const a
-flatten x@CycC{} = fromComplex (lower x)
-flatten (PiC r)  = DoubleC (fromRational r * pi)
-flatten e        = e
+flatten (W _ _ x) = flatten x
+flatten x@CycC{}  = fromComplex (lower x)
+flatten (PiC r)   = DoubleC (fromRational r * pi)
+flatten e         = e
 
 -- | Representation of scalar constants.
 data Exp a where
@@ -244,11 +255,15 @@ instance HEq Const where
     heq (DoubleC x)      (DoubleC y)      = x == y
     heq (RationalC x)    (RationalC y)    = x == y
     heq (ComplexC r1 i1) (ComplexC r2 i2) = r1 == r2 && i1 == i2
+    heq (W n k _)        (W n' k' _)      = (k' `mod` n') % n' == (k `mod` n) % n
     heq (CycC x)         (CycC y)         = x == y
     heq (PiC x)          (PiC y)          = x == y
 
     heq x@ComplexC{} y | Just x' <- unCycC x = heq (CycC x') y
     heq x y@ComplexC{} | Just y' <- unCycC y = heq x (CycC y')
+
+    heq (W _ _ c) y = heq c y
+    heq x (W _ _ c) = heq x c
 
     heq x@PiC{} y = heq (DoubleC (lower x)) y
     heq x y@PiC{} = heq x (DoubleC (lower y))
@@ -275,11 +290,15 @@ instance HOrd Const where
     hcompare (DoubleC x)      (DoubleC y)      = compare x y
     hcompare (RationalC x)    (RationalC y)    = compare x y
     hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
+    hcompare (W n k _)        (W n' k' _)      = compare ((k' `mod` n') % n') ((k `mod` n) % n)
     hcompare x@CycC{}         y@CycC{}         = compare (flatten x) (flatten y)
     hcompare (PiC x)          (PiC y)          = compare x y
 
     hcompare x@ComplexC{} y | Just x' <- unCycC x = hcompare (CycC x') y
     hcompare x y@ComplexC{} | Just y' <- unCycC y = hcompare x (CycC y')
+
+    hcompare (W _ _ c) y = hcompare c y
+    hcompare x (W _ _ c) = hcompare x c
 
     hcompare x@PiC{} y = hcompare (DoubleC (lower x)) y
     hcompare x y@PiC{} = hcompare x (DoubleC (lower y))
@@ -293,8 +312,9 @@ instance HOrd Const where
         tag DoubleC{}   = 3
         tag RationalC{} = 4
         tag ComplexC{}  = 5
-        tag CycC{}      = 6
-        tag PiC{}       = 7
+        tag W{}         = 6
+        tag CycC{}      = 7
+        tag PiC{}       = 8
 
 instance HOrd Exp where
     hcompare (ConstE c1)           (ConstE c2)           = hcompare c1 c2
@@ -538,10 +558,11 @@ isNeg e | Just c <- fromDouble e = c < 0
 isNeg _                          = False
 
 toPow :: Num (Exp a) => Exp a -> Integer -> Exp a
-toPow _                 0 = 1
-toPow e                 1 = e
-toPow (ConstE (CycC x)) n = ConstE $ CycC (x^^n)
-toPow e                 n = UnopE (Pow n) e
+toPow _                  0 = 1
+toPow e                  1 = e
+toPow (ConstE (W n k c)) l = ConstE $ W n ((k*fromInteger l) `mod` n) (c^^l)
+toPow (ConstE (CycC x))  n = ConstE $ CycC (x^^n)
+toPow e                  n = UnopE (Pow n) e
 
 fromPow :: Num (Exp a) => Exp a -> Maybe (Exp a, Integer)
 fromPow (UnopE (Pow n) x@VarE{})                = return (x, n)
@@ -580,7 +601,12 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
     liftNum Neg _ (CycC c)       = CycC (-c)
     liftNum Neg _ (PiC r)        = PiC (-r)
 
-    liftNum _op f c = lift f c
+    liftNum Neg _ (W n k c) | even n =
+        W n ((k + n `quot` 2) `mod` n) (-c)
+
+    liftNum op f (W _ _ c) = liftNum op f c
+
+    liftNum _op f c = lift f (flatten c)
 
     liftNum2 Add _ e1 e2
       | e1 == 0 = e2
@@ -602,11 +628,19 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
     liftNum2 Sub _ (ComplexC a b) (ComplexC c d) = ComplexC (a - c) (b - d)
     liftNum2 Mul _ (ComplexC a b) (ComplexC c d) = ComplexC (a*c - b*d) (b*c + a*d)
 
+    liftNum2 Mul _ (W n k x) (W m l y) = W n' (((k*m + l*n) `quot` d) `mod` n') (x*y)
+      where
+        n' = lcm n m
+        d  = gcd n m
+
+    liftNum2 op f (W _ _ c) y = liftNum2 op f c y
+    liftNum2 op f x (W _ _ c) = liftNum2 op f x c
+
     -- Try to perform all operations in the cyclotomic domain
     liftNum2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
     liftNum2 _op f x0@CycC{}     y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
 
-    liftNum2 _op f x y = lift2 f x y
+    liftNum2 _op f x y = lift2 f (flatten x) (flatten y)
 
 --- XXX Need UndecidableInstances for this...but we *must* call
 --- liftNum/liftNum2 on constants to ensure they are properly simplified.
@@ -814,12 +848,18 @@ class LiftIntegral b where
 instance LiftIntegral (Const Int) where
     liftIntegral2 _ f (IntC x) (IntC y) = IntC (f x y)
 
+    liftIntegral2 _ _ W{} _   = error "can't happen"
+    liftIntegral2 _ _ _   W{} = error "can't happen"
+
 instance Enum (Const Int) where
-    toEnum n          = IntC (fromIntegral n)
+    toEnum n = IntC (fromIntegral n)
+
     fromEnum (IntC i) = fromIntegral i
+    fromEnum W{}      = error "can't happen"
 
 instance Real (Const Int) where
     toRational (IntC i) = toRational i
+    toRational W{}      = error "can't happen"
 
 instance Integral (Const Int) where
     quot = liftIntegral2 Quot quot
@@ -828,6 +868,7 @@ instance Integral (Const Int) where
     x `quotRem` y = (x `quot` y, x `rem` y)
 
     toInteger (IntC i) = fromIntegral i
+    toInteger W{}      = error "can't happen"
 
 instance (LiftIntegral (Const a), Integral (Exp a)) => LiftIntegral (Exp a) where
     liftIntegral2 op f (ConstE x) (ConstE y) = ConstE $ liftIntegral2 op f x y
@@ -870,9 +911,15 @@ class LiftFrac b where
     -- | Lift a binary operation on 'Num' to the type 'b
     liftFrac2 :: Binop -> (forall a . Fractional a => a -> a -> a) -> b -> b -> b
 
-instance (Fractional a, Num (Const a)) => LiftFrac (Const a) where
-    liftFrac2 Div _ c1 1    = c1
-    liftFrac2 Div _ c1 (-1) = -c1
+instance (Fractional a, Fractional (Const a)) => LiftFrac (Const a) where
+    liftFrac2 Div _ 1         (W n k c)    = W n ((-k) `mod` n) (1/c)
+    liftFrac2 Div f (W n k c) (W n' k' c') = liftFrac2 Div f (W n k c) (W n' (-k') (1/c'))
+
+    liftFrac2 op f (W _ _ c) y = liftFrac2 op f c y
+    liftFrac2 op f x (W _ _ c) = liftFrac2 op f x c
+
+    liftFrac2 Div _ c1 c2 | c2 == 1  = c1
+    liftFrac2 Div _ c1 c2 | c2 == -1 = -c1
 
     -- Try to perform all operations in the cyclotomic domain
     liftFrac2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
@@ -1004,6 +1051,7 @@ ensureComplexE e = ComplexE er ei
 -- | Extract the complex and real portions of an 'Exp (Complex a)'.
 unComplexE :: Num (Exp a) => Exp (Complex a) -> (Exp a, Exp a)
 unComplexE (ConstE (ComplexC r i)) = (ConstE r, ConstE i)
+unComplexE (ConstE (W _ _ c))      = unComplexE (ConstE c)
 unComplexE (ConstE x@CycC{})       = (ConstE (DoubleC r), ConstE (DoubleC i))
   where
     r :+ i = lower x

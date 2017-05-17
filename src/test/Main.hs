@@ -168,7 +168,7 @@ f8Test = testCase "F_8" $ toMatrix (FFT.f 8) @?= f8
       where
         i = complexE (0 :+ 1)
 
-        w = FFT.omega (8 :: Int)
+        w = FFT.omega 8
 
 -- Split-Radix test
 split_radix_test :: Int -> Test
@@ -184,7 +184,7 @@ ck_5_7_test = testCase "CooleyTukey(5,7)" $
     toMatrix (cooleyTukey 5 7 w) @?= toMatrix (RDFT 35 w)
   where
     w :: Exp (Complex Double)
-    w = FFT.omega (35 :: Int)
+    w = FFT.omega 35
 
 -- Test Good-Thomas with factors 5 and 7
 gt_5_7_test :: Test
@@ -192,7 +192,7 @@ gt_5_7_test = testCase "GoodThomas(5,7)" $
     toMatrix (goodThomas 5 7 w) @?= toMatrix (RDFT 35 w)
   where
     w :: Exp (Complex Double)
-    w = FFT.omega (35 :: Int)
+    w = FFT.omega 35
 
 -- Test Rader for given prime
 rader_test :: Int -> Test
@@ -200,7 +200,7 @@ rader_test n = testCase ("Rader(" ++ show n ++ ")") $
     toMatrix (rader (fromIntegral n) w) @?= toMatrix (RDFT n w)
   where
     w :: Exp (Complex Double)
-    w = FFT.omega (n :: Int)
+    w = FFT.omega n
 
 genDFTTests :: Config -> IO Test
 genDFTTests conf =
