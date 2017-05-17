@@ -21,10 +21,12 @@ module Spiral.FFT.GoodThomas (
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
+import Spiral.NumberTheory (euclid)
 import Spiral.RootOfUnity
 import Spiral.SPL
 
-goodThomas :: forall a . (RootOfUnity a, Fractional a) => Int -> Int -> a -> SPL a
+-- | Good-Thomas DFT decomposition.
+goodThomas :: forall a . RootOfUnity a => Int -> Int -> a -> SPL a
 goodThomas r s w = _Q' × (RDFT r (w^^er) ⊗ RDFT s (w^^es)) × _Q
   where
     (u, v) = euclid r s
@@ -107,17 +109,3 @@ instance Permutation Good where
 instance Pretty (Perm Good) where
     ppr (Good m n _ _)  = text "Good_" <> ppr m <> char '_' <> ppr n
     ppr (Good' m n _ _) = text "Good'_" <> ppr m <> char '_' <> ppr n
-
--- | The extended Euclidean algorithm. Find @s@ and @t@ such that @s*a + t*b =
--- gcd a b@
-euclid :: forall a . Integral a => a -> a -> (a, a)
-euclid a b | a < b = (t,s)
-  where
-    (s,t) = euclid b a
-
-euclid a b = go a b 1 0 0 1
-  where
-    go a b sa sb ta tb | b == 0    = (sa, ta)
-                       | otherwise = go b r sb (sa - q*sb) tb (ta - q*tb)
-      where
-        (q, r) = a `quotRem` b
