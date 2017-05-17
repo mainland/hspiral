@@ -12,7 +12,7 @@ import Data.Complex
 import Data.Complex.Cyclotomic
 
 -- | Types that have primitive roots of unity.
-class Num a => RootOfUnity a where
+class Fractional a => RootOfUnity a where
     -- | @rootOfUnity n k@ computes the primitive @n@th root of unity raised to
     -- the @k@th power.
     rootOfUnity :: Int -> Int -> a
