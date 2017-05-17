@@ -580,7 +580,7 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
     liftNum Neg _ (CycC c)       = CycC (-c)
     liftNum Neg _ (PiC r)        = PiC (-r)
 
-    liftNum _op f c = lift f (flatten c)
+    liftNum _op f c = lift f c
 
     liftNum2 Add _ e1 e2
       | e1 == 0 = e2
@@ -606,7 +606,7 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
     liftNum2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
     liftNum2 _op f x0@CycC{}     y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
 
-    liftNum2 _op f x y = lift2 f (flatten x) (flatten y)
+    liftNum2 _op f x y = lift2 f x y
 
 --- XXX Need UndecidableInstances for this...but we *must* call
 --- liftNum/liftNum2 on constants to ensure they are properly simplified.
