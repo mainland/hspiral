@@ -105,6 +105,13 @@ runSPL e@(Diag v) x = do
       where
         f (Z :. i) = v V.! i
 
+runSPL e@(KDiag n k) x = do
+    t <- gather x
+    computeTransform e $ \y -> do
+      comment $ ppr e
+      forShapeP (ix1 n) $ \eix ->
+          write y eix (k * indexS t eix)
+
 runSPL e@(Kron (I m) a) x | n' == n = do
     t <- gather x
     computeTransform e $ \y -> do

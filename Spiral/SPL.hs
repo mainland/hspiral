@@ -64,6 +64,9 @@ data SPL a where
     -- | A diagonal matrix
     Diag :: V.Vector e -> SPL e
 
+    -- | The $n \times n$ diagonal matrix with constant diagonal elements.
+    KDiag :: Int -> e -> SPL e
+
     -- | Kronecker product
     Kron :: SPL e -> SPL e -> SPL e
 
@@ -120,6 +123,8 @@ splExtent (Diag xs) = ix2 n n
   where
     n = length xs
 
+splExtent (KDiag n _) = ix2 n n
+
 splExtent (Kron a b) = ix2 (m*p) (n*q)
   where
     Z :. m :. n = splExtent a
@@ -164,6 +169,12 @@ toMatrix (Diag xs) =
     n = length xs
 
     f (Z :. i :. j) | i == j    = xs V.! i
+                    | otherwise = 0
+
+toMatrix (KDiag n e) =
+    manifest $ fromFunction (ix2 n n) f
+  where
+    f (Z :. i :. j) | i == j    = e
                     | otherwise = 0
 
 toMatrix (Kron a b) =
@@ -256,21 +267,21 @@ toMatrix (RDFT n w) = manifest $ fromFunction (ix2 n n) f
     f (Z :. i :. j) = w ^ (i*j)
 
 instance (Num e, Pretty e) => Pretty (SPL e) where
-    pprPrec p (E a)      = pprPrec p (manifest a)
-    pprPrec _ (I n)      = text "I_" <> ppr n
-    pprPrec _ (Pi p)     = ppr p
-    pprPrec _ (R alpha)  = text "R_" <> ppr alpha
-    pprPrec _ (Diag xs)  = text "diag" <>
-                           parens (commasep (map ppr (V.toList xs)))
-    pprPrec p (Kron a b) = infixop p KOp a b
-    pprPrec p (DSum a b) = infixop p DSOp a b
-    pprPrec p (Prod a b) = infixop p POp a b
-    pprPrec _ (Circ xs)  = text "circ" <> parens (commasep (map ppr (V.toList xs)))
-    pprPrec _ (Toep xs)  = text "toep" <> parens (commasep (map ppr (V.toList xs)))
-    pprPrec _ (Re a)     = text "Re" <> parens (ppr a)
-    pprPrec _ F2         = text "F_2"
-    pprPrec _ (DFT n)    = text "DFT_" <> ppr n
-    pprPrec _ (RDFT n w) = text "DFT_" <> ppr n <> parens (ppr w)
+    pprPrec p (E a)       = pprPrec p (manifest a)
+    pprPrec _ (I n)       = text "I_" <> ppr n
+    pprPrec _ (Pi p)      = ppr p
+    pprPrec _ (R alpha)   = text "R_" <> ppr alpha
+    pprPrec _ (Diag xs)   = text "diag" <> parens (commasep (map ppr (V.toList xs)))
+    pprPrec _ (KDiag n e) = text "kdiag" <> parens (commasep [ppr n, ppr e])
+    pprPrec p (Kron a b)  = infixop p KOp a b
+    pprPrec p (DSum a b)  = infixop p DSOp a b
+    pprPrec p (Prod a b)  = infixop p POp a b
+    pprPrec _ (Circ xs)   = text "circ" <> parens (commasep (map ppr (V.toList xs)))
+    pprPrec _ (Toep xs)   = text "toep" <> parens (commasep (map ppr (V.toList xs)))
+    pprPrec _ (Re a)      = text "Re" <> parens (ppr a)
+    pprPrec _ F2          = text "F_2"
+    pprPrec _ (DFT n)     = text "DFT_" <> ppr n
+    pprPrec _ (RDFT n w)  = text "DFT_" <> ppr n <> parens (ppr w)
 
 instance (Num e, Pretty e) => Show (SPL e) where
     showsPrec p = displayS . renderCompact . pprPrec p
