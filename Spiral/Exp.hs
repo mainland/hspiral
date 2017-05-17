@@ -159,7 +159,7 @@ instance Pretty (Const a) where
     pprPrec _ (PiC r)  = pprPrec mulPrec1 r <> char '*' <> text "pi"
 
 instance RootOfUnity (Const (Complex Double)) where
-    rootOfUnity n k = mkCycC (rootOfUnity n k)
+    rootOfUnity n k = CycC (rootOfUnity n k)
 
 pprComplex :: (Eq a, Num a, Pretty a) => Int -> Complex a -> Doc
 pprComplex _ (r :+ 0)    = ppr r
@@ -193,18 +193,6 @@ unCycC (ComplexC (DoubleC re) (DoubleC im)) | isIntegral re && isIntegral im =
 
 unCycC (CycC x) = return x
 unCycC _        = fail "Not a cyclotomic number"
-
--- | Ensure that a 'Cyclotomic' number is represented using the 'ComplexC' data
--- constructor if at all possible.
-mkCycC :: Cyclotomic -> Const (Complex Double)
-mkCycC x | isIntegral re && isIntegral im =
-    ComplexC (DoubleC re) (DoubleC im)
-  where
-    re, im :: Double
-    Just re = toReal (real x)
-    Just im = toReal (imag x)
-
-mkCycC x = CycC x
 
 isIntegral :: forall a . (RealFrac a, Eq a) => a -> Bool
 isIntegral x = snd (properFraction x :: (Int, a)) == 0
@@ -552,7 +540,7 @@ isNeg _                          = False
 toPow :: Num (Exp a) => Exp a -> Integer -> Exp a
 toPow _                 0 = 1
 toPow e                 1 = e
-toPow (ConstE (CycC x)) n = ConstE $ mkCycC (x^^n)
+toPow (ConstE (CycC x)) n = ConstE $ CycC (x^^n)
 toPow e                 n = UnopE (Pow n) e
 
 fromPow :: Num (Exp a) => Exp a -> Maybe (Exp a, Integer)
@@ -589,7 +577,7 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
       | e == 0 = 0
 
     liftNum Neg _ (ComplexC a b) = ComplexC (-a) (-b)
-    liftNum Neg _ (CycC c)       = mkCycC (-c)
+    liftNum Neg _ (CycC c)       = CycC (-c)
     liftNum Neg _ (PiC r)        = PiC (-r)
 
     liftNum _op f c = lift f (flatten c)
@@ -615,8 +603,8 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
     liftNum2 Mul _ (ComplexC a b) (ComplexC c d) = ComplexC (a*c - b*d) (b*c + a*d)
 
     -- Try to perform all operations in the cyclotomic domain
-    liftNum2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = mkCycC (f x y)
-    liftNum2 _op f x0@CycC{}     y0 | Just x <- unCycC x0, Just y <- unCycC y0 = mkCycC (f x y)
+    liftNum2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
+    liftNum2 _op f x0@CycC{}     y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
 
     liftNum2 _op f x y = lift2 f (flatten x) (flatten y)
 
@@ -887,8 +875,8 @@ instance (Fractional a, Num (Const a)) => LiftFrac (Const a) where
     liftFrac2 Div _ c1 (-1) = -c1
 
     -- Try to perform all operations in the cyclotomic domain
-    liftFrac2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = mkCycC (f x y)
-    liftFrac2 _op f x0@CycC{}     y0 | Just x <- unCycC x0, Just y <- unCycC y0 = mkCycC (f x y)
+    liftFrac2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
+    liftFrac2 _op f x0@CycC{}     y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
 
     liftFrac2 _op f c1 c2 = lift2 f c1 c2
 
