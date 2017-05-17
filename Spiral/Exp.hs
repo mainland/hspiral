@@ -89,8 +89,14 @@ data Const a where
     -- | Multiple of $\pi$
     PiC :: Rational -> Const Double
 
-deriving instance Eq (Const a)
 deriving instance Show (Const a)
+
+instance Eq (Const a) where
+    (==) = heq
+    (/=) = hne
+
+instance Ord (Const a) where
+    compare = hcompare
 
 lift :: (a -> a) -> Const a -> Const a
 lift f (IntC x)      = IntC (f x)
@@ -118,16 +124,6 @@ lower (RationalC x)  = x
 lower (ComplexC r i) = lower r :+ lower i
 lower (CycC x)       = toComplex x
 lower (PiC r)        = pi*fromRational r
-
-instance Ord (Const a) where
-    compare x y =
-        case (flatten x, flatten y) of
-            (IntC x, IntC y)                 -> compare x y
-            (IntegerC x, IntegerC y)         -> compare x y
-            (DoubleC x, DoubleC y)           -> compare x y
-            (RationalC x, RationalC y)       -> compare x y
-            (ComplexC r1 i1, ComplexC r2 i2) -> compare (r1, i1) (r2, i2)
-            _                                -> error "can't happen"
 
 instance Arbitrary (Const Int) where
     arbitrary = IntC <$> arbitrary
@@ -262,7 +258,14 @@ instance HEq Const where
     heq (ComplexC r1 i1) (ComplexC r2 i2) = r1 == r2 && i1 == i2
     heq (CycC x)         (CycC y)         = x == y
     heq (PiC x)          (PiC y)          = x == y
-    heq _                _                = False
+
+    heq x@ComplexC{} y | Just x' <- unCycC x = heq (CycC x') y
+    heq x y@ComplexC{} | Just y' <- unCycC y = heq x (CycC y')
+
+    heq x@PiC{} y = heq (DoubleC (lower x)) y
+    heq x y@PiC{} = heq x (DoubleC (lower y))
+
+    heq _ _ = False
 
 instance HEq Exp where
     heq (ConstE c1)           (ConstE c2)           = heq c1 c2
@@ -286,7 +289,14 @@ instance HOrd Const where
     hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
     hcompare x@CycC{}         y@CycC{}         = compare (flatten x) (flatten y)
     hcompare (PiC x)          (PiC y)          = compare x y
-    hcompare x                y                = compare (tag x) (tag y)
+
+    hcompare x@ComplexC{} y | Just x' <- unCycC x = hcompare (CycC x') y
+    hcompare x y@ComplexC{} | Just y' <- unCycC y = hcompare x (CycC y')
+
+    hcompare x@PiC{} y = hcompare (DoubleC (lower x)) y
+    hcompare x y@PiC{} = hcompare x (DoubleC (lower y))
+
+    hcompare x y = compare (tag x) (tag y)
       where
         tag :: Const a -> Int
         tag BoolC{}     = 0
