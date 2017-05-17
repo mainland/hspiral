@@ -131,11 +131,15 @@ instance Functor (Array M sh) where
     fmap f (M sh es) = M sh (fmap f es)
 
 instance (Shape sh, Pretty e) => Pretty (Array M sh e) where
-    ppr arr = go (reverse (listOfShape (extent arr))) []
+    ppr arr = first (reverse (listOfShape (extent arr))) []
         where
+          first :: [Int] -> [Int] -> Doc
+          first []     ix  = ppr (index arr (shapeOfList ix))
+          first (n:ix) ix' = brackets $ align $ stack $ punctuate comma $ map (\i -> go ix (i : ix')) [0..n-1]
+
           go :: [Int] -> [Int] -> Doc
           go []     ix  = ppr (index arr (shapeOfList ix))
-          go (n:ix) ix' = brackets $ align $ commasep $ map (\i -> go ix (i : ix')) [0..n-1]
+          go (n:ix) ix' = brackets $ align $ sep $ punctuate comma $ map (\i -> go ix (i : ix')) [0..n-1]
 
 -- | Create a vector from a list of lists of values.
 fromList :: [e] -> Vector M e
