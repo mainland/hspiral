@@ -73,7 +73,7 @@ class (Shape sh, IsArray r sh e) => IArray r sh e where
 
     -- | Create a manifest version of an indexed array.
     manifest :: Array r sh e -> Array M sh e
-    manifest a = M sh $ V.fromList [a ! fromIndex sh i | i <- [0..size sh-1]]
+    manifest a = M sh $ V.generate (size sh) (\i -> a ! fromIndex sh i)
       where
         sh :: sh
         sh = extent a
