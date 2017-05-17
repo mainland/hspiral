@@ -119,7 +119,8 @@ dftTests = testGroup "DFT tests"
     , ck_5_7_test
     , gt_5_7_test
     , rader_test 7, rader_test 23
-    , testProperty "DFT" prop_DFT]
+    , testGroup "DFT 2^n" [split_radix_test n | n <- [1..7]]]
+--    , testProperty "DFT" prop_DFT]
 
 -- | Test that 'FFT.f' produces correct DFT matrices.
 prop_DFT :: SmallPowerOfTwo -> Property
@@ -168,6 +169,14 @@ f8Test = testCase "F_8" $ toMatrix (FFT.f 8) @?= f8
         i = complexE (0 :+ 1)
 
         w = FFT.omega (8 :: Int)
+
+-- Split-Radix test
+split_radix_test :: Int -> Test
+split_radix_test n = testCase ("SplitRadix(2^" ++ show n ++ ")") $
+    toMatrix fft_spl @?= toMatrix (DFT (2^n))
+  where
+    fft_spl :: SPL (Exp (Complex Double))
+    fft_spl = FFT.f (2^n)
 
 -- Test Cooley-Tukey with factors 5 and 7
 ck_5_7_test :: Test
