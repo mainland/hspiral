@@ -11,6 +11,7 @@
 module Spiral.OpCount (
     OpCount(..),
     countOps,
+    countProgramOps,
 
     Op(..),
     evalOpCount,
@@ -55,9 +56,12 @@ instance Num a => Monoid (OpCount a) where
 countOps :: (Typed a, Num (Exp a), MonadSpiral m)
          => SPL (Exp a)
          -> m (OpCount Int)
-countOps e = do
-    prog <- toProgram "f" e
-    evalOpCount $ countProgram prog
+countOps e = toProgram "f" e >>= countProgramOps 
+
+countProgramOps :: MonadSpiral m
+                => Program a
+                -> m (OpCount Int)
+countProgramOps prog = evalOpCount $ countProgram prog
 
 countProgram :: MonadSpiral m => Program a -> Op m ()
 countProgram (Program _ _ _ block) = countBlock block
