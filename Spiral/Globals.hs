@@ -8,8 +8,8 @@
 module Spiral.Globals (
     setUseComplexType,
     useComplexType,
-    setMinimizeAdds,
-    minimizeAdds
+    setMinimizeMults,
+    minimizeMults
   ) where
 
 import Control.Monad.Trans (MonadIO(..))
@@ -27,13 +27,13 @@ useComplexType :: Bool
 {-# NOINLINE useComplexType #-}
 useComplexType = unsafePerformIO $ readIORef gUseComplexType
 
-gMinimizeAdds :: IORef Bool
-{-# NOINLINE gMinimizeAdds #-}
-gMinimizeAdds = unsafePerformIO $ newIORef False
+gMinimizeMults :: IORef Bool
+{-# NOINLINE gMinimizeMults #-}
+gMinimizeMults = unsafePerformIO $ newIORef True
 
-setMinimizeAdds :: MonadIO m => Bool -> m ()
-setMinimizeAdds flag = liftIO $ writeIORef gMinimizeAdds flag
+setMinimizeMults :: MonadIO m => Bool -> m ()
+setMinimizeMults flag = liftIO $ writeIORef gMinimizeMults flag
 
-minimizeAdds :: Bool
-{-# NOINLINE minimizeAdds #-}
-minimizeAdds = unsafePerformIO $ readIORef gMinimizeAdds
+minimizeMults :: Bool
+{-# NOINLINE minimizeMults #-}
+minimizeMults = unsafePerformIO $ readIORef gMinimizeMults

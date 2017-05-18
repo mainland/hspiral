@@ -682,8 +682,8 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
     liftNum2 Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
 
     liftNum2 Mul _ (ComplexE a b) (ComplexE c d)
-      | minimizeAdds = ComplexE (a*c - b*d) (b*c + a*d)
-      | otherwise    = ComplexE (t1 - t2) (t1 + t3)
+      | minimizeMults = ComplexE (t1 - t2) (t1 + t3)
+      | otherwise     = ComplexE (a*c - b*d) (b*c + a*d)
       where
         t1 = a*(c+d)
         t2 = d*(b+a)
