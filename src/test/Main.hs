@@ -34,6 +34,7 @@ import Spiral (Config(..),
 import Spiral.Array
 import Spiral.Exp
 import qualified Spiral.FFT as FFT
+import Spiral.FFT.Bluestein
 import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas
 import Spiral.FFT.Rader
@@ -119,6 +120,7 @@ dftTests = testGroup "DFT tests"
     , ck_5_7_test
     , gt_5_7_test
     , rader_test 7, rader_test 23
+    , bluestein_test 3 6, bluestein_test 4 8, bluestein_test 4 9, bluestein_test 9 18
     , testGroup "DFT 2^n" [split_radix_test n | n <- [1..7]]]
 --    , testProperty "DFT" prop_DFT]
 
@@ -201,6 +203,14 @@ rader_test n = testCase ("Rader(" ++ show n ++ ")") $
   where
     w :: Exp (Complex Double)
     w = FFT.omega n
+
+-- Test Bluestein for given n and m
+bluestein_test :: Int -> Int -> Test
+bluestein_test n m = testCase ("Bluestein(" ++ show n ++ "," ++ show m ++ ")") $
+    toMatrix (bluestein n m w) @?= toMatrix (DFT n)
+  where
+    w :: Exp (Complex Double)
+    w = FFT.omega (2*n)
 
 genDFTTests :: Config -> IO Test
 genDFTTests conf =

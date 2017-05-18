@@ -46,6 +46,7 @@ library
     Spiral.Config
     Spiral.Exp
     Spiral.FFT
+    Spiral.FFT.Bluestein
     Spiral.FFT.CooleyTukey
     Spiral.FFT.GoodThomas
     Spiral.FFT.Rader
