@@ -14,8 +14,6 @@ module Spiral.FFT (
     f
   ) where
 
-import Text.PrettyPrint.Mainland.Class
-
 import Spiral.Array
 import Spiral.Array.Operators.Permute
 import Spiral.RootOfUnity
@@ -37,7 +35,7 @@ t mn m = I m ⊕ go (n-1)
          | otherwise = w m mn ⊕ go (i-1)
 
 -- | DFT matrix $F_n$, for $n$ even
-f :: (RootOfUnity a, Pretty a) => Int -> SPL a
+f :: RootOfUnity a => Int -> SPL a
 f 1 = spl $ matrix [[1]]
 f 2 = F2
 
