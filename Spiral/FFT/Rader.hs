@@ -26,7 +26,7 @@ import Spiral.RootOfUnity
 import Spiral.SPL hiding (R)
 
 -- | Rader DFT decomposition.
-rader :: forall a . RootOfUnity a => Int -> a -> SPL a
+rader :: forall a . (RootOfUnity a, Show a) => Int -> a -> SPL a
 rader p w = Pi (R p a) × (one ⊕ f_pm1 (1/u)) × d_p × (one ⊕ f_pm1 u) × Pi (R' p a')
   where
     a, a' :: Int

@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -48,7 +49,7 @@ import Spiral.Util.Pretty
 -- transformed vector.
 data SPL a where
     -- | An "embedded" array with an unknown representation.
-    E :: IArray r DIM2 e
+    E :: (IArray r DIM2 e, Show (Array r DIM2 e))
       => Array r DIM2 e
       -> SPL e
 
@@ -100,8 +101,10 @@ data SPL a where
     -- | The nxn "rotated" inverse DFT matrix
     RIDFT :: RootOfUnity a => Int -> a -> SPL a
 
+deriving instance Show e => Show (SPL e)
+
 -- | Embed any 'Array' as an SPL term.
-spl :: IArray r DIM2 e
+spl :: (IArray r DIM2 e, Show (Array r DIM2 e))
     => Array r DIM2 e
     -> SPL e
 spl = E
@@ -294,9 +297,6 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec _ (IDFT n)    = text "IDFT_" <> ppr n
     pprPrec _ (RDFT n w)  = text "DFT_" <> ppr n <> parens (ppr w)
     pprPrec _ (RIDFT n w) = text "IDFT_" <> ppr n <> parens (ppr w)
-
-instance (Num e, Pretty e) => Show (SPL e) where
-    showsPrec p = displayS . renderCompact . pprPrec p
 
 data MatrixBinop = KOp
                  | DSOp
