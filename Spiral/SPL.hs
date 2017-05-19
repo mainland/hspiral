@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -34,6 +35,7 @@ module Spiral.SPL (
   ) where
 
 import Data.Complex
+import Data.Typeable (Typeable)
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
@@ -102,6 +104,7 @@ data SPL a where
     RIDFT :: RootOfUnity a => Int -> a -> SPL a
 
 deriving instance Show e => Show (SPL e)
+deriving instance Typeable e => Typeable (SPL e)
 
 -- | Embed any 'Array' as an SPL term.
 spl :: (IArray r DIM2 e, Show (Array r DIM2 e))
