@@ -8,6 +8,7 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.NumberTheory (
+    primeFactorization,
     modExp,
     zstar,
     eulerPhi,
@@ -27,6 +28,10 @@ import Data.List (sort)
 import Math.NumberTheory.Primes.Factorisation (factorise)
 import System.Random
 import Test.QuickCheck
+
+-- | Compute prime factorization,
+primeFactorization :: Int -> [(Int, Int)]
+primeFactorization x = [(fromInteger p, n) | (p,n) <- factorise (fromIntegral x)]
 
 -- | Fast modular exponentiation
 modExp :: forall a b . (Integral a, Integral b) => a -> b -> a -> a
