@@ -218,10 +218,8 @@ cache e = go (simplify e)
     go e@VarE{} =
         return e
 
-    go (ComplexE er ei) = do
-        er' <- cache er
-        ei' <- cache ei
-        return (ComplexE er' ei')
+    go (ComplexE er ei) =
+        ComplexE <$> cache er <*> cache ei
 
     go e@(UnopE Neg VarE{}) =
         return e
