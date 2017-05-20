@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -9,6 +10,7 @@ import Data.Complex (Complex)
 import Data.List (minimumBy)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
+import Data.Typeable (Typeable)
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
@@ -20,6 +22,7 @@ import Spiral.Monad
 import Spiral.Search.Monad
 import Spiral.NumberTheory (primeFactorization)
 import Spiral.OpCount
+import Spiral.RootOfUnity
 import Spiral.SPL
 import Spiral.SPL.Run
 -- import Spiral.Util.Trace
@@ -29,7 +32,7 @@ main = defaultMain $ \args -> do
     n <- case args of
            [s] -> return (read s)
            _   -> return 4
-    e    <- runS $ search (DFT n)
+    e    <- runS $ search (DFT n :: SPL (Exp (Complex Double)))
     pprint e
     prog <- toProgram "f" (Re e)
     pprint prog
@@ -59,9 +62,9 @@ addOps opc = binopCount opc Add + binopCount opc Sub
 mulOps :: OpCount Int -> Int
 mulOps opc = binopCount opc Mul
 
-search :: (MonadSpiral m, MonadIO m)
-       => SPL (Exp (Complex Double))
-       -> S m (SPL (Exp (Complex Double)))
+search :: (Typeable a, Typed a, Num (Exp a), MonadSpiral m, MonadIO m)
+       => SPL (Exp a)
+       -> S m (SPL (Exp a))
 search e@(RDFT n _) | n <= 2 =
    return e
 
@@ -77,9 +80,7 @@ search (Kron e1 e2) =
 search (DSum e1 e2) =
     go <$> search e1 <*> search e2
   where
-    go :: SPL (Exp (Complex Double))
-       -> SPL (Exp (Complex Double))
-       -> SPL (Exp (Complex Double))
+    go :: SPL a -> SPL a -> SPL a
     go (Diag xs) (Diag ys) = Diag (xs <> ys)
     go e1'       e2'       = DSum e1' e2'
 
@@ -95,28 +96,28 @@ search e@I{}        = return e
 search e@R{}        = return e
 search e@Pi{}       = return e
 search e@F2{}       = return e
-search Re{}         = fail "Saw Re"
+search (Re e)       = Re <$> search e
 search (DFT n)      = search $ RDFT n (omega n)
 search (IDFT n)     = search $ RIDFT n (omega n)
 search (RIDFT n w)  = search $ KDiag n (1/fromIntegral n) × RDFT n (1/w)
 
-breakdown :: forall m . (MonadSpiral m, MonadIO m)
+breakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m, MonadIO m)
           => Int
-          -> Exp (Complex Double)
-          -> S m (SPL (Exp (Complex Double)))
+          -> Exp a
+          -> S m (SPL (Exp a))
 breakdown n w = do
     alts     <- mapM search [cooleyTukey r s w | (r, s) <- factors n]
-    opcs     <- mapM (countOps . Re) alts
+    opcs     <- mapM countOps alts
     liftIO $ putDocLn $ text "DFT size" <+> ppr n <> text ":" <+> ppr [(mulOps ops, addOps ops) | ops <- opcs]
     let (e, m) = minimumBy metricOrdering (alts `zip` opcs)
     tryCacheDFT n w e m
 
-tryCacheDFT :: MonadSpiral m
+tryCacheDFT :: (Typeable a, Num (Exp a), MonadSpiral m)
             => Int
-            -> Exp (Complex Double)
-            -> SPL (Exp (Complex Double))
+            -> Exp a
+            -> SPL (Exp a)
             -> Metric
-            -> S m (SPL (Exp (Complex Double)))
+            -> S m (SPL (Exp a))
 tryCacheDFT n w e m = do
     maybe_e' <- lookupDFT n w
     case maybe_e' of
