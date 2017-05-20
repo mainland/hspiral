@@ -221,8 +221,9 @@ cache e = go (simplify e)
     go (ComplexE er ei) =
         ComplexE <$> cache er <*> cache ei
 
-    go e@(UnopE Neg VarE{}) =
-        return e
+    -- Cache the term we are negating, not the negated term.
+    go (UnopE Neg e) =
+        UnopE Neg <$> cache e
 
     go (UnopE op e) = do
         e' <- cache e
