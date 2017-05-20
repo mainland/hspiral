@@ -490,43 +490,54 @@ instance (Typed a, Num (Exp a)) => Typed (Complex a) where
 --------------------------------------------------------------------------------
 
 simplify :: forall a . Exp a -> Exp a
+simplify (ConstE (DoubleC x)) | x < 0 =
+    UnopE Neg (ConstE (DoubleC (-x)))
+
+simplify (ComplexE e1 e2) =
+    ComplexE (simplify e1) (simplify e2)
+
 simplify (BinopE op e1 e2) = go op (simplify e1) (simplify e2)
   where
+    -- Choose canonical variable ordering
     go :: Binop -> Exp a -> Exp a -> Exp a
+    go Add e1@(VarE x) e2@(VarE y) | y < x =
+        BinopE Add e2 e1
+
+    go Sub e1@(VarE x) e2@(VarE y) | y < x =
+        UnopE Neg (BinopE Sub e2 e1)
+
+    go Mul e1@(VarE x) e2@(VarE y) | y < x =
+        BinopE Mul e2 e1
+
+    -- Constants always come first
+    go Mul e1 e2@ConstE{} =
+        BinopE Mul e2 e1
+
+    -- Push negation out
     go Add e1 (UnopE Neg e2) =
         simplify (e1 - e2)
+
+    go Add (UnopE Neg e1) e2 =
+        simplify (e2 - e1)
 
     go Sub e1 (UnopE Neg e2) =
         simplify (e1 + e2)
 
-    go Add e1 (BinopE Mul c2 e2) | isNeg c2 =
-        simplify (e1 - ((-c2) * e2))
+    go Sub (UnopE Neg e1) e2 =
+        simplify (UnopE Neg (e1 + e2))
 
-    go Sub e1 (BinopE Mul c2 e2) | isNeg c2 =
-        simplify (e1 + ((-c2) * e2))
+    go Mul (UnopE Neg e1) e2 =
+        simplify (- (e1 * e2))
 
-    go Add (BinopE Mul c1 e1) (BinopE Mul c2 e2)
-      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 ~== x2 =
+    go Mul e1 (UnopE Neg e2) =
+        simplify (- (e1 * e2))
+
+    -- Take advantage of distributivity of multipliation
+    go Add (BinopE Mul c1 e1) (BinopE Mul c2 e2) | c1 == c2 =
         simplify (c1 * simplify (e1 + e2))
 
-    go Sub (BinopE Mul c1 e1) (BinopE Mul c2 e2)
-      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 ~== x2 =
+    go Sub (BinopE Mul c1 e1) (BinopE Mul c2 e2) | c1 == c2 =
         simplify (c1 * simplify (e1 - e2))
-
-    go Add (BinopE Mul c1 e1) (BinopE Mul c2 e2)
-      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 < 0, x1 ~== -x2 =
-        simplify (c1 * simplify (e1 - e2))
-
-    go Sub (BinopE Mul c1 e1) (BinopE Mul c2 e2)
-      | Just x1 <- fromDouble c1, Just x2 <- fromDouble c2, x1 < 0, x1 ~== -x2 =
-        simplify (c1 * simplify (e1 + e2))
-
-    -- When multiplying by a constant, make constant the first term
-    go Mul e1 e2@ConstE{} =
-        go Mul e2 e1
-
-    go Mul c1@ConstE{} (BinopE Sub e1 e2) | isNeg c1 =
-        simplify ((-c1) * (e2 - e1))
 
     go op e1 e2 =
         BinopE op e1 e2
@@ -548,15 +559,6 @@ simplify (UnopE op e) = go op (simplify e)
 
 simplify e = e
 
-fromDouble :: Exp a -> Maybe Double
-fromDouble (ConstE (DoubleC x)) = return x
-fromDouble (ConstE (PiC c))     = return (pi*fromRational c)
-fromDouble _                    = fail "Not a double constant"
-
-isNeg :: Exp a -> Bool
-isNeg e | Just c <- fromDouble e = c < 0
-isNeg _                          = False
-
 toPow :: Num (Exp a) => Exp a -> Integer -> Exp a
 toPow _                  0 = 1
 toPow e                  1 = e
@@ -570,14 +572,6 @@ fromPow (BinopE Div 1 (UnopE (Pow n) x@VarE{})) = return (x, -n)
 fromPow x@VarE{}                                = return (x, 1)
 fromPow (BinopE Div 1 x@VarE{})                 = return (x, -1)
 fromPow _                                       = fail "Can't destruct power"
-
-infix 4 ~==
-
--- | Return 'True' is two numbers are approximately equal
-(~==) :: (Ord a, Fractional a) => a -> a -> Bool
-x ~== y = abs (x - y) < eps
-  where
-    eps = 1e-15
 
 --------------------------------------------------------------------------------
 --
