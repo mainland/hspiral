@@ -13,7 +13,8 @@ module Spiral.Util.Trace (
 
     traceNest,
 
-    traceCg
+    traceCg,
+    traceSearch
   ) where
 
 import Control.Monad (when)
@@ -95,3 +96,6 @@ traceIfSet flag prefix doc = do
 
 traceCg :: MonadTrace m => Doc -> m ()
 traceCg = traceIfSet TraceCg "traceCg:"
+
+traceSearch :: MonadTrace m => Doc -> m ()
+traceSearch = traceIfSet TraceSearch "traceSearch:"

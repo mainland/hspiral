@@ -1,6 +1,6 @@
 TOP=.
 
-TARGETS = test dftgen voronenko maple opcount
+TARGETS = test dftgen voronenko maple opcount search
 
 .PHONY : all
 all : $(TARGETS)
@@ -21,6 +21,7 @@ GHCFLAGS += \
 	-package exception-transformers \
 	-package language-c-quote \
 	-package libltdl \
+	-package logict \
 	-package mainland-pretty \
 	-package mtl \
 	-package primitive \
@@ -93,6 +94,8 @@ SRC = \
 	Spiral/RootOfUnity.hs \
 	Spiral/SPL.hs \
 	Spiral/SPL/Run.hs \
+	Spiral/Search/Monad.hs \
+	Spiral/Search/SFKT.hs \
 	Spiral/Util/MaplePretty.hs \
 	Spiral/Util/Name.hs \
 	Spiral/Util/Pretty.hs \
@@ -137,6 +140,10 @@ maple : examples/Maple.hs $(SRC) dist/build/autogen/cabal_macros.h
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
 opcount : examples/OpCount.hs $(SRC) dist/build/autogen/cabal_macros.h
+	@mkdir -p obj
+	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
+
+search : examples/Search.hs $(SRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
