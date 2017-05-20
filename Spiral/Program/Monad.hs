@@ -194,13 +194,14 @@ infix 4 .:=.
 
 -- | Assign one expression to another.
 assignP :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a -> P m ()
-assignP e1 e2 = do
-    appendStm $ AssignS e1 e2'
-    update e1 e2'
-  where
-    e2' :: Exp a
-    e2' = simplify e2
+assignP e1 e2 = assignAsIsP e1 (simplify e2)
 
+-- | Assign one expression to another without simplification
+assignAsIsP :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a -> P m ()
+assignAsIsP e1 e2 = do
+    appendStm $ AssignS e1 e2
+    update e1 e2
+  where
     update :: Exp a -> Exp a -> P m ()
     update (VarE v) e = insertCachedExp v e
     update _        _ = return ()
@@ -247,7 +248,7 @@ cache e = go (simplify e)
         case maybe_v of
           Just v  -> return $ VarE v
           Nothing -> do temp <- tempP
-                        assignP temp e
+                        assignAsIsP temp e
                         return temp
 
 -- | Create a new concrete array of the given shape.
