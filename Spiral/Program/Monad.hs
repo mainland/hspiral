@@ -227,16 +227,16 @@ cache e = go (simplify e)
 
     go (UnopE op e) = do
         e' <- cache e
-        mustCache (UnopE op e')
-
-    -- Don't cache subexpression when we are just multiplying by a constant
-    go (BinopE op e1@ConstE{} e2) =
-        mustCache (BinopE op e1 e2)
+        if e' /= e
+          then cache $ simplify (UnopE op e')
+          else mustCache (UnopE op e')
 
     go (BinopE op e1 e2) = do
         e1' <- cache e1
         e2' <- cache e2
-        mustCache (BinopE op e1' e2')
+        if e1' /= e1 || e2' /= e2
+          then cache $ simplify (BinopE op e1' e2')
+          else mustCache (BinopE op e1' e2')
 
     go e =
         mustCache e
