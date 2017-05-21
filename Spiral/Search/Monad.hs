@@ -17,10 +17,7 @@ module Spiral.Search.Monad (
 
     Metric,
     lookupDFT,
-    cacheDFT,
-
-    rewrite,
-    whenRewritten,
+    cacheDFT
   ) where
 
 
@@ -30,8 +27,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Logic (MonadLogic(..),)
 import Control.Monad.Primitive (PrimMonad(..))
 import Control.Monad.Ref (MonadRef(..))
-import Control.Monad.State (MonadState(..),
-                            StateT(..),
+import Control.Monad.State (StateT(..),
                             evalStateT,
                             gets,
                             modify)
@@ -85,25 +81,17 @@ instance Monoid Cache where
 
     x `mappend` y = Cache { cache = cache x `Map.union` cache y }
 
-newtype SState = SState { rewrites :: Int }
-
-instance Monoid SState where
-    mempty = SState 0
-
-    x `mappend` y = SState { rewrites = rewrites x + rewrites y }
-
-newtype S m a = S { unS :: StateT SState (SFKT (StateT Cache m)) a }
+newtype S m a = S { unS :: SFKT (StateT Cache m) a }
   deriving (Functor, Applicative, Monad,
             Alternative, MonadPlus,
             MonadIO,
-            MonadState SState,
             MonadLogic,
             MonadUnique,
             MonadConfig,
             MonadTrace)
 
 instance MonadTrans S where
-    lift m = S $ lift $ lift $ lift m
+    lift m = S $ lift $ lift  m
 
 deriving instance MonadRef IORef m => MonadRef IORef (S m)
 
@@ -116,7 +104,7 @@ instance MonadSpiral m => MonadSpiral (S m) where
 runS :: forall m a . Monad m
      => S m a
      -> m a
-runS m = evalStateT (runSFKT (evalStateT (unS m) mempty)) mempty
+runS m = evalStateT (runSFKT (unS m)) mempty
 
 lookupDFT :: (Typeable a, Ord a, Monad m) => Int -> a -> S m (Maybe (SPL a, Metric))
 lookupDFT n w = S $ lift $ gets $ lookupT (n, w) . cache
@@ -130,15 +118,3 @@ cacheDFT :: (Typeable a, Num a, Ord a, Pretty a, MonadTrace m)
 cacheDFT n w e m = do
     traceSearch $ text "Caching:" <+> ppr n <+> ppr w </> ppr e
     S $ lift $ modify $ \s -> s { cache = insertT (n, w) (e, m) (cache s) }
-
-rewrite :: Monad m => S m ()
-rewrite = modify $ \s -> s { rewrites = rewrites s + 1 }
-
-whenRewritten :: Monad m => S m a -> (a -> S m a) -> S m a
-whenRewritten m f = do
-    n  <- gets rewrites
-    x  <- m
-    n' <- gets rewrites
-    if n' > n
-      then f x
-      else return x
