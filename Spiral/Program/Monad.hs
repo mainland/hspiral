@@ -195,6 +195,13 @@ infix 4 .:=.
 
 -- | Assign one expression to another.
 assignP :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a -> P m ()
+-- A very special hack to avoid creating a temporary to hold a value we are
+-- about to stuff into an array anyway.
+assignP e1@IdxE{} (BinopE op e2a e2b) = do
+    e2a' <- cache e2a
+    e2b' <- cache e2b
+    appendStm $ AssignS e1 (BinopE op e2a' e2b')
+
 assignP e1 e2 = do
     e2' <- cache e2
     appendStm $ AssignS e1 e2'
