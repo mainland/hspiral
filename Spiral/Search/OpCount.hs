@@ -21,6 +21,7 @@ import Data.Typeable (Typeable)
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
+import Spiral.Config
 import Spiral.Exp
 import Spiral.FFT
 import Spiral.FFT.CooleyTukey
@@ -82,11 +83,25 @@ breakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral
           -> Exp a
           -> S m (SPL (Exp a))
 breakdown n w = do
-    alts     <- mapM search [cooleyTukey r s w | (r, s) <- factors n]
-    opcs     <- mapM countOps alts
+    useComplexType <- asksConfig $ testDynFlag UseComplex
+    alts           <- mapM search [cooleyTukey r s w | (r, s) <- factors n]
+    opcs           <- mapM (countOps' useComplexType tau) alts
     traceSearch $ text "DFT size" <+> ppr n <> text ":" <+> commasep [ppr (mulOps ops) <> char '/' <> ppr (addOps ops) | ops <- opcs]
     let (e, m) = minimumBy metricOrdering (alts `zip` opcs)
     tryCacheDFT n w e m
+  where
+    tau :: Type a
+    tau = typeOf (undefined :: a)
+
+    -- If we aren't using native complex numbers, we need to count operations on
+    -- the version of the transform that takes a size-2n vector as input.
+    countOps' :: (Typed b, RootOfUnity (Exp b))
+              => Bool
+              -> Type b
+              -> SPL (Exp b)
+              -> S m (OpCount Int)
+    countOps' False ComplexT{} = countOps . Re
+    countOps' _     _          = countOps
 
 tryCacheDFT :: (Typeable a, Num (Exp a), MonadSpiral m)
             => Int
