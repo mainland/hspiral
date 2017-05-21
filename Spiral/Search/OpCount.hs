@@ -16,6 +16,7 @@ module Spiral.Search.OpCount (
     unfactor
   ) where
 
+import Control.Monad (msum)
 import Data.List (minimumBy)
 import Data.Typeable (Typeable)
 import Text.PrettyPrint.Mainland
@@ -49,7 +50,7 @@ search (RDFT n w) = do
    maybe_e <- lookupDFT n w
    case maybe_e of
      Just (e, _) -> return e
-     Nothing     -> breakdown n w
+     Nothing     -> bestBreakdown n w
 
 search (Kron e1 e2) =
     Kron <$> search e1 <*> search e2
@@ -78,13 +79,14 @@ search (DFT n)      = search $ RDFT n (omega n)
 search (IDFT n)     = search $ RIDFT n (omega n)
 search (RIDFT n w)  = search $ KDiag n (1/fromIntegral n) × RDFT n (1/w)
 
-breakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
-          => Int
-          -> Exp a
-          -> S m (SPL (Exp a))
-breakdown n w = do
+-- | Find the best DFT breakdown.
+bestBreakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
+              => Int
+              -> Exp a
+              -> S m (SPL (Exp a))
+bestBreakdown n w = do
     useComplexType <- asksConfig $ testDynFlag UseComplex
-    alts           <- mapM search [cooleyTukey r s w | (r, s) <- factors n]
+    alts           <- observeAll (breakdown n w) >>= mapM search
     opcs           <- mapM (countOps' useComplexType tau) alts
     traceSearch $ text "DFT size" <+> ppr n <> text ":" <+> commasep [ppr (mulOps ops) <> char '/' <> ppr (addOps ops) | ops <- opcs]
     let (e, m) = minimumBy metricOrdering (alts `zip` opcs)
@@ -103,6 +105,18 @@ breakdown n w = do
     countOps' False ComplexT{} = countOps . Re
     countOps' _     _          = countOps
 
+-- | Generate DFT breakdowns
+breakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
+          => Int
+          -> Exp a
+          -> S m (SPL (Exp a))
+breakdown n w = cooleyTukeyBreakdowns
+  where
+    cooleyTukeyBreakdowns :: S m (SPL (Exp a))
+    cooleyTukeyBreakdowns = msum [return $ cooleyTukey r s w | (r, s) <- factors n]
+
+-- | Cache the given DFT transform if its metric improves on the previously
+-- best-known DFT.
 tryCacheDFT :: (Typeable a, Num (Exp a), MonadSpiral m)
             => Int
             -> Exp a
