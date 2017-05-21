@@ -45,7 +45,6 @@ library
     Spiral.Backend.C.Util
     Spiral.Config
     Spiral.Exp
-    Spiral.FFT
     Spiral.FFT.Bluestein
     Spiral.FFT.CooleyTukey
     Spiral.FFT.GoodThomas

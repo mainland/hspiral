@@ -9,7 +9,7 @@ import Text.PrettyPrint.Mainland.Class
 
 import Spiral
 import Spiral.Exp
-import Spiral.FFT
+import Spiral.FFT.CooleyTukey
 import Spiral.OpCount
 import Spiral.SPL
 import Spiral.SPL.Run
@@ -20,7 +20,7 @@ main = defaultMain $ \args -> do
            [s] -> return (read s)
            _   -> return 4
     let dft_n :: SPL (Exp (Complex Double))
-        dft_n = f n
+        dft_n = dit n
     prog <- toProgram "f" (Re dft_n)
     pprint prog
     ops <- countProgramOps prog

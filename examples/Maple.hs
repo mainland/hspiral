@@ -8,7 +8,7 @@ import Control.Monad.IO.Class (liftIO)
 
 import Spiral
 import Spiral.Exp
-import Spiral.FFT
+import Spiral.FFT.CooleyTukey
 import Spiral.SPL
 import Spiral.Util.MaplePretty
 
@@ -18,7 +18,7 @@ main = defaultMain $ \args -> do
            [s] -> return (read s)
            _   -> return 4
     let dft_n :: SPL (Exp (Complex Double))
-        dft_n = f n
+        dft_n = dit n
     --liftIO $ check dft_n
     liftIO $ putDocLn $ text "with(LinearAlgebra);"
     liftIO $ putDocLn $ text "A :=" <+> pprm (DFT n :: SPL (Exp (Complex Double))) <> semi

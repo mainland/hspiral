@@ -78,7 +78,6 @@ SRC = \
 	Spiral/Driver/Monad.hs \
 	Spiral/Driver/Opts.hs \
 	Spiral/Exp.hs \
-	Spiral/FFT.hs \
 	Spiral/FFT/Bluestein.hs \
 	Spiral/FFT/CooleyTukey.hs \
 	Spiral/FFT/GoodThomas.hs \

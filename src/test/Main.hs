@@ -34,11 +34,11 @@ import Spiral (Config(..),
                parseOpts)
 import Spiral.Array
 import Spiral.Exp
-import qualified Spiral.FFT as FFT
 import Spiral.FFT.Bluestein
 import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas
 import Spiral.FFT.Rader
+import Spiral.RootOfUnity
 import Spiral.SPL
 import Spiral.Search.OpCount
 
@@ -127,16 +127,16 @@ dftTests = testGroup "DFT tests"
     , testGroup "DFT 2^n" [split_radix_test n | n <- [1..7]]]
 --    , testProperty "DFT" prop_DFT]
 
--- | Test that 'FFT.f' produces correct DFT matrices.
+-- | Test that 'dit' produces correct DFT matrices.
 prop_DFT :: SmallPowerOfTwo -> Property
 prop_DFT (SmallPowerOfTwo n) = toMatrix (DFT (2^n)) === toMatrix fft_spl
   where
     fft_spl :: SPL (Exp (Complex Double))
-    fft_spl = FFT.f (2^n)
+    fft_spl = dit (2^n)
 
 -- $F_2$
 f2Test :: Test
-f2Test = testCase "F_2" $ toMatrix (FFT.f 2) @?= f2
+f2Test = testCase "F_2" $ toMatrix (dit 2) @?= f2
   where
     f2 :: Matrix M (Exp (Complex Double))
     f2 = matrix [[1,  1],
@@ -144,7 +144,7 @@ f2Test = testCase "F_2" $ toMatrix (FFT.f 2) @?= f2
 
 -- $F_4$ calculated per "SPL: A Language and Compiler for DSP Algorithms"
 f4Test :: Test
-f4Test = testCase "F_4" $ toMatrix (FFT.f 4) @?= f4
+f4Test = testCase "F_4" $ toMatrix (dit 4) @?= f4
   where
     f4 :: Matrix M (Exp (Complex Double))
     f4 = matrix [[1,  1,  1,  1],
@@ -159,7 +159,7 @@ f4Test = testCase "F_4" $ toMatrix (FFT.f 4) @?= f4
 -- See also:
 --   https://en.wikipedia.org/wiki/DFT_matrix
 f8Test :: Test
-f8Test = testCase "F_8" $ toMatrix (FFT.f 8) @?= f8
+f8Test = testCase "F_8" $ toMatrix (dit 8) @?= f8
   where
     f8 :: Matrix M (Exp (Complex Double))
     f8 = matrix [[1,  1,  1,  1, 1, 1, 1, 1],
@@ -173,7 +173,7 @@ f8Test = testCase "F_8" $ toMatrix (FFT.f 8) @?= f8
       where
         i = complexE (0 :+ 1)
 
-        w = FFT.omega 8
+        w = omega 8
 
 -- Split-Radix test
 split_radix_test :: Int -> Test
@@ -181,7 +181,7 @@ split_radix_test n = testCase ("Radix-2(2^" ++ show n ++ ")") $
     toMatrix fft_spl @?= toMatrix (DFT (2^n))
   where
     fft_spl :: SPL (Exp (Complex Double))
-    fft_spl = FFT.f (2^n)
+    fft_spl = dit (2^n)
 
 -- Test Cooley-Tukey with factors 5 and 7
 ck_5_7_test :: Test
@@ -189,7 +189,7 @@ ck_5_7_test = testCase "CooleyTukey(5,7)" $
     toMatrix (cooleyTukey 5 7 w) @?= toMatrix (RDFT 35 w)
   where
     w :: Exp (Complex Double)
-    w = FFT.omega 35
+    w = omega 35
 
 -- Test Good-Thomas with factors 5 and 7
 gt_5_7_test :: Test
@@ -197,7 +197,7 @@ gt_5_7_test = testCase "GoodThomas(5,7)" $
     toMatrix (goodThomas 5 7 w) @?= toMatrix (RDFT 35 w)
   where
     w :: Exp (Complex Double)
-    w = FFT.omega 35
+    w = omega 35
 
 -- Test Rader for given prime
 rader_test :: Int -> Test
@@ -205,7 +205,7 @@ rader_test n = testCase ("Rader(" ++ show n ++ ")") $
     toMatrix (rader (fromIntegral n) w) @?= toMatrix (RDFT n w)
   where
     w :: Exp (Complex Double)
-    w = FFT.omega n
+    w = omega n
 
 -- Test Bluestein for given n and m
 bluestein_test :: Int -> Int -> Test
@@ -213,7 +213,7 @@ bluestein_test n m = testCase ("Bluestein(" ++ show n ++ "," ++ show m ++ ")") $
     toMatrix (bluestein n m w) @?= toMatrix (DFT n)
   where
     w :: Exp (Complex Double)
-    w = FFT.omega (2*n)
+    w = omega (2*n)
 
 genDFTTests :: Config -> IO Test
 genDFTTests conf =
@@ -222,7 +222,7 @@ genDFTTests conf =
   where
     dftTest :: Config -> Int -> IO Test
     dftTest conf n = do
-        dft <- genComplexTransform conf ("dft" ++ show n) (FFT.f n)
+        dft <- genComplexTransform conf ("dft" ++ show n) (dit n)
         return $
           testProperty ("Generated DFT of size " ++ show n) $
           forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)

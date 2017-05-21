@@ -24,7 +24,6 @@ import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Config
 import Spiral.Exp
-import Spiral.FFT
 import Spiral.FFT.CooleyTukey
 import Spiral.Monad
 import Spiral.Search.Monad
