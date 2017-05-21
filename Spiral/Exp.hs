@@ -29,8 +29,6 @@ module Spiral.Exp (
     fromComplex,
     flatten,
 
-    simplify,
-
     LiftNum(..),
 
     IfThenElse(..),
@@ -57,7 +55,6 @@ import Text.PrettyPrint.Mainland hiding (flatten)
 import Text.PrettyPrint.Mainland.Class
 
 import Data.Heterogeneous
-import Spiral.Globals
 import Spiral.RootOfUnity
 import Spiral.Util.Name
 import Spiral.Util.Pretty
@@ -242,7 +239,7 @@ instance IsString (Exp a) where
     fromString s = VarE (fromString s)
 
 instance RootOfUnity (Exp (Complex Double)) where
-    rootOfUnity n k = ConstE (rootOfUnity n k)
+    rootOfUnity n k = mkConstE (rootOfUnity n k)
 
 --
 -- Heterogeneous quality and comparison
@@ -483,87 +480,11 @@ instance Typed Double where
 instance (Typed a, Num (Exp a)) => Typed (Complex a) where
     typeOf _ = ComplexT (typeOf (undefined :: a))
 
---------------------------------------------------------------------------------
---
--- Simplification
---
---------------------------------------------------------------------------------
-
-simplify :: forall a . Exp a -> Exp a
-simplify (ConstE (DoubleC x)) | x < 0 =
-    UnopE Neg (ConstE (DoubleC (-x)))
-
-simplify (ComplexE e1 e2) =
-    ComplexE (simplify e1) (simplify e2)
-
-simplify (BinopE op e1 e2) = go op (simplify e1) (simplify e2)
-  where
-    -- Choose canonical variable ordering
-    go :: Binop -> Exp a -> Exp a -> Exp a
-    go Add e1@(VarE x) e2@(VarE y) | y < x =
-        BinopE Add e2 e1
-
-    go Sub e1@(VarE x) e2@(VarE y) | y < x =
-        UnopE Neg (BinopE Sub e2 e1)
-
-    go Mul e1@(VarE x) e2@(VarE y) | y < x =
-        BinopE Mul e2 e1
-
-    -- Constants always come first
-    go Mul e1 e2@ConstE{} =
-        BinopE Mul e2 e1
-
-    -- Push negation out
-    go Add e1 (UnopE Neg e2) =
-        simplify (e1 - e2)
-
-    go Add (UnopE Neg e1) e2 =
-        simplify (e2 - e1)
-
-    go Sub e1 (UnopE Neg e2) =
-        simplify (e1 + e2)
-
-    go Sub (UnopE Neg e1) e2 =
-        simplify (UnopE Neg (e1 + e2))
-
-    go Mul (UnopE Neg e1) e2 =
-        simplify (- (e1 * e2))
-
-    go Mul e1 (UnopE Neg e2) =
-        simplify (- (e1 * e2))
-
-    -- Take advantage of distributivity of multipliation
-    go Add (BinopE Mul c1 e1) (BinopE Mul c2 e2) | c1 == c2 =
-        simplify (c1 * simplify (e1 + e2))
-
-    go Sub (BinopE Mul c1 e1) (BinopE Mul c2 e2) | c1 == c2 =
-        simplify (c1 * simplify (e1 - e2))
-
-    go op e1 e2 =
-        BinopE op e1 e2
-
-simplify (BBinopE op e1 e2) =
-    BBinopE op (simplify e1) (simplify e2)
-
-simplify (UnopE op e) = go op (simplify e)
-  where
-    go :: Unop -> Exp a -> Exp a
-    go Neg (UnopE Neg e) =
-        simplify e
-
-    go Neg (BinopE Sub e1 e2) =
-        simplify (e2 - e1)
-
-    go op e =
-        UnopE op e
-
-simplify e = e
-
 toPow :: Num (Exp a) => Exp a -> Integer -> Exp a
 toPow _                  0 = 1
 toPow e                  1 = e
-toPow (ConstE (W n k c)) l = ConstE $ W n ((k*fromInteger l) `mod` n) (c^^l)
-toPow (ConstE (CycC x))  n = ConstE $ CycC (x^^n)
+toPow (ConstE (W n k c)) l = mkConstE $ W n ((k*fromInteger l) `mod` n) (c^^l)
+toPow (ConstE (CycC x))  n = mkConstE $ CycC (x^^n)
 toPow e                  n = UnopE (Pow n) e
 
 fromPow :: Num (Exp a) => Exp a -> Maybe (Exp a, Integer)
@@ -641,17 +562,18 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
 --- The other option would be to forgo the Const instance and push it into the
 --- Exp instance.
 instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) where
-    liftNum op f (ConstE c) = ConstE $ liftNum op f c
-
     liftNum Neg _ e
       | e == 0 = 0
 
-    liftNum Neg _ (UnopE Neg x)  = x
-    liftNum Neg _ (ComplexE a b) = ComplexE (-a) (-b)
+    liftNum Neg _ (UnopE Neg x)      = x
+    liftNum Neg _ (BinopE Sub e1 e2) = e2 - e1
+    liftNum Neg _ (ComplexE a b)     = ComplexE (-a) (-b)
+
+    liftNum op f (ConstE c) = mkConstE $ liftNum op f c
 
     liftNum op _ e = UnopE op e
 
-    liftNum2 op f (ConstE c1) (ConstE c2) = ConstE $ liftNum2 op f c1 c2
+    liftNum2 op f (ConstE c1) (ConstE c2) = mkConstE $ liftNum2 op f c1 c2
 
     liftNum2 Add _ e1 e2
       | e1 == 0 = e2
@@ -669,19 +591,61 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
       | e1 == -1 = -e2
       | e2 == -1 = -e1
 
+    -- Choose canonical variable ordering
+    liftNum2 Add _ e1@(VarE x) e2@(VarE y) | y < x =
+        BinopE Add e2 e1
+
+    liftNum2 Sub _ e1@(VarE x) e2@(VarE y) | y < x =
+        UnopE Neg (BinopE Sub e2 e1)
+
+    liftNum2 Mul _ e1@(VarE x) e2@(VarE y) | y < x =
+        BinopE Mul e2 e1
+
+    -- Constants always come first
+    liftNum2 Mul f e1 e2@ConstE{} | not (isConstE e1) =
+        liftNum2 Mul f e2 e1
+
+    -- Push negation out
+    liftNum2 Add _ e1 (UnopE Neg e2) =
+        e1 - e2
+
+    liftNum2 Add _ (UnopE Neg e1) e2 =
+        e2 - e1
+
+    liftNum2 Sub _ e1 (UnopE Neg e2) =
+        e1 + e2
+
+    liftNum2 Sub _ (UnopE Neg e1) e2 =
+        -(e1 + e2)
+
+    liftNum2 Mul _ e1 (UnopE Neg e2) =
+        -(e1 * e2)
+
+    liftNum2 Mul _ (UnopE Neg e1) e2 =
+        -(e1 * e2)
+
+    -- Take advantage of distributivity of multipliation
+    liftNum2 op f (BinopE Mul c1 e1) (BinopE Mul c2 e2) | c1 == c2, isAddSubOp op =
+        c1 * liftNum2 op f e1 e2
+
+    -- Simplify powers
     liftNum2 Mul _ e1 e2 | Just (x, n) <- fromPow e1, Just (y, m) <- fromPow e2, x == y =
         toPow x (n+m)
 
+    -- Standard component-wise add/subtract
     liftNum2 Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
     liftNum2 Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
 
-    liftNum2 Mul _ (ComplexE a b) (ComplexE c d)
-      | minimizeMults = ComplexE (t1 - t2) (t1 + t3)
-      | otherwise     = ComplexE (a*c - b*d) (b*c + a*d)
+    -- Use the 3-multiply 4-add form when a and b are constants.
+    liftNum2 Mul _ (ComplexE a@ConstE{} b@ConstE{}) (ComplexE c d) =
+        ComplexE (t1 - t2) (t1 + t3)
       where
         t1 = a*(c+d)
         t2 = d*(b+a)
         t3 = c*(b-a)
+
+    liftNum2 Mul _ (ComplexE a b) (ComplexE c d) =
+        ComplexE (a*c - b*d) (b*c + a*d)
 
     -- Attempt to operate on complex values using their imaginary and real parts
     -- if at least on of the arguments to an operator is constructed with
@@ -691,9 +655,6 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
 
     liftNum2 op f x y@ComplexE{} | isAddSubMulOp op, Just x' <- ensureComplexE x =
         liftNum2 op f x' y
-
-    liftNum2 Add _ e1 (UnopE Neg e2) = e1 - e2
-    liftNum2 Sub _ e1 (UnopE Neg e2) = e1 + e2
 
     liftNum2 op _ e1 e2 = BinopE op e1 e2
 
@@ -773,7 +734,7 @@ instance Num (Exp Int) where
 
     signum  = liftNum Signum signum
 
-    fromInteger = ConstE . IntC . fromInteger
+    fromInteger = mkConstE . IntC . fromInteger
 
 instance Num (Exp Integer) where
     (+) = liftNum2 Add (+)
@@ -786,7 +747,7 @@ instance Num (Exp Integer) where
 
     signum  = liftNum Signum signum
 
-    fromInteger = ConstE . IntegerC
+    fromInteger = mkConstE . IntegerC
 
 instance Num (Exp Double) where
     (+) = liftNum2 Add (+)
@@ -799,7 +760,7 @@ instance Num (Exp Double) where
 
     signum  = liftNum Signum signum
 
-    fromInteger = ConstE . DoubleC . fromInteger
+    fromInteger = mkConstE . DoubleC . fromInteger
 
 instance Num (Exp Rational) where
     (+) = liftNum2 Add (+)
@@ -812,7 +773,7 @@ instance Num (Exp Rational) where
 
     signum  = liftNum Signum signum
 
-    fromInteger = ConstE . RationalC . fromInteger
+    fromInteger = mkConstE . RationalC . fromInteger
 
 instance Num (Exp (Complex Double)) where
     (+) = liftNum2 Add (+)
@@ -864,7 +825,7 @@ instance Integral (Const Int) where
     toInteger W{}      = error "can't happen"
 
 instance (LiftIntegral (Const a), Integral (Exp a)) => LiftIntegral (Exp a) where
-    liftIntegral2 op f (ConstE x) (ConstE y) = ConstE $ liftIntegral2 op f x y
+    liftIntegral2 op f (ConstE x) (ConstE y) = mkConstE $ liftIntegral2 op f x y
 
     liftIntegral2 Quot _ (BinopE Mul  e1 e2) e2' | e2' == e2 = e1
     liftIntegral2 Rem  _ (BinopE Mul _e1 e2) e2' | e2' == e2 = 0
@@ -921,7 +882,7 @@ instance (Fractional a, Fractional (Const a)) => LiftFrac (Const a) where
     liftFrac2 _op f c1 c2 = lift2 f c1 c2
 
 instance (LiftFrac (Const a), Num (Exp a)) => LiftFrac (Exp a) where
-    liftFrac2 op f (ConstE c1) (ConstE c2) = ConstE $ liftFrac2 op f c1 c2
+    liftFrac2 op f (ConstE c1) (ConstE c2) = mkConstE $ liftFrac2 op f c1 c2
 
     liftFrac2 Div _ e 1    = e
     liftFrac2 Div _ e (-1) = -e
@@ -974,12 +935,12 @@ instance Fractional (Const (Complex Double)) where
 instance Fractional (Exp Double) where
     (/) = liftFrac2 Div (/)
 
-    fromRational = ConstE . DoubleC . fromRational
+    fromRational = mkConstE . DoubleC . fromRational
 
 instance Fractional (Exp (Complex Double)) where
     (/) = liftFrac2 Div (/)
 
-    fromRational x = ConstE (ComplexC (fromRational x) 0)
+    fromRational x = mkConstE (ComplexC (fromRational x) 0)
 
 --------------------------------------------------------------------------------
 --
@@ -1026,11 +987,26 @@ instance IfThenElse (Exp Bool) (Exp a) where
 --
 --------------------------------------------------------------------------------
 
+mkConstE :: Const a -> Exp a
+mkConstE (DoubleC x) | x < 0 =
+    UnopE Neg (ConstE (DoubleC (-x)))
+
+mkConstE x = ConstE x
+
+isConstE :: Exp a -> Bool
+isConstE ConstE{} = True
+isConstE _        = False
+
 isAddSubMulOp :: Binop -> Bool
 isAddSubMulOp Add = True
 isAddSubMulOp Sub = True
 isAddSubMulOp Mul = True
 isAddSubMulOp _   = False
+
+isAddSubOp :: Binop -> Bool
+isAddSubOp Add = True
+isAddSubOp Sub = True
+isAddSubOp _   = False
 
 -- | Create an 'Exp Int' from an 'Int'.
 intE :: Int -> Exp Int

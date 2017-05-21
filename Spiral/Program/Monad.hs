@@ -195,11 +195,7 @@ infix 4 .:=.
 
 -- | Assign one expression to another.
 assignP :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a -> P m ()
-assignP e1 e2 = assignAsIsP e1 (simplify e2)
-
--- | Assign one expression to another without simplification
-assignAsIsP :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a -> P m ()
-assignAsIsP e1 e2 = do
+assignP e1 e2 = do
     appendStm $ AssignS e1 e2
     update e1 e2
   where
@@ -210,7 +206,7 @@ assignAsIsP e1 e2 = do
 -- | Cache the given expression. This serves as a hint that it will be used
 -- more than once.
 cache :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> P m (Exp a)
-cache e = go (simplify e)
+cache = go
   where
     go :: Exp a -> P m (Exp a)
     go e@ConstE{} =
@@ -228,16 +224,22 @@ cache e = go (simplify e)
 
     go (UnopE op e) = do
         e' <- cache e
-        if e' /= e
-          then cache $ simplify (UnopE op e')
-          else mustCache (UnopE op e')
+        mustCache (UnopE op e')
 
     go (BinopE op e1 e2) = do
         e1' <- cache e1
         e2' <- cache e2
         if e1' /= e1 || e2' /= e2
-          then cache $ simplify (BinopE op e1' e2')
+          then cacheBinop op e1' e2'
           else mustCache (BinopE op e1' e2')
+      where
+        -- In case we need to rearrange the newly-cached subterms, e.g., to
+        -- choose the canonical variable ordering.
+        cacheBinop :: Binop -> Exp a -> Exp a -> P m (Exp a)
+        cacheBinop Add e1' e2' = cache (e1' + e2')
+        cacheBinop Sub e1' e2' = cache (e1' - e2')
+        cacheBinop Mul e1' e2' = cache (e1' * e2')
+        cacheBinop op  e1' e2' = mustCache (BinopE op e1' e2')
 
     go e =
         mustCache e
@@ -248,7 +250,7 @@ cache e = go (simplify e)
         case maybe_v of
           Just v  -> return $ VarE v
           Nothing -> do temp <- tempP
-                        assignAsIsP temp e
+                        assignP temp e
                         return temp
 
 -- | Create a new concrete array of the given shape.
