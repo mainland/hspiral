@@ -6,7 +6,8 @@
 
 module Spiral.FFT.CooleyTukey (
     cooleyTukey,
-    dit
+    dit,
+    dif
   ) where
 
 import Data.List (foldr1)
@@ -39,6 +40,21 @@ dit = f
 
     f n | even n =
         (f 2 ⊗ I n2) × twid n n2 (omega n) × (I 2 ⊗ f n2) × Pi (L n 2)
+      where
+        n2 = n `quot` 2
+
+    f n =
+        error $ "dit: not even: " ++ show n
+
+-- | Decimation in frequency DFT matrix $F_n$, for $n$ even
+dif :: (RootOfUnity a, Show a) => Int -> SPL a
+dif = f
+  where
+    f 1 = spl $ matrix [[1]]
+    f 2 = F2
+
+    f n | even n =
+        Pi (L n n2) × (I 2 ⊗ f n2) × twid n n2 (omega n) × (f 2 ⊗ I n2)
       where
         n2 = n `quot` 2
 
