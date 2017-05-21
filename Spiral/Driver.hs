@@ -48,18 +48,18 @@ import Spiral.SPL
 import Spiral.SPL.Run
 import Spiral.Util.Uniq
 
-defaultMain :: ([String] -> Spiral ()) -> IO ()
+defaultMain :: ([String] -> Spiral a) -> IO a
 defaultMain = defaultMainWith mempty
 
-defaultMainWith :: Config -> ([String] -> Spiral ()) -> IO ()
+defaultMainWith :: Config -> ([String] -> Spiral a) -> IO a
 defaultMainWith config k = do
     args             <- getArgs
     (config', args') <- parseOpts args
     if mode config == Help
-      then usage >>= hPutStrLn stderr
+      then usage >>= hPutStrLn stderr >> exitFailure
       else runSpiral (localConfig (const (config <> config')) (k args')) `catch` printFailure
   where
-    printFailure :: SomeException -> IO ()
+    printFailure :: SomeException -> IO a
     printFailure e = hPrint stderr e >> exitFailure
 
 -- | Generate C code for the given SPL transform.
