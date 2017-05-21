@@ -15,6 +15,8 @@ module Spiral.Search.Monad (
     S(..),
     runS,
 
+    observeAll,
+
     Metric,
     lookupDFT,
     cacheDFT
@@ -105,6 +107,9 @@ runS :: forall m a . Monad m
      => S m a
      -> m a
 runS m = evalStateT (runSFKT (unS m)) mempty
+
+observeAll :: forall m a . Monad m => S m a -> S m [a]
+observeAll m = S $ lift $ runSFKTM Nothing (unS m)
 
 lookupDFT :: (Typeable a, Ord a, Monad m) => Int -> a -> S m (Maybe (SPL a, Metric))
 lookupDFT n w = S $ lift $ gets $ lookupT (n, w) . cache
