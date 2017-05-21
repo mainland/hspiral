@@ -29,6 +29,7 @@ import Test.QuickCheck ((===),
                         choose,
                         counterexample)
 
+import qualified Spiral
 import Spiral (Config(..),
                parseOpts)
 import Spiral.Array
@@ -39,6 +40,7 @@ import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas
 import Spiral.FFT.Rader
 import Spiral.SPL
+import Spiral.Search.OpCount
 
 import qualified Test.FFTW as FFTW
 import Test.Gen
@@ -46,8 +48,9 @@ import Test.Gen
 main :: IO ()
 main = do
     (conf, args') <- getArgs >>= parseOpts
-    dftTests <- genDFTTests conf
-    defaultMainWithArgs (tests ++ [dftTests]) args'
+    dftTests    <- genDFTTests conf
+    searchTests <- genSearchTests conf
+    defaultMainWithArgs (tests ++ [dftTests, searchTests]) args'
 
 tests :: [Test]
 tests = [strideTest, l82Test, kroneckerTest, directSumTest, dftTests]
@@ -216,13 +219,26 @@ genDFTTests :: Config -> IO Test
 genDFTTests conf =
     testGroup "Generated DFT" <$>
     mapM (\i -> dftTest conf (2^i)) [1..9::Int]
+  where
+    dftTest :: Config -> Int -> IO Test
+    dftTest conf n = do
+        dft <- genComplexTransform conf ("dft" ++ show n) (FFT.f n)
+        return $
+          testProperty ("Generated DFT of size " ++ show n) $
+          forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
 
-dftTest :: Config -> Int -> IO Test
-dftTest conf n = do
-    dft <- genComplexTransform conf ("dft" ++ show n) (FFT.f n)
-    return $
-      testProperty ("Generated DFT of size " ++ show n) $
-      forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
+genSearchTests :: Config -> IO Test
+genSearchTests conf =
+    testGroup "Opcount-optimized DFT" <$>
+    mapM (dftTest conf) [2^i | i <- [1..9::Int]]
+  where
+    dftTest :: Config -> Int -> IO Test
+    dftTest conf n = do
+        Re e <- Spiral.defaultMain $ \_ -> searchOpCount (Re (DFT n) :: SPL (Exp Double))
+        dft  <- genComplexTransform conf ("dftop" ++ show n) e
+        return $
+          testProperty ("Opcount-optimized DFT of size " ++ show n) $
+          forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
 
 -- | Generate vectors of a given size.
 vectorsOfSize :: (Arbitrary a, V.Storable a)

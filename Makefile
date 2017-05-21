@@ -95,6 +95,7 @@ SRC = \
 	Spiral/SPL.hs \
 	Spiral/SPL/Run.hs \
 	Spiral/Search/Monad.hs \
+	Spiral/Search/OpCount.hs \
 	Spiral/Search/SFKT.hs \
 	Spiral/Util/MaplePretty.hs \
 	Spiral/Util/Name.hs \

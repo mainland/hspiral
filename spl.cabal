@@ -61,6 +61,7 @@ library
     Spiral.SPL
     Spiral.SPL.Run
     Spiral.Search.Monad
+    Spiral.Search.OpCount
     Spiral.Search.SFKT
 
   other-modules:

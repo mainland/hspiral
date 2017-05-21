@@ -10,6 +10,11 @@
 
 module Spiral.OpCount (
     OpCount(..),
+    binopCount,
+    allOps,
+    addOps,
+    mulOps,
+
     countOps,
     countProgramOps,
 
@@ -26,6 +31,7 @@ import Control.Monad.State (MonadState(..),
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Maybe (fromMaybe)
 import Text.PrettyPrint.Mainland
 
 import Spiral.Exp
@@ -53,10 +59,22 @@ instance Num a => Monoid (OpCount a) where
         , binops = Map.unionWith (+) (binops x) (binops y)
         }
 
+binopCount :: OpCount Int -> Binop -> Int
+binopCount opc op = fromMaybe 0 (Map.lookup op (binops opc))
+
+allOps :: OpCount Int -> Int
+allOps opc = addOps opc + mulOps opc
+
+addOps :: OpCount Int -> Int
+addOps opc = binopCount opc Add + binopCount opc Sub
+
+mulOps :: OpCount Int -> Int
+mulOps opc = binopCount opc Mul
+
 countOps :: (Typed a, Num (Exp a), MonadSpiral m)
          => SPL (Exp a)
          -> m (OpCount Int)
-countOps e = toProgram "f" e >>= countProgramOps 
+countOps e = toProgram "f" e >>= countProgramOps
 
 countProgramOps :: MonadSpiral m
                 => Program a
