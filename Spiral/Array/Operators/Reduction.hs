@@ -15,8 +15,6 @@ module Spiral.Array.Operators.Reduction (
 
 import Prelude hiding ((!!))
 
-import Control.Monad (foldM)
-
 import Spiral.Array
 import Spiral.Monad
 import Spiral.Program.Monad
@@ -39,16 +37,8 @@ foldP f z xs =
   where
     Z :. n = extent xs
 
-    go True = do
-        es <- mapM idx [0..n-1]
-        foldM g z es
-      where
-        idx :: Int -> P m (Exp a)
-        idx i = cache e
-          where
-            e = xs !! i
-
-        g e1 e2 = cache (f e1 e2)
+    go True =
+        return $ foldr (flip f) z [xs !! i | i <- [0..n-1]]
 
     go _ = do
         temp <- tempP

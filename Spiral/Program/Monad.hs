@@ -196,12 +196,8 @@ infix 4 .:=.
 -- | Assign one expression to another.
 assignP :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a -> P m ()
 assignP e1 e2 = do
-    appendStm $ AssignS e1 e2
-    update e1 e2
-  where
-    update :: Exp a -> Exp a -> P m ()
-    update (VarE v) e = insertCachedExp v e
-    update _        _ = return ()
+    e2' <- cache e2
+    appendStm $ AssignS e1 e2'
 
 -- | Cache the given expression. This serves as a hint that it will be used
 -- more than once.
@@ -250,8 +246,13 @@ cache = go
         case maybe_v of
           Just v  -> return $ VarE v
           Nothing -> do temp <- tempP
-                        assignP temp e
+                        appendStm $ AssignS temp e
+                        update temp e
                         return temp
+      where
+        update :: Exp a -> Exp a -> P m ()
+        update (VarE v) e = insertCachedExp v e
+        update _        _ = return ()
 
 -- | Create a new concrete array of the given shape.
 newArray :: forall sh a m . (Shape sh, Typed a, Num (Exp a), MonadSpiral m)
