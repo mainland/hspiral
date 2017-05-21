@@ -637,12 +637,22 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
     liftNum2 Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
 
     -- Use the 3-multiply 4-add form when a and b are constants.
-    liftNum2 Mul _ (ComplexE a@ConstE{} b@ConstE{}) (ComplexE c d) =
-        ComplexE (t1 - t2) (t1 + t3)
-      where
-        t1 = a*(c+d)
-        t2 = d*(b+a)
-        t3 = c*(b-a)
+    liftNum2 Mul _ (ComplexE a0 b0) (ComplexE c d) | Just a <- unConstE a0, Just b <- unConstE b0 =
+        let t1 = a0*(c+d)
+            t2 = d*(b+a)
+            t3 = c*(b-a)
+        in
+          ComplexE (t1 - t2) (t1 + t3)
+      where
+        unConstE :: Monad m => Exp b -> m (Exp b)
+        unConstE e@ConstE{} =
+            return e
+
+        unConstE (UnopE Neg (ConstE (DoubleC x))) =
+            return $ ConstE (DoubleC (-x))
+
+        unConstE _ =
+            fail "Not a constant"
 
     liftNum2 Mul _ (ComplexE a b) (ComplexE c d) =
         ComplexE (a*c - b*d) (b*c + a*d)
