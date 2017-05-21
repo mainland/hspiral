@@ -1021,9 +1021,9 @@ complexE (r :+ i) = ConstE $ ComplexC (DoubleC r) (DoubleC i)
 ensureComplexE :: (Num (Exp a), Monad m)
                => Exp (Complex a)
                -> m (Exp (Complex a))
-ensureComplexE (ConstE (ComplexC r i)) = return $ ComplexE (ConstE r) (ConstE i)
-ensureComplexE (ConstE (W _ _ c))      = ensureComplexE (ConstE c)
-ensureComplexE (ConstE x@CycC{})       = return $ ComplexE (ConstE (DoubleC r)) (ConstE (DoubleC i))
+ensureComplexE (ConstE (ComplexC r i)) = return $ ComplexE (mkConstE r) (mkConstE i)
+ensureComplexE (ConstE (W _ _ c))      = ensureComplexE (mkConstE c)
+ensureComplexE (ConstE x@CycC{})       = return $ ComplexE (mkConstE (DoubleC r)) (mkConstE (DoubleC i))
   where
     r :+ i = lower x
 ensureComplexE e@ComplexE{}            = return e
@@ -1031,14 +1031,14 @@ ensureComplexE _                       = fail "Can't construct ComplexE"
 
 -- | Extract the complex and real portions of an 'Exp (Complex a)'.
 unComplexE :: Num (Exp a) => Exp (Complex a) -> (Exp a, Exp a)
-unComplexE (ConstE (ComplexC r i)) = (ConstE r, ConstE i)
-unComplexE (ConstE (W _ _ c))      = unComplexE (ConstE c)
-unComplexE (ConstE x@CycC{})       = (ConstE (DoubleC r), ConstE (DoubleC i))
+unComplexE (ConstE (ComplexC r i)) = (mkConstE r, mkConstE i)
+unComplexE (ConstE (W _ _ c))      = unComplexE (mkConstE c)
+unComplexE (ConstE x@CycC{})       = (mkConstE (DoubleC r), mkConstE (DoubleC i))
   where
     r :+ i = lower x
 unComplexE (ComplexE r i )         = (r, i)
 unComplexE e                       = (ReE e, ImE e)
 
 true, false :: Exp Bool
-true  = ConstE (BoolC True)
-false = ConstE (BoolC False)
+true  = mkConstE (BoolC True)
+false = mkConstE (BoolC False)
