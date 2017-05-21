@@ -15,6 +15,7 @@ import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
 import Spiral
+import Spiral.Config
 import Spiral.Exp
 import Spiral.FFT
 import Spiral.FFT.CooleyTukey
@@ -29,20 +30,28 @@ import Spiral.SPL.Run
 
 main :: IO ()
 main = defaultMain $ \args -> do
+    useComplexType <- asksConfig $ testDynFlag UseComplex
     n <- case args of
            [s] -> return (read s)
            _   -> return 4
-    e    <- runS $ search (DFT n :: SPL (Exp (Complex Double)))
-    pprint e
-    prog <- toProgram "f" (Re e)
-    pprint prog
-    ops <- countProgramOps prog
-    let adds = binopCount ops Add + binopCount ops Sub
-        muls = binopCount ops Mul
-    liftIO $ putDocLn $
-        text "Multiplications:" <+> ppr muls </>
-        text "      Additions:" <+> ppr adds </>
-        text "          Total:" <+> ppr (adds + muls)
+    if useComplexType
+      then do e <- runS $ search (DFT n :: SPL (Exp (Complex Double)))
+              go e
+      else do e <- runS $ search (Re (DFT n) :: SPL (Exp Double))
+              go e
+  where
+    go :: (Typed a, Num (Exp a)) => SPL (Exp a) -> Spiral ()
+    go e = do
+        pprint e
+        prog <- toProgram "f" e
+        pprint prog
+        ops <- countProgramOps prog
+        let adds = binopCount ops Add + binopCount ops Sub
+            muls = binopCount ops Mul
+        liftIO $ putDocLn $
+            text "Multiplications:" <+> ppr muls </>
+            text "      Additions:" <+> ppr adds </>
+            text "          Total:" <+> ppr (adds + muls)
 
 metricOrdering :: (a, Metric) -> (a, Metric) -> Ordering
 metricOrdering (_, x) (_, y) =
