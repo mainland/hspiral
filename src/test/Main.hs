@@ -174,7 +174,7 @@ f8Test = testCase "F_8" $ toMatrix (FFT.f 8) @?= f8
 
 -- Split-Radix test
 split_radix_test :: Int -> Test
-split_radix_test n = testCase ("SplitRadix(2^" ++ show n ++ ")") $
+split_radix_test n = testCase ("Radix-2(2^" ++ show n ++ ")") $
     toMatrix fft_spl @?= toMatrix (DFT (2^n))
   where
     fft_spl :: SPL (Exp (Complex Double))
