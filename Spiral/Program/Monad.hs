@@ -200,11 +200,19 @@ assignP :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a 
 assignP e1@IdxE{} (BinopE op e2a e2b) = do
     e2a' <- cache e2a
     e2b' <- cache e2b
-    appendStm $ AssignS e1 (BinopE op e2a' e2b')
+    assignS e1 (BinopE op e2a' e2b')
 
 assignP e1 e2 = do
     e2' <- cache e2
-    appendStm $ AssignS e1 e2'
+    assignS e1 e2'
+
+assignS :: (Typed a, MonadSpiral m) => Exp a -> Exp a -> P m ()
+assignS e1@(VarE v) e2 = do
+    insertCachedExp v e2
+    appendStm $ AssignS e1 e2
+
+assignS e1 e2 =
+    appendStm $ AssignS e1 e2
 
 -- | Cache the given expression. This serves as a hint that it will be used
 -- more than once.
@@ -253,13 +261,8 @@ cache = go
         case maybe_v of
           Just v  -> return $ VarE v
           Nothing -> do temp <- tempP
-                        appendStm $ AssignS temp e
-                        update temp e
+                        assignS temp e
                         return temp
-      where
-        update :: Exp a -> Exp a -> P m ()
-        update (VarE v) e = insertCachedExp v e
-        update _        _ = return ()
 
 -- | Create a new concrete array of the given shape.
 newArray :: forall sh a m . (Shape sh, Typed a, Num (Exp a), MonadSpiral m)
