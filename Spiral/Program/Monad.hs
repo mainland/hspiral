@@ -64,7 +64,6 @@ import Spiral.Array.Repr.Complex
 import Spiral.Array.Repr.Concrete
 import Spiral.Config
 import Spiral.Exp
-import Spiral.Globals
 import Spiral.Monad (MonadSpiral)
 import Spiral.Program.Syntax
 import Spiral.Util.Trace
@@ -171,18 +170,20 @@ forP lo hi k = do
 
 -- | Generate a temporary of the given type.
 tempP :: forall a m . (Typed a, MonadSpiral m) => P m (Exp a)
-tempP = go tau
+tempP = do
+    useComplexType <- asksConfig $ testDynFlag UseComplex
+    go useComplexType tau
   where
     tau :: Type a
     tau = typeOf (undefined :: a)
 
-    go :: Type b -> P m (Exp b)
-    go (ComplexT tau') | not useComplexType = do
-        er <- go tau'
-        ei <- go tau'
+    go :: Bool -> Type b -> P m (Exp b)
+    go False (ComplexT tau') = do
+        er <- go False tau'
+        ei <- go False tau'
         return $ ComplexE er ei
 
-    go tau = do
+    go _ tau = do
         v <- gensym "t"
         appendDecl $ VarD v tau
         return $ VarE v
@@ -255,15 +256,16 @@ newArray :: forall sh a m . (Shape sh, Typed a, Num (Exp a), MonadSpiral m)
          => (sh :. Int)
          -> P m (Array H (sh :. Int) (Exp a))
 newArray (sh :. i) = do
+    useComplexType <- asksConfig $ testDynFlag UseComplex
     v <- gensym "V"
-    go v (typeOf (undefined :: a))
+    go useComplexType v (typeOf (undefined :: a))
   where
-    go :: Var -> Type a -> P m (Array H (sh :. Int) (Exp a))
-    go v (ComplexT tau) | not useComplexType = do
+    go :: Bool -> Var -> Type a -> P m (Array H (sh :. Int) (Exp a))
+    go False v (ComplexT tau) = do
         appendDecl $ ArrD v (sh :. 2*i) tau
         return $ H $ CMPLX $ C (sh :. 2*i) v
 
-    go v tau = do
+    go _ v tau = do
         appendDecl $ ArrD v (sh :. i) tau
         return $ H $ C (sh :. i) v
 
@@ -272,14 +274,15 @@ cacheArray :: forall a r sh m . (Typed a, Num (Exp a), Shape sh, IArray r (sh :.
            => Array r (sh :. Int) (Exp a)
            -> P m (Array H (sh :. Int) (Exp a))
 cacheArray arr = do
+    useComplexType <- asksConfig $ testDynFlag UseComplex
     v <- gensym "K"
-    go v (typeOf (undefined :: a))
+    go useComplexType v (typeOf (undefined :: a))
   where
-    go :: Var -> Type a -> P m (Array H (sh :. Int) (Exp a))
-    go v ComplexT{} | not useComplexType = do
+    go :: Bool -> Var -> Type a -> P m (Array H (sh :. Int) (Exp a))
+    go False v ComplexT{} = do
         appendDecl $ ConstArrD v (RE arr)
         return $ H $ CMPLX $ C (extent (RE arr)) v
 
-    go v _ = do
+    go _ v _ = do
         appendDecl $ ConstArrD v arr
         return $ H $ C (extent arr) v

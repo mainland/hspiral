@@ -6,8 +6,6 @@
 -- Maintainer  : Geoffrey Mainland <mainland@drexel.edu>
 
 module Spiral.Globals (
-    setUseComplexType,
-    useComplexType,
     setMinimizeMults,
     minimizeMults
   ) where
@@ -15,17 +13,6 @@ module Spiral.Globals (
 import Control.Monad.Trans (MonadIO(..))
 import Data.IORef
 import System.IO.Unsafe (unsafePerformIO)
-
-gUseComplexType :: IORef Bool
-{-# NOINLINE gUseComplexType #-}
-gUseComplexType = unsafePerformIO $ newIORef False
-
-setUseComplexType :: MonadIO m => Bool -> m ()
-setUseComplexType flag = liftIO $ writeIORef gUseComplexType flag
-
-useComplexType :: Bool
-{-# NOINLINE useComplexType #-}
-useComplexType = unsafePerformIO $ readIORef gUseComplexType
 
 gMinimizeMults :: IORef Bool
 {-# NOINLINE gMinimizeMults #-}

@@ -12,13 +12,11 @@ module Spiral.Driver.Opts (
     usage
   ) where
 
-import Control.Monad ((>=>),
-                      when)
+import Control.Monad ((>=>))
 import System.Console.GetOpt
 import System.Environment (getProgName)
 
 import Spiral.Config
-import Spiral.Globals
 
 options :: forall m . Monad m => [OptDescr (Config -> m Config)]
 options =
@@ -169,8 +167,6 @@ parseOpts :: [String] -> IO (Config, [String])
 parseOpts argv =
     case getOpt Permute options argv of
       (fs,n,[])  -> do config <- foldl (>=>) return fs defaultConfig
-                       when (testDynFlag UseComplex config) $
-                           setUseComplexType True
                        return (config, n)
       (_,_,errs) -> do usageDesc <- usage
                        ioError (userError (concat errs ++ usageDesc))

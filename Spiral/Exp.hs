@@ -683,15 +683,14 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
         t2 = d*(b+a)
         t3 = c*(b-a)
 
-    -- If we aren't using an explicit complex type in the code generator, then
-    -- we want to make sure that both arguments to the operator have explicit
-    -- real and imaginary parts so that we can cache them separately.
-    liftNum2 Add _ x@ComplexE{} y | not useComplexType = x + ensureComplexE y
-    liftNum2 Add _ x y@ComplexE{} | not useComplexType = ensureComplexE x + y
-    liftNum2 Sub _ x@ComplexE{} y | not useComplexType = x - ensureComplexE y
-    liftNum2 Sub _ x y@ComplexE{} | not useComplexType = ensureComplexE x - y
-    liftNum2 Mul _ x@ComplexE{} y | not useComplexType = x * ensureComplexE y
-    liftNum2 Mul _ x y@ComplexE{} | not useComplexType = ensureComplexE x * y
+    -- Attempt to operate on complex values using their imaginary and real parts
+    -- if at least on of the arguments to an operator is constructed with
+    -- 'ComplexE'.
+    liftNum2 op f x@ComplexE{} y | isAddSubMulOp op, Just y' <- ensureComplexE y =
+        liftNum2 op f x y'
+
+    liftNum2 op f x y@ComplexE{} | isAddSubMulOp op, Just x' <- ensureComplexE x =
+        liftNum2 op f x' y
 
     liftNum2 Add _ e1 (UnopE Neg e2) = e1 - e2
     liftNum2 Sub _ e1 (UnopE Neg e2) = e1 + e2
@@ -1027,6 +1026,12 @@ instance IfThenElse (Exp Bool) (Exp a) where
 --
 --------------------------------------------------------------------------------
 
+isAddSubMulOp :: Binop -> Bool
+isAddSubMulOp Add = True
+isAddSubMulOp Sub = True
+isAddSubMulOp Mul = True
+isAddSubMulOp _   = False
+
 -- | Create an 'Exp Int' from an 'Int'.
 intE :: Int -> Exp Int
 intE = ConstE . IntC
@@ -1037,10 +1042,16 @@ complexE (r :+ i) = ConstE $ ComplexC (DoubleC r) (DoubleC i)
 
 -- | Ensure that a complex expression is represented using its constituent real
 -- and imaginary parts.
-ensureComplexE :: (Typed a, Num (Exp a)) => Exp (Complex a) -> Exp (Complex a)
-ensureComplexE e = ComplexE er ei
+ensureComplexE :: (Num (Exp a), Monad m)
+               => Exp (Complex a)
+               -> m (Exp (Complex a))
+ensureComplexE (ConstE (ComplexC r i)) = return $ ComplexE (ConstE r) (ConstE i)
+ensureComplexE (ConstE (W _ _ c))      = ensureComplexE (ConstE c)
+ensureComplexE (ConstE x@CycC{})       = return $ ComplexE (ConstE (DoubleC r)) (ConstE (DoubleC i))
   where
-    (er, ei) = unComplexE e
+    r :+ i = lower x
+ensureComplexE e@ComplexE{}            = return e
+ensureComplexE _                       = fail "Can't construct ComplexE"
 
 -- | Extract the complex and real portions of an 'Exp (Complex a)'.
 unComplexE :: Num (Exp a) => Exp (Complex a) -> (Exp a, Exp a)
