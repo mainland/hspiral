@@ -14,16 +14,15 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.SPL (
-    Permutation(..),
-    Perm(..),
-    L,
-    J,
+    module Spiral.Permutation,
 
     SPL(..),
     spl,
     diag,
     circ,
     toep,
+    permute,
+    backpermute,
 
     splExtent,
 
@@ -41,9 +40,9 @@ import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array
-import Spiral.Array.Operators.Permute
 import Spiral.Array.Repr.Complex
 import Spiral.Exp
+import Spiral.Permutation
 import Spiral.RootOfUnity
 import Spiral.Util.Pretty
 
@@ -59,7 +58,7 @@ data SPL a where
     I :: Int -> SPL e
 
     -- | A permutation
-    Pi :: Permutation p => Perm p -> SPL e
+    Pi :: Permutation -> SPL e
 
     -- | The rotation matrix
     Rot :: Floating a => a -> SPL a
@@ -123,6 +122,14 @@ circ = Circ . V.fromList
 -- | Create a Toeplitz matrix
 toep :: [a] -> SPL a
 toep = Toep . V.fromList
+
+-- | Permute (scatter).
+permute :: Permutation -> SPL e
+permute = Pi
+
+-- | Backpermute (gather).
+backpermute :: Permutation -> SPL e
+backpermute = Pi . invert
 
 -- | Return the extent of an SPL transform.
 splExtent :: SPL a -> DIM2
@@ -265,7 +272,7 @@ toMatrix (Pi p) =
     f (Z :. i :. j) | g j == i  = 1
                     | otherwise = 0
 
-    g = toPermute p
+    g = toIdxMapping p
 
 toMatrix (Re a) = manifest (RE (toMatrix a))
 

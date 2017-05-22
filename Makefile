@@ -86,6 +86,7 @@ SRC = \
 	Spiral/Monad.hs \
 	Spiral/NumberTheory.hs \
 	Spiral/OpCount.hs \
+	Spiral/Permutation.hs \
 	Spiral/Program.hs \
 	Spiral/Program/Monad.hs \
 	Spiral/Program/Monad.hs-boot \

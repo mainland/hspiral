@@ -29,6 +29,7 @@ import Spiral.Array.Operators.Permute
 import Spiral.Array.Repr.Compute
 import Spiral.Array.Repr.Virtual
 import Spiral.Exp
+import Spiral.Permutation
 import Spiral.Program.Monad
 import Spiral.Monad
 
@@ -47,11 +48,11 @@ instance Computable T sh a where
     computeP y (S x) = computeP y x
 
 instance Permute T where
-    backpermute p (G a) = G (backpermute p a)
-    backpermute p a     = permute (invert p) a
+    permuteP p (S a) = S <$> permuteP p a
+    permuteP p a     = backpermuteP (invert p) a
 
-    permute p (S a) = S (permute p a)
-    permute p a     = backpermute (invert p) a
+    backpermuteP p (G a) = G <$> backpermuteP p a
+    backpermuteP p a     = permuteP (invert p) a
 
 -- | Ensure that a transform is in a form that can be used as a source.
 gather :: (Typed a, Num (Exp a), MonadSpiral m)

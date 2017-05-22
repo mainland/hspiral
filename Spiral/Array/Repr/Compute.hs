@@ -44,8 +44,13 @@ instance Computable CP sh a where
     computeP a (CP _ k) = k a
 
 instance Permute CP where
-    permute     p (CP sh k) = CP sh (k . permute p . idBackpermute)
-    backpermute p (CP sh k) = CP sh (k . backpermute p . idBackpermute)
+    -- Instead of permuting the source, backpermute the destination.
+    permuteP p (CP sh k) =
+        return $ CP sh $ \arr -> backpermuteP p (idBackpermute arr) >>= k
+
+    -- Instead of backpermuting the source, permute the destination.
+    backpermuteP p (CP sh k) =
+        return $ CP sh $ \arr -> permuteP p (idBackpermute arr) >>= k
 
 toCompute :: (ForShape sh, Computable r sh a) => Array r sh a -> Array CP sh a
 toCompute x = fromCompute (extent x) (`computeP` x)

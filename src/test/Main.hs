@@ -50,7 +50,7 @@ import Test.Gen
 main :: IO ()
 main = do
     (conf, args') <- getArgs >>= parseOpts
-    defaultMainWithArgs (tests ++ [searchTests, ditCodegenTests conf, searchCodegenTests conf]) args'
+    defaultMainWithArgs (tests ++ [searchTests, ditCodegenTests conf, difCodegenTests conf, searchCodegenTests conf]) args'
 
 tests :: [Test]
 tests = [strideTest, l82Test, kroneckerTest, directSumTest, dftTests]
@@ -251,7 +251,19 @@ ditCodegenTests conf =
     dftTest conf n = buildTest $ do
         dft <- liftIO $ genComplexTransform conf ("dft" ++ show n) (dit n)
         return $
-            testProperty ("Generated DFT of size " ++ show n) $
+            testProperty ("Generated DIT DFT of size " ++ show n) $
+            forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
+
+difCodegenTests :: Config -> Test
+difCodegenTests conf =
+    testGroup "Generated DIF" $
+    map (\i -> dftTest conf (2^i)) [1..9::Int]
+  where
+    dftTest :: Config -> Int -> Test
+    dftTest conf n = buildTest $ do
+        dft <- liftIO $ genComplexTransform conf ("dft" ++ show n) (dif n)
+        return $
+            testProperty ("Generated DIF DFT of size " ++ show n) $
             forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
 
 searchCodegenTests :: Config -> Test

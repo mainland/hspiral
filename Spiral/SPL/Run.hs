@@ -78,7 +78,7 @@ runSPL e@I{} x = do
 
 runSPL e@(Pi p) x = do
     comment $ ppr e
-    return $ backpermute p x
+    permuteP p x
 
 runSPL e@(Diag v) x = do
     t <- gather x

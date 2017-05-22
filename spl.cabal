@@ -53,6 +53,7 @@ library
     Spiral.Monad
     Spiral.NumberTheory
     Spiral.OpCount
+    Spiral.Permutation
     Spiral.Program
     Spiral.Program.Monad
     Spiral.Program.Syntax
