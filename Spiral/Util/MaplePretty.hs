@@ -106,7 +106,6 @@ instance MaplePretty (Const a) where
     pprmPrec _ (W n k _) = text "w_" <> ppr n <> char '^' <> ppr k
 
     pprmPrec p (CycC x) = text (showsPrec p x "")
-    pprmPrec _ (PiC r)  = pprmPrec mulPrec1 r <+> char '*' <+> text "Pi"
 
 instance MaplePretty Var where
     pprm = ppr

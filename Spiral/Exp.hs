@@ -87,9 +87,6 @@ data Const a where
     -- | Cyclotomic numbers
     CycC :: Cyclotomic -> Const (Complex Double)
 
-    -- | Multiple of $\pi$
-    PiC :: Rational -> Const Double
-
 deriving instance Show (Const a)
 
 instance Eq (Const a) where
@@ -125,7 +122,6 @@ lower (RationalC x)  = x
 lower (ComplexC r i) = lower r :+ lower i
 lower (W _ _ x)      = lower x
 lower (CycC x)       = toComplex x
-lower (PiC r)        = pi*fromRational r
 
 instance Arbitrary (Const Int) where
     arbitrary = IntC <$> arbitrary
@@ -156,7 +152,6 @@ instance Pretty (Const a) where
     pprPrec _ (W n k _) = text "ω_" <> ppr n <> char '^' <> ppr k
 
     pprPrec p (CycC x) = text (showsPrec p x "")
-    pprPrec _ (PiC r)  = pprPrec mulPrec1 r <> char '*' <> text "pi"
 
 instance RootOfUnity (Const (Complex Double)) where
     rootOfUnity n k = mkW (k%n) (CycC (rootOfUnity n k))
@@ -202,7 +197,6 @@ isIntegral x = snd (properFraction x :: (Int, a)) == 0
 flatten :: Const a -> Const a
 flatten (W _ _ x) = flatten x
 flatten x@CycC{}  = fromComplex (lower x)
-flatten (PiC r)   = DoubleC (fromRational r * pi)
 flatten e         = e
 
 -- | Representation of scalar constants.
@@ -248,16 +242,12 @@ instance HEq Const where
     heq (ComplexC r1 i1) (ComplexC r2 i2) = r1 == r2 && i1 == i2
     heq (W n k _)        (W n' k' _)      = (n', k' `mod` n') == (n, k `mod` n)
     heq (CycC x)         (CycC y)         = x == y
-    heq (PiC x)          (PiC y)          = x == y
 
     heq x@ComplexC{} y | Just x' <- unCycC x = heq (CycC x') y
     heq x y@ComplexC{} | Just y' <- unCycC y = heq x (CycC y')
 
     heq (W _ _ c) y = heq c y
     heq x (W _ _ c) = heq x c
-
-    heq x@PiC{} y = heq (DoubleC (lower x)) y
-    heq x y@PiC{} = heq x (DoubleC (lower y))
 
     heq _ _ = False
 
@@ -283,16 +273,12 @@ instance HOrd Const where
     hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
     hcompare (W n k _)        (W n' k' _)      = compare (n, k `mod` n) (n', k' `mod` n')
     hcompare x@CycC{}         y@CycC{}         = compare (flatten x) (flatten y)
-    hcompare (PiC x)          (PiC y)          = compare x y
 
     hcompare x@ComplexC{} y | Just x' <- unCycC x = hcompare (CycC x') y
     hcompare x y@ComplexC{} | Just y' <- unCycC y = hcompare x (CycC y')
 
     hcompare (W _ _ c) y = hcompare c y
     hcompare x (W _ _ c) = hcompare x c
-
-    hcompare x@PiC{} y = hcompare (DoubleC (lower x)) y
-    hcompare x y@PiC{} = hcompare x (DoubleC (lower y))
 
     hcompare x y = compare (tag x) (tag y)
       where
@@ -305,7 +291,6 @@ instance HOrd Const where
         tag ComplexC{}  = 5
         tag W{}         = 6
         tag CycC{}      = 7
-        tag PiC{}       = 8
 
 instance HOrd Exp where
     hcompare (ConstE c1)           (ConstE c2)           = hcompare c1 c2
@@ -508,7 +493,6 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
 
     liftNum Neg _ (ComplexC a b) = ComplexC (-a) (-b)
     liftNum Neg _ (CycC c)       = CycC (-c)
-    liftNum Neg _ (PiC r)        = PiC (-r)
 
     liftNum Neg _ (W n k c) = mkW (k % n + 1 % 2) (-c)
 
@@ -902,31 +886,20 @@ instance Fractional (Const Double) where
     fromRational = DoubleC . fromRational
 
 instance Floating (Const Double) where
-    pi = PiC 1
+    pi = DoubleC pi
 
-    exp = lift exp
-    log = lift log
-    asin = lift asin
-    acos = lift acos
-    atan = lift atan
-    sinh = lift sinh
-    cosh = lift cosh
+    exp   = lift exp
+    log   = lift log
+    asin  = lift asin
+    acos  = lift acos
+    atan  = lift atan
+    sinh  = lift sinh
+    cosh  = lift cosh
     asinh = lift asinh
     acosh = lift acosh
     atanh = lift atanh
-
-    sin (PiC x) = cos (PiC (x - 1 / 2))
-
-    sin x = lift sin x
-
-    cos (PiC x)
-      | x < 0     = cos (PiC (-x))
-      | x > 1     = cos (PiC (x - 2))
-      | x > 1/2   = -cos (PiC (1 - x))
-      | x == 0    = 1
-      | x == 1/2  = 0
-
-    cos x = lift cos x
+    sin   = lift sin
+    cos   = lift cos
 
 instance Fractional (Const (Complex Double)) where
     (/) = liftFrac2 Div (/)
