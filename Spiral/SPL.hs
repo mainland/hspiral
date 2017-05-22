@@ -62,7 +62,7 @@ data SPL a where
     Pi :: Permutation p => Perm p -> SPL e
 
     -- | The rotation matrix
-    R :: Floating a => a -> SPL a
+    Rot :: Floating a => a -> SPL a
 
     -- | A diagonal matrix
     Diag :: V.Vector e -> SPL e
@@ -129,7 +129,7 @@ splExtent :: SPL a -> DIM2
 splExtent (E a)     = extent a
 splExtent (I n)     = ix2 n n
 splExtent (Pi p)    = ix2 (dim p) (dim p)
-splExtent (R _)     = ix2 2 2
+splExtent (Rot _)   = ix2 2 2
 
 splExtent (Diag xs) = ix2 n n
   where
@@ -255,7 +255,7 @@ toMatrix (I n) =
     f (Z :. i :. j) | i == j    = 1
                     | otherwise = 0
 
-toMatrix (R alpha) =
+toMatrix (Rot alpha) =
     matrix [[cos alpha, -(sin alpha)],
             [sin alpha, cos alpha]]
 
@@ -286,7 +286,7 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (E a)       = pprPrec p (manifest a)
     pprPrec _ (I n)       = text "I_" <> ppr n
     pprPrec _ (Pi p)      = ppr p
-    pprPrec _ (R alpha)   = text "R_" <> ppr alpha
+    pprPrec _ (Rot alpha) = text "R_" <> ppr alpha
     pprPrec _ (Diag xs)   = text "diag" <> parens (commasep (map ppr (V.toList xs)))
     pprPrec _ (KDiag n e) = text "kdiag" <> parens (commasep [ppr n, ppr e])
     pprPrec p (Kron a b)  = infixop p KOp a b
