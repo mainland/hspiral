@@ -321,7 +321,6 @@ instance HOrd Exp where
 data Unop = Neg
           | Abs
           | Signum
-          | Pow Integer
   deriving (Eq, Ord, Show)
 
 -- | Binary operators
@@ -346,7 +345,6 @@ instance HasFixity Unop where
     fixity Neg    = infixr_ 10
     fixity Abs    = infixr_ 10
     fixity Signum = infixr_ 10
-    fixity Pow{}  = infixr_ 10
 
 instance HasFixity Binop where
     fixity Add  = infixl_ 8
@@ -368,7 +366,6 @@ instance Pretty Unop where
     ppr Neg     = text "-"
     ppr Abs     = text "abs" <> space
     ppr Signum  = text "signum" <> space
-    ppr (Pow n) = char '^' <> ppr n
 
 instance Pretty Binop where
     ppr Add  = text "+"
@@ -389,12 +386,6 @@ instance Pretty BBinop where
 instance Pretty (Exp a) where
     pprPrec p (ConstE c) = pprPrec p c
     pprPrec p (VarE v)   = pprPrec p v
-
-    pprPrec p (UnopE op@(Pow n) e) =
-        parensIf (p > opPrec) $
-        pprPrec (opPrec+1) e <> char '^' <> ppr n
-      where
-        opPrec = precOf op
 
     pprPrec p (UnopE op e) =
         unop p op e
@@ -458,20 +449,6 @@ instance Typed Double where
 
 instance (Typed a, Num (Exp a)) => Typed (Complex a) where
     typeOf _ = ComplexT (typeOf (undefined :: a))
-
-toPow :: Num (Exp a) => Exp a -> Integer -> Exp a
-toPow _                  0 = 1
-toPow e                  1 = e
-toPow (ConstE (W n k c)) l = mkConstE $ W n ((k*fromInteger l) `mod` n) (c^^l)
-toPow (ConstE (CycC x))  n = mkConstE $ CycC (x^^n)
-toPow e                  n = UnopE (Pow n) e
-
-fromPow :: Num (Exp a) => Exp a -> Maybe (Exp a, Integer)
-fromPow (UnopE (Pow n) x@VarE{})                = return (x, n)
-fromPow (BinopE Div 1 (UnopE (Pow n) x@VarE{})) = return (x, -n)
-fromPow x@VarE{}                                = return (x, 1)
-fromPow (BinopE Div 1 x@VarE{})                 = return (x, -1)
-fromPow _                                       = fail "Can't destruct power"
 
 --------------------------------------------------------------------------------
 --
@@ -601,10 +578,6 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
     -- Take advantage of distributivity of multipliation
     liftNum2 op f (BinopE Mul c1 e1) (BinopE Mul c2 e2) | c1 == c2, isAddSubOp op =
         c1 * liftNum2 op f e1 e2
-
-    -- Simplify powers
-    liftNum2 Mul _ e1 e2 | Just (x, n) <- fromPow e1, Just (y, m) <- fromPow e2, x == y =
-        toPow x (n+m)
 
     -- Standard component-wise add/subtract
     liftNum2 Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
@@ -871,12 +844,6 @@ instance (LiftFrac (Const a), Num (Exp a)) => LiftFrac (Exp a) where
 
     liftFrac2 Div _ e1 e2 | isOne e2 =
         e1
-
-    liftFrac2 Div _ e1 e2 | isOne e1, Just (x, n) <- fromPow e2 =
-        toPow x (-n)
-
-    liftFrac2 Div _ e1 e2 | Just (x, m) <- fromPow e1, Just (x', n) <- fromPow e2, x' == x =
-        toPow x (m-n)
 
     liftFrac2 op _ e1 e2 = BinopE op e1 e2
 
