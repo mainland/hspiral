@@ -159,7 +159,7 @@ instance Pretty (Const a) where
     pprPrec _ (PiC r)  = pprPrec mulPrec1 r <> char '*' <> text "pi"
 
 instance RootOfUnity (Const (Complex Double)) where
-    rootOfUnity n k = W n k (CycC (rootOfUnity n k))
+    rootOfUnity n k = mkW (k%n) (CycC (rootOfUnity n k))
 
 pprComplex :: (Eq a, Num a, Pretty a) => Int -> Complex a -> Doc
 pprComplex p (r :+ 0)    = pprPrec p r
@@ -246,7 +246,7 @@ instance HEq Const where
     heq (DoubleC x)      (DoubleC y)      = x == y
     heq (RationalC x)    (RationalC y)    = x == y
     heq (ComplexC r1 i1) (ComplexC r2 i2) = r1 == r2 && i1 == i2
-    heq (W n k _)        (W n' k' _)      = (k' `mod` n') % n' == (k `mod` n) % n
+    heq (W n k _)        (W n' k' _)      = (n', k' `mod` n') == (n, k `mod` n)
     heq (CycC x)         (CycC y)         = x == y
     heq (PiC x)          (PiC y)          = x == y
 
@@ -281,7 +281,7 @@ instance HOrd Const where
     hcompare (DoubleC x)      (DoubleC y)      = compare x y
     hcompare (RationalC x)    (RationalC y)    = compare x y
     hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
-    hcompare (W n k _)        (W n' k' _)      = compare ((k' `mod` n') % n') ((k `mod` n) % n)
+    hcompare (W n k _)        (W n' k' _)      = compare (n, k `mod` n) (n', k' `mod` n')
     hcompare x@CycC{}         y@CycC{}         = compare (flatten x) (flatten y)
     hcompare (PiC x)          (PiC y)          = compare x y
 
@@ -510,8 +510,7 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
     liftNum Neg _ (CycC c)       = CycC (-c)
     liftNum Neg _ (PiC r)        = PiC (-r)
 
-    liftNum Neg _ (W n k c) | even n =
-        W n ((k + n `quot` 2) `mod` n) (-c)
+    liftNum Neg _ (W n k c) = mkW (k % n + 1 % 2) (-c)
 
     liftNum op f (W _ _ c) = liftNum op f c
 
@@ -537,10 +536,7 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
     liftNum2 Sub _ (ComplexC a b) (ComplexC c d) = ComplexC (a - c) (b - d)
     liftNum2 Mul _ (ComplexC a b) (ComplexC c d) = ComplexC (a*c - b*d) (b*c + a*d)
 
-    liftNum2 Mul _ (W n k x) (W m l y) = W n' (((k*m + l*n) `quot` d) `mod` n') (x*y)
-      where
-        n' = lcm n m
-        d  = gcd n m
+    liftNum2 Mul _ (W n k x) (W n' k' y) = mkW (k % n + k' % n') (x*y)
 
     liftNum2 op f (W _ _ c) y = liftNum2 op f c y
     liftNum2 op f x (W _ _ c) = liftNum2 op f x c
@@ -870,11 +866,9 @@ class LiftFrac b where
     liftFrac2 :: Binop -> (forall a . Fractional a => a -> a -> a) -> b -> b -> b
 
 instance (Fractional a, Fractional (Const a)) => LiftFrac (Const a) where
-    liftFrac2 Div _ c1 (W n k c) | isOne c1 =
-        W n ((-k) `mod` n) (1/c)
+    liftFrac2 Div _ c1 (W n k x) | isOne c1 = mkW (-k % n) (1/x)
 
-    liftFrac2 Div f (W n k c) (W n' k' c') =
-        liftFrac2 Div f (W n k c) (W n' (-k') (1/c'))
+    liftFrac2 Div _ (W n k x) (W n' k' y) = mkW (k % n - k' % n') (x/y)
 
     liftFrac2 op f (W _ _ c) y = liftFrac2 op f c y
     liftFrac2 op f x (W _ _ c) = liftFrac2 op f x c
@@ -1034,6 +1028,12 @@ instance IsZeroOne (Exp a) where
     isNegOne (ConstE c)             = isNegOne c
     isNegOne (UnopE Neg (ConstE c)) = isOne c
     isNegOne _                      = False
+
+mkW :: Fractional (Const a) => Ratio Int -> Const a -> Const a
+mkW r c = W n (k `mod` n) c
+  where
+    k = numerator r
+    n = denominator r
 
 mkConstE :: Const a -> Exp a
 mkConstE (DoubleC x) | x < 0 =
