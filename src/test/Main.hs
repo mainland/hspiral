@@ -48,9 +48,9 @@ import Test.Gen
 main :: IO ()
 main = do
     (conf, args') <- getArgs >>= parseOpts
-    dftTests    <- genDFTTests conf
-    searchTests <- genSearchTests conf
-    defaultMainWithArgs (tests ++ [dftTests, searchTests]) args'
+    ditCodegenTests    <- genDITCodegenTests conf
+    searchCodegenTests <- genSearchCodegenTests conf
+    defaultMainWithArgs (tests ++ [ditCodegenTests, searchCodegenTests]) args'
 
 tests :: [Test]
 tests = [strideTest, l82Test, kroneckerTest, directSumTest, dftTests]
@@ -232,9 +232,9 @@ bluestein_test n m = testCase ("Bluestein(" ++ show n ++ "," ++ show m ++ ")") $
     w :: Exp (Complex Double)
     w = omega (2*n)
 
-genDFTTests :: Config -> IO Test
-genDFTTests conf =
-    testGroup "Generated DFT" <$>
+genDITCodegenTests :: Config -> IO Test
+genDITCodegenTests conf =
+    testGroup "Generated DIT" <$>
     mapM (\i -> dftTest conf (2^i)) [1..9::Int]
   where
     dftTest :: Config -> Int -> IO Test
@@ -244,9 +244,9 @@ genDFTTests conf =
           testProperty ("Generated DFT of size " ++ show n) $
           forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
 
-genSearchTests :: Config -> IO Test
-genSearchTests conf =
-    testGroup "Opcount-optimized DFT" <$>
+genSearchCodegenTests :: Config -> IO Test
+genSearchCodegenTests conf =
+    testGroup "Generated opcount-optimized DFT" <$>
     mapM (dftTest conf) [2^i | i <- [1..9::Int]]
   where
     dftTest :: Config -> Int -> IO Test
