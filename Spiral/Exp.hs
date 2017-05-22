@@ -149,13 +149,7 @@ instance Pretty (Const a) where
     pprPrec _ (DoubleC x)   = ppr x
     pprPrec _ (RationalC x) = ppr x
 
-    pprPrec p x@(ComplexC r i)
-        | r == 0 && i == 0    = char '0'
-        | r == 0 && i == 1    = char 'i'
-        | r == 0 && i == (-1) = text "-i"
-        | r == 0              = ppr i <> char 'i'
-        | i == 0              = ppr r
-        | otherwise           = pprComplex p (lower x)
+    pprPrec p x@ComplexC{} = pprComplex p (lower x)
 
     pprPrec _ (W _ 0 _) = text "1"
     pprPrec _ (W n 1 _) = text "ω_" <> ppr n
@@ -168,7 +162,7 @@ instance RootOfUnity (Const (Complex Double)) where
     rootOfUnity n k = W n k (CycC (rootOfUnity n k))
 
 pprComplex :: (Eq a, Num a, Pretty a) => Int -> Complex a -> Doc
-pprComplex _ (r :+ 0)    = ppr r
+pprComplex p (r :+ 0)    = pprPrec p r
 pprComplex _ (0 :+ 1)    = char 'i'
 pprComplex _ (0 :+ (-1)) = text "-i"
 pprComplex _ (0 :+ i)    = pprPrec mulPrec i <> char 'i'
@@ -510,7 +504,7 @@ class LiftNum b where
 
 instance (Num a, Num (Const a)) => LiftNum (Const a) where
     liftNum Neg _ e
-      | e == 0 = 0
+      | isZero e = 0
 
     liftNum Neg _ (ComplexC a b) = ComplexC (-a) (-b)
     liftNum Neg _ (CycC c)       = CycC (-c)
@@ -524,20 +518,20 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
     liftNum _op f c = lift f (flatten c)
 
     liftNum2 Add _ e1 e2
-      | e1 == 0 = e2
-      | e2 == 0 = e1
+      | isZero e1 = e2
+      | isZero e2 = e1
 
     liftNum2 Sub _ e1 e2
-      | e1 == 0 = -e2
-      | e2 == 0 = e1
+      | isZero e1 = -e2
+      | isZero e2 = e1
 
     liftNum2 Mul _ e1 e2
-      | e1 ==  0 = 0
-      | e2 ==  0 = 0
-      | e1 ==  1 = e2
-      | e2 ==  1 = e1
-      | e1 == -1 = -e2
-      | e2 == -1 = -e1
+      | isZero   e1 = 0
+      | isZero   e2 = 0
+      | isOne    e1 = e2
+      | isOne    e2 = e1
+      | isNegOne e1 = -e2
+      | isNegOne e2 = -e1
 
     liftNum2 Add _ (ComplexC a b) (ComplexC c d) = ComplexC (a + c) (b + d)
     liftNum2 Sub _ (ComplexC a b) (ComplexC c d) = ComplexC (a - c) (b - d)
@@ -563,7 +557,7 @@ instance (Num a, Num (Const a)) => LiftNum (Const a) where
 --- Exp instance.
 instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) where
     liftNum Neg _ e
-      | e == 0 = 0
+      | isZero e = 0
 
     liftNum Neg _ (UnopE Neg x)      = x
     liftNum Neg _ (BinopE Sub e1 e2) = e2 - e1
@@ -576,20 +570,20 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
     liftNum2 op f (ConstE c1) (ConstE c2) = mkConstE $ liftNum2 op f c1 c2
 
     liftNum2 Add _ e1 e2
-      | e1 == 0 = e2
-      | e2 == 0 = e1
+      | isZero e1 = e2
+      | isZero e2 = e1
 
     liftNum2 Sub _ e1 e2
-      | e1 == 0 = -e2
-      | e2 == 0 = e1
+      | isZero e1 = -e2
+      | isZero e2 = e1
 
     liftNum2 Mul _ e1 e2
-      | e1 ==  0 = 0
-      | e2 ==  0 = 0
-      | e1 ==  1 = e2
-      | e2 ==  1 = e1
-      | e1 == -1 = -e2
-      | e2 == -1 = -e1
+      | isZero   e1 = 0
+      | isZero   e2 = 0
+      | isOne    e1 = e2
+      | isOne    e2 = e1
+      | isNegOne e1 = -e2
+      | isNegOne e2 = -e1
 
     -- Choose canonical variable ordering
     liftNum2 Add _ e1@(VarE x) e2@(VarE y) | y < x =
@@ -876,14 +870,17 @@ class LiftFrac b where
     liftFrac2 :: Binop -> (forall a . Fractional a => a -> a -> a) -> b -> b -> b
 
 instance (Fractional a, Fractional (Const a)) => LiftFrac (Const a) where
-    liftFrac2 Div _ 1         (W n k c)    = W n ((-k) `mod` n) (1/c)
-    liftFrac2 Div f (W n k c) (W n' k' c') = liftFrac2 Div f (W n k c) (W n' (-k') (1/c'))
+    liftFrac2 Div _ c1 (W n k c) | isOne c1 =
+        W n ((-k) `mod` n) (1/c)
+
+    liftFrac2 Div f (W n k c) (W n' k' c') =
+        liftFrac2 Div f (W n k c) (W n' (-k') (1/c'))
 
     liftFrac2 op f (W _ _ c) y = liftFrac2 op f c y
     liftFrac2 op f x (W _ _ c) = liftFrac2 op f x c
 
-    liftFrac2 Div _ c1 c2 | c2 == 1  = c1
-    liftFrac2 Div _ c1 c2 | c2 == -1 = -c1
+    liftFrac2 Div _ c1 c2 | isOne c2 =
+        c1
 
     -- Try to perform all operations in the cyclotomic domain
     liftFrac2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
@@ -894,10 +891,10 @@ instance (Fractional a, Fractional (Const a)) => LiftFrac (Const a) where
 instance (LiftFrac (Const a), Num (Exp a)) => LiftFrac (Exp a) where
     liftFrac2 op f (ConstE c1) (ConstE c2) = mkConstE $ liftFrac2 op f c1 c2
 
-    liftFrac2 Div _ e 1    = e
-    liftFrac2 Div _ e (-1) = -e
+    liftFrac2 Div _ e1 e2 | isOne e2 =
+        e1
 
-    liftFrac2 Div _ 1 e | Just (x, n) <- fromPow e =
+    liftFrac2 Div _ e1 e2 | isOne e1, Just (x, n) <- fromPow e2 =
         toPow x (-n)
 
     liftFrac2 Div _ e1 e2 | Just (x, m) <- fromPow e1, Just (x', n) <- fromPow e2, x' == x =
@@ -996,6 +993,47 @@ instance IfThenElse (Exp Bool) (Exp a) where
 -- Smart constructors
 --
 --------------------------------------------------------------------------------
+
+class IsZeroOne a where
+    isZero, isOne, isNegOne :: a -> Bool
+
+instance IsZeroOne (Const a) where
+    isZero (IntC 0)       = True
+    isZero (IntegerC 0)   = True
+    isZero (DoubleC 0)    = True
+    isZero (RationalC 0)  = True
+    isZero (ComplexC 0 0) = True
+    isZero (CycC 0)       = True
+    isZero _              = False
+
+    isOne (IntC 1)       = True
+    isOne (IntegerC 1)   = True
+    isOne (DoubleC 1)    = True
+    isOne (RationalC 1)  = True
+    isOne (ComplexC 1 i) = isZero i
+    isOne (W k n _)      = n % k == 1
+    isOne (CycC 1)       = True
+    isOne _              = False
+
+    isNegOne (IntC (-1))       = True
+    isNegOne (IntegerC (-1))   = True
+    isNegOne (DoubleC (-1))    = True
+    isNegOne (RationalC (-1))  = True
+    isNegOne (ComplexC (-1) i) = isZero i
+    isNegOne (W k n _)         = n % k == 1 % 2
+    isNegOne (CycC (-1))       = True
+    isNegOne _                 = False
+
+instance IsZeroOne (Exp a) where
+    isZero (ConstE c) = isZero c
+    isZero _          = False
+
+    isOne (ConstE c) = isOne c
+    isOne _          = False
+
+    isNegOne (ConstE c)             = isNegOne c
+    isNegOne (UnopE Neg (ConstE c)) = isOne c
+    isNegOne _                      = False
 
 mkConstE :: Const a -> Exp a
 mkConstE (DoubleC x) | x < 0 =
