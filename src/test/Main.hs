@@ -12,10 +12,12 @@
 module Main where
 
 import Control.Monad (replicateM)
+import Control.Monad.IO.Class (liftIO)
 import Data.Complex
 import qualified Data.Vector.Storable as V
 import System.Environment (getArgs)
 import Test.Framework (Test,
+                       buildTest,
                        defaultMainWithArgs,
                        testGroup)
 import Test.Framework.Providers.HUnit (testCase)
@@ -48,10 +50,7 @@ import Test.Gen
 main :: IO ()
 main = do
     (conf, args') <- getArgs >>= parseOpts
-    searchTests        <- genSearchTests
-    ditCodegenTests    <- genDITCodegenTests conf
-    searchCodegenTests <- genSearchCodegenTests conf
-    defaultMainWithArgs (tests ++ [searchTests, ditCodegenTests, searchCodegenTests]) args'
+    defaultMainWithArgs (tests ++ [searchTests, ditCodegenTests conf, searchCodegenTests conf]) args'
 
 tests :: [Test]
 tests = [strideTest, l82Test, kroneckerTest, directSumTest, dftTests]
@@ -233,42 +232,40 @@ bluestein_test n m = testCase ("Bluestein(" ++ show n ++ "," ++ show m ++ ")") $
     w :: Exp (Complex Double)
     w = omega (2*n)
 
-genSearchTests :: IO Test
-genSearchTests =
-    testGroup "Opcount-optimized DFT" <$>
-    mapM dftTest [2^i | i <- [1..6::Int]]
+searchTests :: Test
+searchTests =
+    testGroup "Opcount-optimized DFT" $
+    map dftTest [2^i | i <- [1..6::Int]]
   where
-    dftTest :: Int -> IO Test
-    dftTest n = do
+    dftTest :: Int -> Test
+    dftTest n = testCase ("OpcountSearch(" ++ show n ++ ")") $ do
         Re e <- Spiral.defaultMain $ \_ -> searchOpCount (Re (DFT n) :: SPL (Exp Double))
-        return $
-            testCase ("OpcountSearch(" ++ show n ++ ")") $
-            toMatrix e @?= toMatrix (DFT n)
+        toMatrix e @?= toMatrix (DFT n)
 
-genDITCodegenTests :: Config -> IO Test
-genDITCodegenTests conf =
-    testGroup "Generated DIT" <$>
-    mapM (\i -> dftTest conf (2^i)) [1..9::Int]
+ditCodegenTests :: Config -> Test
+ditCodegenTests conf =
+    testGroup "Generated DIT" $
+    map (\i -> dftTest conf (2^i)) [1..9::Int]
   where
-    dftTest :: Config -> Int -> IO Test
-    dftTest conf n = do
-        dft <- genComplexTransform conf ("dft" ++ show n) (dit n)
+    dftTest :: Config -> Int -> Test
+    dftTest conf n = buildTest $ do
+        dft <- liftIO $ genComplexTransform conf ("dft" ++ show n) (dit n)
         return $
-          testProperty ("Generated DFT of size " ++ show n) $
-          forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
+            testProperty ("Generated DFT of size " ++ show n) $
+            forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
 
-genSearchCodegenTests :: Config -> IO Test
-genSearchCodegenTests conf =
-    testGroup "Generated opcount-optimized DFT" <$>
-    mapM (dftTest conf) [2^i | i <- [1..9::Int]]
+searchCodegenTests :: Config -> Test
+searchCodegenTests conf =
+    testGroup "Generated opcount-optimized DFT" $
+    map (dftTest conf) [2^i | i <- [1..9::Int]]
   where
-    dftTest :: Config -> Int -> IO Test
-    dftTest conf n = do
+    dftTest :: Config -> Int -> Test
+    dftTest conf n = buildTest $ do
         Re e <- Spiral.defaultMain $ \_ -> searchOpCount (Re (DFT n) :: SPL (Exp Double))
         dft  <- genComplexTransform conf ("dftop" ++ show n) e
         return $
-          testProperty ("Opcount-optimized DFT of size " ++ show n) $
-          forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
+            testProperty ("Opcount-optimized DFT of size " ++ show n) $
+            forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
 
 -- | Generate vectors of a given size.
 vectorsOfSize :: (Arbitrary a, V.Storable a)
