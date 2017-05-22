@@ -9,22 +9,23 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Search.OpCount (
-    searchOpCount,
-
-    coprimeFactors,
-    splits,
-    unfactor
+    searchOpCount
   ) where
 
-import Control.Monad (msum)
+import Control.Applicative ((<|>))
+import Control.Monad (guard,
+                      msum)
 import Data.List (minimumBy)
 import Data.Typeable (Typeable)
-import Text.PrettyPrint.Mainland
+import Math.NumberTheory.Primes.Testing (isPrime)
+import Text.PrettyPrint.Mainland hiding ((<|>))
 import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Config
 import Spiral.Exp
 import Spiral.FFT.CooleyTukey
+import Spiral.FFT.GoodThomas (goodThomas)
+import Spiral.FFT.Rader (rader)
 import Spiral.Monad
 import Spiral.Search.Monad
 import Spiral.NumberTheory (primeFactorization)
@@ -109,10 +110,27 @@ breakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral
           => Int
           -> Exp a
           -> S m (SPL (Exp a))
-breakdown n w = cooleyTukeyBreakdowns
+breakdown n w =
+    bruteForce <|>
+    cooleyTukeyBreakdowns <|>
+    goodThomasBreakdowns <|>
+    raderBreakdowns
   where
+    bruteForce :: S m (SPL (Exp a))
+    bruteForce = return $ (spl . toMatrix) (RDFT n w)
+
     cooleyTukeyBreakdowns :: S m (SPL (Exp a))
-    cooleyTukeyBreakdowns = msum [return $ cooleyTukeyDIT r s w | (r, s) <- factors n]
+    cooleyTukeyBreakdowns =
+        msum [return $ cooleyTukeyDIF r s w | (r, s) <- factors n] <|>
+        msum [return $ cooleyTukeyDIT r s w | (r, s) <- factors n]
+
+    goodThomasBreakdowns :: S m (SPL (Exp a))
+    goodThomasBreakdowns = msum [return $ goodThomas r s w | (r, s) <- coprimeFactors n]
+
+    raderBreakdowns :: S m (SPL (Exp a))
+    raderBreakdowns = do
+        guard (isPrime (fromIntegral n))
+        return $ rader n w
 
 -- | Cache the given DFT transform if its metric improves on the previously
 -- best-known DFT.
