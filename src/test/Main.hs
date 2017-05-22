@@ -48,9 +48,10 @@ import Test.Gen
 main :: IO ()
 main = do
     (conf, args') <- getArgs >>= parseOpts
+    searchTests        <- genSearchTests
     ditCodegenTests    <- genDITCodegenTests conf
     searchCodegenTests <- genSearchCodegenTests conf
-    defaultMainWithArgs (tests ++ [ditCodegenTests, searchCodegenTests]) args'
+    defaultMainWithArgs (tests ++ [searchTests, ditCodegenTests, searchCodegenTests]) args'
 
 tests :: [Test]
 tests = [strideTest, l82Test, kroneckerTest, directSumTest, dftTests]
@@ -231,6 +232,18 @@ bluestein_test n m = testCase ("Bluestein(" ++ show n ++ "," ++ show m ++ ")") $
   where
     w :: Exp (Complex Double)
     w = omega (2*n)
+
+genSearchTests :: IO Test
+genSearchTests =
+    testGroup "Opcount-optimized DFT" <$>
+    mapM dftTest [2^i | i <- [1..6::Int]]
+  where
+    dftTest :: Int -> IO Test
+    dftTest n = do
+        Re e <- Spiral.defaultMain $ \_ -> searchOpCount (Re (DFT n) :: SPL (Exp Double))
+        return $
+            testCase ("OpcountSearch(" ++ show n ++ ")") $
+            toMatrix e @?= toMatrix (DFT n)
 
 genDITCodegenTests :: Config -> IO Test
 genDITCodegenTests conf =
