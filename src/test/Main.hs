@@ -120,7 +120,8 @@ directSumTest = testCase "Direct sum (⊕)" $
 dftTests :: Test
 dftTests = testGroup "DFT tests"
     [ f2Test, f4Test, f8Test
-    , ck_5_7_test
+    , ck_dit_5_7_test
+    , ck_dif_5_7_test
     , gt_5_7_test
     , rader_test 7, rader_test 23
     , bluestein_test 3 6, bluestein_test 4 8, bluestein_test 4 9, bluestein_test 9 18
@@ -193,9 +194,16 @@ dif_test n = testCase ("DIF(2^" ++ show n ++ ")") $
     fft_spl = dif (2^n)
 
 -- Test Cooley-Tukey with factors 5 and 7
-ck_5_7_test :: Test
-ck_5_7_test = testCase "CooleyTukey(5,7)" $
-    toMatrix (cooleyTukey 5 7 w) @?= toMatrix (RDFT 35 w)
+ck_dit_5_7_test :: Test
+ck_dit_5_7_test = testCase "CooleyTukeyDIT(5,7)" $
+    toMatrix (cooleyTukeyDIT 5 7 w) @?= toMatrix (RDFT 35 w)
+  where
+    w :: Exp (Complex Double)
+    w = omega 35
+
+ck_dif_5_7_test :: Test
+ck_dif_5_7_test = testCase "CooleyTukeyDIF(5,7)" $
+    toMatrix (cooleyTukeyDIF 5 7 w) @?= toMatrix (RDFT 35 w)
   where
     w :: Exp (Complex Double)
     w = omega 35

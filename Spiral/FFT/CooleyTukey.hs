@@ -5,7 +5,8 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.FFT.CooleyTukey (
-    cooleyTukey,
+    cooleyTukeyDIT,
+    cooleyTukeyDIF,
     dit,
     dif
   ) where
@@ -26,10 +27,15 @@ twid rs s w = foldr1 (⊕) [ws s (w^i) | i <- [0..r-1]]
   where
     r = rs `quot` s
 
--- | Cooley-Tukey DFT decomposition.
-cooleyTukey :: RootOfUnity a => Int -> Int -> a -> SPL a
-cooleyTukey r s w =
+-- | Cooley-Tukey decimation in time DFT decomposition.
+cooleyTukeyDIT :: RootOfUnity a => Int -> Int -> a -> SPL a
+cooleyTukeyDIT r s w =
     (RDFT r (w^s) ⊗ I s) × twid (r*s) s w × (I r ⊗ RDFT s (w^r)) × Pi (L (r*s) r)
+
+-- | Cooley-Tukey decimation in frequency DFT decomposition.
+cooleyTukeyDIF :: RootOfUnity a => Int -> Int -> a -> SPL a
+cooleyTukeyDIF r s w =
+    Pi (L (r*s) s) × (I r ⊗ RDFT s (w^r)) × twid (r*s) s w × (RDFT r (w^s) ⊗ I s)
 
 -- | Decimation in time DFT matrix $F_n$, for $n$ even
 dit :: (RootOfUnity a, Show a) => Int -> SPL a

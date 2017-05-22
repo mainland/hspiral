@@ -112,7 +112,7 @@ breakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral
 breakdown n w = cooleyTukeyBreakdowns
   where
     cooleyTukeyBreakdowns :: S m (SPL (Exp a))
-    cooleyTukeyBreakdowns = msum [return $ cooleyTukey r s w | (r, s) <- factors n]
+    cooleyTukeyBreakdowns = msum [return $ cooleyTukeyDIT r s w | (r, s) <- factors n]
 
 -- | Cache the given DFT transform if its metric improves on the previously
 -- best-known DFT.
