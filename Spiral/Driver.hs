@@ -18,6 +18,8 @@ module Spiral.Driver (
     parseOpts,
     usage,
 
+    writeOutput,
+
     codegenC
   ) where
 
