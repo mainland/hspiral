@@ -127,7 +127,8 @@ dftTests = testGroup "DFT tests"
     , bluestein_test 3 6, bluestein_test 4 8, bluestein_test 4 9, bluestein_test 9 18
     , testGroup "DIT" [dit_test n | n <- [1..7]]
     , testGroup "DIF" [dif_test n | n <- [1..7]]
-    , testGroup "Split Radix" [split_radix_test n | n <- [1..3]]]
+    , testGroup "Split Radix" [split_radix_test n | n <- [1..3]]
+    , testGroup "Split Radix 8" [split_radix8_test n | n <- [1..2]]]
 --    , testProperty "DFT" prop_DFT]
 
 -- | Test that 'dit' produces correct DFT matrices.
@@ -201,6 +202,14 @@ split_radix_test n = testCase ("SplitRadix(4^" ++ show n ++ ")") $
   where
     w :: Exp (Complex Double)
     w = omega (4^n)
+
+-- Split radix 8 test
+split_radix8_test :: Int -> Test
+split_radix8_test n = testCase ("SplitRadix(8^" ++ show n ++ ")") $
+    toMatrix (splitRadix8 (8^n) w) @?= toMatrix (DFT (8^n))
+  where
+    w :: Exp (Complex Double)
+    w = omega (8^n)
 
 -- Test Cooley-Tukey with factors 5 and 7
 ck_dit_5_7_test :: Test

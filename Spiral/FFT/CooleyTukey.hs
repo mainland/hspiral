@@ -11,6 +11,7 @@ module Spiral.FFT.CooleyTukey (
     cooleyTukeyDIT,
     cooleyTukeyDIF,
     splitRadix,
+    splitRadix8,
     dit,
     dif
   ) where
@@ -60,6 +61,29 @@ splitRadix n w =
 
     w4 :: a
     w4 = omega 4
+
+-- | Split-radix DFT decomposition for eighth roots of unity.
+splitRadix8 :: forall a . RootOfUnity a => Int -> a -> SPL a
+splitRadix8 n _ | n `mod` 8 /= 0 =
+    error "Cannot call splitRadix8 when n not divisible by 8"
+
+splitRadix8 n w =
+    (sigma8 ⊗ I p) ×
+    (I (4*p) ⊕ ws p w ⊕ ws p w ⊕ ws p (w^3) ⊕ ws p (w^7)) ×
+    (F (4*p) (w^2) ⊕ F (2*p) (w^4) ⊕ F p (w^8) ⊕ F p (w^8)) ×
+    (I (6*p) ⊕ Pi (L (2*p) 2)) ×
+    (I (4*p) ⊕ Pi (L (4*p) 2)) ×
+    Pi (L (8*p) 2)
+  where
+    p :: Int
+    p = n `quot` 8
+
+    sigma8 :: SPL a
+    sigma8 = (F2 ⊗ I 4) × (I 4 ⊕ (ws 4 w8 × (F2 ⊗ I 2))) × (I 6 ⊕ (ws 2 w4 × F2))
+
+    w4, w8 :: a
+    w4 = omega 4
+    w8 = omega 8
 
 -- | Decimation in time DFT matrix $F_n$, for $n$ even
 dit :: (RootOfUnity a, Show a) => Int -> SPL a

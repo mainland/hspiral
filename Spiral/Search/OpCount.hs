@@ -123,12 +123,18 @@ breakdown n w =
     cooleyTukeyBreakdowns =
         msum [return $ cooleyTukeyDIF r s w | (r, s) <- factors n] <|>
         msum [return $ cooleyTukeyDIT r s w | (r, s) <- factors n] <|>
-        splitRadixBreakdown
+        splitRadixBreakdown <|>
+        splitRadix8Breakdown
 
     splitRadixBreakdown :: S m (SPL (Exp a))
     splitRadixBreakdown = do
         guard (n `rem` 4 == 0)
         return $ splitRadix n w
+
+    splitRadix8Breakdown :: S m (SPL (Exp a))
+    splitRadix8Breakdown = do
+        guard (n `rem` 8 == 0)
+        return $ splitRadix8 n w
 
     goodThomasBreakdowns :: S m (SPL (Exp a))
     goodThomasBreakdowns = msum [return $ goodThomas r s w | (r, s) <- coprimeFactors n]
