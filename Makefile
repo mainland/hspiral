@@ -40,12 +40,6 @@ GHCFLAGS += \
 	-package HUnit \
 	-package QuickCheck
 
-GHCFLAGS_OPT = -O2 -funbox-strict-fields
-
-ifeq ($(OPT), 1)
-GHCFLAGS += $(GHCFLAGS_OPT)
-endif
-
 #
 # Source locations
 #
