@@ -55,6 +55,7 @@ import Text.PrettyPrint.Mainland hiding (flatten)
 import Text.PrettyPrint.Mainland.Class
 
 import Data.Heterogeneous
+import Spiral.Globals
 import Spiral.RootOfUnity
 import Spiral.Util.Name
 import Spiral.Util.Pretty
@@ -584,34 +585,25 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
     liftNum2 Mul _ (UnopE Neg e1) e2 =
         -(e1 * e2)
 
-    -- Take advantage of distributivity of multipliation
-    liftNum2 op f (BinopE Mul c1 e1) (BinopE Mul c2 e2) | c1 == c2, isAddSubOp op =
-        c1 * liftNum2 op f e1 e2
-
     -- Standard component-wise add/subtract
     liftNum2 Add _ (ComplexE a b) (ComplexE c d) = ComplexE (a + c) (b + d)
     liftNum2 Sub _ (ComplexE a b) (ComplexE c d) = ComplexE (a - c) (b - d)
 
-    -- Use the 3-multiply 4-add form when a and b are constants.
-    liftNum2 Mul _ (ComplexE a0 b0) (ComplexE c d) | Just a <- unConstE a0, Just b <- unConstE b0 =
-        let t1 = a0*(c+d)
-            t2 = d*(b+a)
-            t3 = c*(b-a)
-        in
+    -- 3-multiply/5-add complex multiplication
+    liftNum2 Mul _ (ComplexE a b) (ComplexE c d) | threeMults =
           ComplexE (t1 - t2) (t1 + t3)
       where
-        unConstE :: Monad m => Exp b -> m (Exp b)
-        unConstE e@ConstE{} =
-            return e
+        t1 = a*(c+d)
+        t2 = d*(b+a)
+        t3 = c*(b-a)
 
-        unConstE (UnopE Neg (ConstE (DoubleC x))) =
-            return $ ConstE (DoubleC (-x))
-
-        unConstE _ =
-            fail "Not a constant"
-
+    -- Usual 4-multiply/4-add complex multiplication
     liftNum2 Mul _ (ComplexE a b) (ComplexE c d) =
         ComplexE (a*c - b*d) (b*c + a*d)
+
+    -- Take advantage of distributivity of multipliation
+    liftNum2 op f (BinopE Mul c1 e1) (BinopE Mul c2 e2) | c1 == c2, isAddSubOp op =
+        c1 * liftNum2 op f e1 e2
 
     -- Attempt to operate on complex values using their imaginary and real parts
     -- if at least on of the arguments to an operator is constructed with

@@ -57,6 +57,7 @@ data DynFlag = Quiet
              | LinePragmas
              | UseComplex
              | GenComments
+             | ThreeMults
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data TraceFlag = TraceCg

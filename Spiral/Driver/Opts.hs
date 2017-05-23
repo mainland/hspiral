@@ -17,6 +17,7 @@ import System.Console.GetOpt
 import System.Environment (getProgName)
 
 import Spiral.Config
+import Spiral.Globals
 
 options :: forall m . Monad m => [OptDescr (Config -> m Config)]
 options =
@@ -141,6 +142,7 @@ mkFlagOpts pfx opts set unset =
 fFlags :: [(DynFlag, String, String)]
 fFlags = [ (LinePragmas, "line-pragmas", "print line pragmas in generated C")
          , (UseComplex,  "use-complex",  "use C99 _Complex type")
+         , (ThreeMults,  "three-mult",   "use real three-multiplication variant of complex multiply")
          ]
 
 fOpts :: forall m . Monad m => [FlagOptDescr (Config -> m Config)]
@@ -167,6 +169,7 @@ parseOpts :: [String] -> IO (Config, [String])
 parseOpts argv =
     case getOpt Permute options argv of
       (fs,n,[])  -> do config <- foldl (>=>) return fs defaultConfig
+                       setThreeMults $ testDynFlag ThreeMults config
                        return (config, n)
       (_,_,errs) -> do usageDesc <- usage
                        ioError (userError (concat errs ++ usageDesc))
