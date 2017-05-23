@@ -416,11 +416,12 @@ instance Pretty (Exp a) where
 
 -- | Representation of types.
 data Type a where
-    BoolT    :: Type Bool
-    IntT     :: Type Int
-    IntegerT :: Type Integer
-    DoubleT  :: Type Double
-    ComplexT :: (Typed a, Num (Exp a)) => Type a -> Type (Complex a)
+    BoolT     :: Type Bool
+    IntT      :: Type Int
+    IntegerT  :: Type Integer
+    DoubleT   :: Type Double
+    RationalT :: Type Rational
+    ComplexT  :: (Typed a, Num (Exp a)) => Type a -> Type (Complex a)
 
 deriving instance Eq (Type a)
 deriving instance Ord (Type a)
@@ -431,6 +432,7 @@ instance Pretty (Type a) where
     ppr IntT           = text "int"
     ppr IntegerT       = text "integer"
     ppr DoubleT        = text "double"
+    ppr RationalT      = text "rational"
     ppr (ComplexT tau) = text "complex" <+> ppr tau
 
 class Typed a where
@@ -447,6 +449,9 @@ instance Typed Integer where
 
 instance Typed Double where
     typeOf _ = DoubleT
+
+instance Typed Rational where
+    typeOf _ = RationalT
 
 instance (Typed a, Num (Exp a)) => Typed (Complex a) where
     typeOf _ = ComplexT (typeOf (undefined :: a))
