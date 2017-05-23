@@ -23,7 +23,7 @@ main = defaultMain $ \args -> do
            [s] -> return (read s)
            _   -> return 4
     let dft_n :: SPL (Exp (Complex Double))
-        dft_n = dit n
+        dft_n = dif n
     if useComplexType
       then toProgram "f" dft_n >>= go
       else toProgram "f" (Re dft_n) >>= go
