@@ -543,13 +543,22 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
       | isNegOne e2 = -e1
 
     -- Choose canonical variable ordering
-    liftNum2 Add _ e1@(VarE x) e2@(VarE y) | y < x =
+    liftNum2 Add _ e1@VarE{} e2@VarE{} | e2 < e1 =
         BinopE Add e2 e1
 
-    liftNum2 Sub _ e1@(VarE x) e2@(VarE y) | y < x =
+    liftNum2 Add _ e1@IdxE{} e2@IdxE{} | e2 < e1 =
+        BinopE Add e2 e1
+
+    liftNum2 Sub _ e1@VarE{} e2@VarE{} | e2 < e1 =
         UnopE Neg (BinopE Sub e2 e1)
 
-    liftNum2 Mul _ e1@(VarE x) e2@(VarE y) | y < x =
+    liftNum2 Sub _ e1@IdxE{} e2@IdxE{} | e2 < e1 =
+        UnopE Neg (BinopE Sub e2 e1)
+
+    liftNum2 Mul _ e1@VarE{} e2@VarE{} | e2 < e1 =
+        BinopE Mul e2 e1
+
+    liftNum2 Mul _ e1@IdxE{} e2@IdxE{} | e2 < e1 =
         BinopE Mul e2 e1
 
     -- Constants always come first
