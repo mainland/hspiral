@@ -37,12 +37,12 @@ twid rs s w = foldr1 (⊕) [ws s (w^i) | i <- [0..r-1]]
 -- | Cooley-Tukey decimation in time DFT decomposition.
 cooleyTukeyDIT :: RootOfUnity a => Int -> Int -> a -> SPL a
 cooleyTukeyDIT r s w =
-    (RDFT r (w^s) ⊗ I s) × twid (r*s) s w × (I r ⊗ RDFT s (w^r)) × Pi (L (r*s) r)
+    (F r (w^s) ⊗ I s) × twid (r*s) s w × (I r ⊗ F s (w^r)) × Pi (L (r*s) r)
 
 -- | Cooley-Tukey decimation in frequency DFT decomposition.
 cooleyTukeyDIF :: RootOfUnity a => Int -> Int -> a -> SPL a
 cooleyTukeyDIF r s w =
-    Pi (L (r*s) s) × (I r ⊗ RDFT s (w^r)) × twid (r*s) s w × (RDFT r (w^s) ⊗ I s)
+    Pi (L (r*s) s) × (I r ⊗ F s (w^r)) × twid (r*s) s w × (F r (w^s) ⊗ I s)
 
 -- | Split-radix DFT decomposition.
 splitRadix :: forall a . RootOfUnity a => Int -> a -> SPL a
@@ -50,7 +50,7 @@ splitRadix n _ | n `mod` 4 /= 0 =
     error "Cannot call splitRadix when n is not divisible by 4"
 
 splitRadix n w =
-    (sigma4 ⊗ I p) × (I (2*p) ⊕ ws p w ⊕ ws p (w^3)) × (RDFT (2*p) (w^2) ⊕ RDFT p (w^4) ⊕ RDFT p (w^4)) × (I (2*p) ⊕ Pi (L (2*p) 2)) × Pi (L (4*p) 2)
+    (sigma4 ⊗ I p) × (I (2*p) ⊕ ws p w ⊕ ws p (w^3)) × (F (2*p) (w^2) ⊕ F p (w^4) ⊕ F p (w^4)) × (I (2*p) ⊕ Pi (L (2*p) 2)) × Pi (L (4*p) 2)
   where
     p :: Int
     p = n `quot` 4

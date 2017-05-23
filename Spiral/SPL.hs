@@ -94,13 +94,13 @@ data SPL a where
     DFT :: RootOfUnity a => Int -> SPL a
 
     -- | The nxn Inverse DFT matrix
-    IDFT :: RootOfUnity a => Int -> SPL a
+    DFT' :: RootOfUnity a => Int -> SPL a
 
     -- | The nxn "rotated" DFT matrix
-    RDFT :: RootOfUnity a => Int -> a -> SPL a
+    F :: RootOfUnity a => Int -> a -> SPL a
 
     -- | The nxn "rotated" inverse DFT matrix
-    RIDFT :: RootOfUnity a => Int -> a -> SPL a
+    F' :: RootOfUnity a => Int -> a -> SPL a
 
 deriving instance Show e => Show (SPL e)
 deriving instance Typeable e => Typeable (SPL e)
@@ -173,10 +173,10 @@ splExtent (Re a) = ix2 (2*m) (2*n)
 
 splExtent F2 = ix2 2 2
 
-splExtent (DFT n)     = ix2 n n
-splExtent (IDFT n)    = ix2 n n
-splExtent (RDFT n _)  = ix2 n n
-splExtent (RIDFT n _) = ix2 n n
+splExtent (DFT n)  = ix2 n n
+splExtent (DFT' n) = ix2 n n
+splExtent (F n _)  = ix2 n n
+splExtent (F' n _) = ix2 n n
 
 -- | Convert an SPL transform to an explicit matrix.
 toMatrix :: forall e . Num e => SPL e -> Matrix M e
@@ -280,14 +280,14 @@ toMatrix F2 =
     matrix [[1,  1],
             [1, -1]]
 
-toMatrix (DFT n)  = toMatrix (RDFT n (omega n))
-toMatrix (IDFT n) = toMatrix (RIDFT n (omega n))
+toMatrix (DFT n)  = toMatrix (F n (omega n))
+toMatrix (DFT' n) = toMatrix (F' n (omega n))
 
-toMatrix (RDFT n w) = manifest $ fromFunction (ix2 n n) f
+toMatrix (F n w) = manifest $ fromFunction (ix2 n n) f
   where
     f (Z :. i :. j) = w ^ (i*j)
 
-toMatrix (RIDFT n w) = toMatrix (KDiag n (1/fromIntegral n) × RDFT n (1/w))
+toMatrix (F' n w) = toMatrix (KDiag n (1/fromIntegral n) × F n (1/w))
 
 instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (E a)       = pprPrec p (manifest a)
@@ -304,9 +304,9 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec _ (Re a)      = text "Re" <> parens (ppr a)
     pprPrec _ F2          = text "F_2"
     pprPrec _ (DFT n)     = text "DFT_" <> ppr n
-    pprPrec _ (IDFT n)    = text "IDFT_" <> ppr n
-    pprPrec _ (RDFT n w)  = text "DFT_" <> ppr n <> parens (ppr w)
-    pprPrec _ (RIDFT n w) = text "IDFT_" <> ppr n <> parens (ppr w)
+    pprPrec _ (DFT' n)    = text "DFT'_" <> ppr n
+    pprPrec _ (F n w)     = text "F_" <> ppr n <> parens (ppr w)
+    pprPrec _ (F' n w)    = text "F'_" <> ppr n <> parens (ppr w)
 
 data MatrixBinop = KOp
                  | DSOp

@@ -20,7 +20,7 @@ import Spiral.SPL
 
 -- | Good-Thomas DFT decomposition.
 goodThomas :: forall a . RootOfUnity a => Int -> Int -> a -> SPL a
-goodThomas r s w = _Q' × (RDFT r (w^^er) ⊗ RDFT s (w^^es)) × _Q
+goodThomas r s w = _Q' × (F r (w^^er) ⊗ F s (w^^es)) × _Q
   where
     (u, v) = euclid r s
     er     = s * v

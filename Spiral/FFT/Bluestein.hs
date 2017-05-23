@@ -18,7 +18,7 @@ import Spiral.SPL hiding (R)
 
 default (Int)
 
--- | Decompose 'RDFT n (w^2)'
+-- | Decompose 'F n (w^2)'
 bluestein :: forall a . (RootOfUnity a, Show a) => Int -> Int -> a -> SPL a
 bluestein n m w = ws × t × ws
   where
@@ -29,7 +29,7 @@ bluestein n m w = ws × t × ws
     t = ones n m × c × ones m n
 
     c :: SPL a
-    c = IDFT m × diag deltas × DFT m
+    c = DFT' m × diag deltas × DFT m
 
     deltas :: [a]
     deltas = toList $ toMatrix (DFT m) `mv` fromList cs

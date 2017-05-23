@@ -43,10 +43,10 @@ searchOpCount e = runS $ search e
 search :: (Typeable a, Typed a, Num (Exp a), MonadSpiral m)
        => SPL (Exp a)
        -> S m (SPL (Exp a))
-search e@(RDFT n _) | n <= 2 =
+search e@(F n _) | n <= 2 =
    return e
 
-search (RDFT n w) = do
+search (F n w) = do
    maybe_e <- lookupDFT n w
    case maybe_e of
      Just (e, _) -> return e
@@ -65,19 +65,19 @@ search (DSum e1 e2) =
 search (Prod e1 e2) =
     Prod <$> search e1 <*> search e2
 
-search e@E{}        = return e
-search e@Diag{}     = return e
-search e@KDiag{}    = return e
-search e@Circ{}     = return e
-search e@Toep{}     = return e
-search e@I{}        = return e
-search e@Rot{}      = return e
-search e@Pi{}       = return e
-search e@F2{}       = return e
-search (Re e)       = Re <$> search e
-search (DFT n)      = search $ RDFT n (omega n)
-search (IDFT n)     = search $ RIDFT n (omega n)
-search (RIDFT n w)  = search $ KDiag n (1/fromIntegral n) × RDFT n (1/w)
+search e@E{}     = return e
+search e@Diag{}  = return e
+search e@KDiag{} = return e
+search e@Circ{}  = return e
+search e@Toep{}  = return e
+search e@I{}     = return e
+search e@Rot{}   = return e
+search e@Pi{}    = return e
+search e@F2{}    = return e
+search (Re e)    = Re <$> search e
+search (DFT n)   = search $ F n (omega n)
+search (DFT' n)  = search $ F' n (omega n)
+search (F' n w)  = search $ KDiag n (1/fromIntegral n) × F n (1/w)
 
 -- | Find the best DFT breakdown.
 bestBreakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
@@ -117,7 +117,7 @@ breakdown n w =
     raderBreakdowns
   where
     bruteForce :: S m (SPL (Exp a))
-    bruteForce = return $ (spl . toMatrix) (RDFT n w)
+    bruteForce = return $ (spl . toMatrix) (F n w)
 
     cooleyTukeyBreakdowns :: S m (SPL (Exp a))
     cooleyTukeyBreakdowns =

@@ -36,7 +36,7 @@ rader p w = permute (R p a) × (one ⊕ f_pm1 (1/u)) × d_p × (one ⊕ f_pm1 u)
     d_p = spl (fromLists [[1, 1], [1, head deltas]]) ⊕ diag (tail deltas)
 
     f_pm1 :: a -> SPL a
-    f_pm1 = RDFT (fromIntegral p-1)
+    f_pm1 = F (fromIntegral p-1)
 
     deltas :: [a]
     deltas = toList $

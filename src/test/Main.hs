@@ -205,14 +205,14 @@ split_radix_test n = testCase ("SplitRadix(4^" ++ show n ++ ")") $
 -- Test Cooley-Tukey with factors 5 and 7
 ck_dit_5_7_test :: Test
 ck_dit_5_7_test = testCase "CooleyTukeyDIT(5,7)" $
-    toMatrix (cooleyTukeyDIT 5 7 w) @?= toMatrix (RDFT 35 w)
+    toMatrix (cooleyTukeyDIT 5 7 w) @?= toMatrix (F 35 w)
   where
     w :: Exp (Complex Double)
     w = omega 35
 
 ck_dif_5_7_test :: Test
 ck_dif_5_7_test = testCase "CooleyTukeyDIF(5,7)" $
-    toMatrix (cooleyTukeyDIF 5 7 w) @?= toMatrix (RDFT 35 w)
+    toMatrix (cooleyTukeyDIF 5 7 w) @?= toMatrix (F 35 w)
   where
     w :: Exp (Complex Double)
     w = omega 35
@@ -220,7 +220,7 @@ ck_dif_5_7_test = testCase "CooleyTukeyDIF(5,7)" $
 -- Test Good-Thomas with factors 5 and 7
 gt_5_7_test :: Test
 gt_5_7_test = testCase "GoodThomas(5,7)" $
-    toMatrix (goodThomas 5 7 w) @?= toMatrix (RDFT 35 w)
+    toMatrix (goodThomas 5 7 w) @?= toMatrix (F 35 w)
   where
     w :: Exp (Complex Double)
     w = omega 35
@@ -228,7 +228,7 @@ gt_5_7_test = testCase "GoodThomas(5,7)" $
 -- Test Rader for given prime
 rader_test :: Int -> Test
 rader_test n = testCase ("Rader(" ++ show n ++ ")") $
-    toMatrix (rader (fromIntegral n) w) @?= toMatrix (RDFT n w)
+    toMatrix (rader (fromIntegral n) w) @?= toMatrix (F n w)
   where
     w :: Exp (Complex Double)
     w = omega n
