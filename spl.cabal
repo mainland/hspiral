@@ -44,6 +44,7 @@ library
     Spiral.Backend.C.Monad
     Spiral.Backend.C.Util
     Spiral.Config
+    Spiral.Driver
     Spiral.Exp
     Spiral.FFT.Bluestein
     Spiral.FFT.CooleyTukey
@@ -63,17 +64,16 @@ library
     Spiral.Search.Monad
     Spiral.Search.OpCount
     Spiral.Search.SFKT
+    Spiral.Util.Uniq
 
   other-modules:
     Data.Heterogeneous
-    Spiral.Driver
     Spiral.Driver.Monad
     Spiral.Driver.Opts
     Spiral.Util.MaplePretty
     Spiral.Util.Name
     Spiral.Util.Pretty
     Spiral.Util.Trace
-    Spiral.Util.Uniq
 
   build-depends:
     arithmoi               >= 0.5   && < 0.6,
