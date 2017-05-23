@@ -1,3 +1,6 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
+
 -- |
 -- Module      :  Spiral.FFT.CooleyTukey
 -- Copyright   :  (c) 2016-2017 Drexel University
@@ -7,6 +10,7 @@
 module Spiral.FFT.CooleyTukey (
     cooleyTukeyDIT,
     cooleyTukeyDIF,
+    splitRadix,
     dit,
     dif
   ) where
@@ -16,6 +20,9 @@ import Data.List (foldr1)
 import Spiral.Array
 import Spiral.RootOfUnity
 import Spiral.SPL
+
+-- For exponent in 'splitRadix'
+default (Int)
 
 -- | The $W_n(\omega)$ matrix
 ws :: RootOfUnity a => Int -> a -> SPL a
@@ -36,6 +43,23 @@ cooleyTukeyDIT r s w =
 cooleyTukeyDIF :: RootOfUnity a => Int -> Int -> a -> SPL a
 cooleyTukeyDIF r s w =
     Pi (L (r*s) s) × (I r ⊗ RDFT s (w^r)) × twid (r*s) s w × (RDFT r (w^s) ⊗ I s)
+
+-- | Split-radix DFT decomposition.
+splitRadix :: forall a . RootOfUnity a => Int -> a -> SPL a
+splitRadix n _ | n `mod` 4 /= 0 =
+    error "Cannot call splitRadix when n is not divisible by 4"
+
+splitRadix n w =
+    (sigma4 ⊗ I p) × (I (2*p) ⊕ ws p w ⊕ ws p (w^3)) × (RDFT (2*p) (w^2) ⊕ RDFT p (w^4) ⊕ RDFT p (w^4)) × (I (2*p) ⊕ Pi (L (2*p) 2)) × Pi (L (4*p) 2)
+  where
+    p :: Int
+    p = n `quot` 4
+
+    sigma4 :: SPL a
+    sigma4 = (F2 ⊗ I 2) × (I 2 ⊕ (ws 2 w4 × F2))
+
+    w4 :: a
+    w4 = omega 4
 
 -- | Decimation in time DFT matrix $F_n$, for $n$ even
 dit :: (RootOfUnity a, Show a) => Int -> SPL a
