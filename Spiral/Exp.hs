@@ -40,6 +40,10 @@ module Spiral.Exp (
     ensureComplexE,
     unComplexE,
 
+    IsZeroOne(..),
+    isI,
+    isNegI,
+
     true,
     false
   ) where
@@ -936,6 +940,16 @@ instance IfThenElse (Exp Bool) (Exp a) where
 
 class IsZeroOne a where
     isZero, isOne, isNegOne :: a -> Bool
+
+isI :: Const (Complex a) -> Bool
+isI (ComplexC r i) = isZero r && isOne i
+isI (W _ _ c)      = isI c
+isI (CycC c)       = c == i
+
+isNegI :: Const (Complex a) -> Bool
+isNegI (ComplexC r i) = isZero r && isNegOne i
+isNegI (W _ _ c)      = isNegI c
+isNegI (CycC c)       = c == -i
 
 instance IsZeroOne (Const a) where
     isZero (IntC 0)       = True
