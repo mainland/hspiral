@@ -965,7 +965,7 @@ instance IsZeroOne (Const a) where
     isOne (DoubleC 1)    = True
     isOne (RationalC 1)  = True
     isOne (ComplexC 1 i) = isZero i
-    isOne (W k n _)      = n % k == 1
+    isOne (W k n _)      = n % k == 0 || n % k == 1
     isOne (CycC 1)       = True
     isOne _              = False
 
@@ -974,7 +974,7 @@ instance IsZeroOne (Const a) where
     isNegOne (DoubleC (-1))    = True
     isNegOne (RationalC (-1))  = True
     isNegOne (ComplexC (-1) i) = isZero i
-    isNegOne (W k n _)         = n % k == 1 % 2
+    isNegOne (W _ _ c)         = isNegOne c
     isNegOne (CycC (-1))       = True
     isNegOne _                 = False
 
