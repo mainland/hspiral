@@ -552,6 +552,15 @@ instance (Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) wher
       | isNegOne e1 = -e2
       | isNegOne e2 = -e1
 
+    -- Simplify multiplication by i and -i
+    liftNum2 Mul _ (ConstE k) (ComplexE a b)
+      | isI k    = ComplexE (-b) a
+      | isNegI k = ComplexE b (-a)
+
+    liftNum2 Mul _ (ComplexE a b) (ConstE k)
+      | isI k    = ComplexE (-b) a
+      | isNegI k = ComplexE b (-a)
+
     -- Choose canonical variable ordering
     liftNum2 Add _ e1@VarE{} e2@VarE{} | e2 < e1 =
         BinopE Add e2 e1
