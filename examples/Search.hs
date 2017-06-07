@@ -1,20 +1,23 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Main where
+module Main (main) where
 
-import Control.Monad.IO.Class (MonadIO(..),
-                               liftIO)
+import Control.Monad.IO.Class (liftIO)
 import Data.Complex (Complex)
+import Data.Foldable (toList)
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
 import Spiral
+import Spiral.Backend.C
 import Spiral.Config
+import Spiral.Driver
 import Spiral.Exp
 import Spiral.Search.OpCount
 import Spiral.OpCount
 import Spiral.SPL
 import Spiral.SPL.Run
+import Spiral.Util.Uniq
 
 main :: IO ()
 main = defaultMain $ \args -> do
@@ -34,6 +37,12 @@ main = defaultMain $ \args -> do
         prog <- toProgram "f" e
         pprint prog
         ops <- countProgramOps prog
+        resetUnique
+        defs <- evalCg $ cgProgram prog
+        outp <- asksConfig output
+        case outp of
+          Nothing -> return ()
+          Just{}  -> writeOutput (toList defs)
         liftIO $ putDocLn $
             text "Multiplications:" <+> ppr (mulOps ops) </>
             text "      Additions:" <+> ppr (addOps ops) </>
