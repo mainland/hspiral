@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main (main) where
 
@@ -17,6 +16,7 @@ import Spiral.Exp
 import Spiral.FFT.CooleyTukey
 import Spiral.OpCount
 import Spiral.Program
+import Spiral.RootOfUnity
 import Spiral.SPL
 import Spiral.SPL.Run
 import Spiral.Util.Uniq
@@ -27,11 +27,11 @@ main = defaultMain $ \args -> do
     n <- case args of
            [s] -> return (read s)
            _   -> return 4
-    let dft_n :: SPL (Exp (Complex Double))
-        dft_n = dif n
+    let f = formula n
+    pprint f
     if useComplexType
-      then toProgram "f" dft_n >>= go
-      else toProgram "f" (Re dft_n) >>= go
+      then toProgram "f" f >>= go
+      else toProgram "f" (Re f) >>= go
   where
     go :: (Typed a, Num (Exp a)) => Program a -> Spiral ()
     go prog = do
@@ -47,3 +47,7 @@ main = defaultMain $ \args -> do
           text "Multiplications:" <+> ppr (mulOps ops) </>
           text "      Additions:" <+> ppr (addOps ops) </>
           text "          Total:" <+> ppr (allOps ops)
+
+-- The SPL formula for which we generate code and count operations.
+formula :: Int -> SPL (Exp (Complex Double))
+formula n = splitRadix n (omega n)
