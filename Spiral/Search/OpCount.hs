@@ -27,6 +27,7 @@ import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas (goodThomas)
 import Spiral.FFT.Rader (rader)
 import Spiral.Monad
+import Spiral.Search.Generic
 import Spiral.Search.Monad
 import Spiral.NumberTheory (primeFactorization)
 import Spiral.OpCount
@@ -38,46 +39,17 @@ import Spiral.Util.Trace
 searchOpCount :: (Typeable a, Typed a, Num (Exp a), MonadSpiral m)
               => SPL (Exp a)
               -> m (SPL (Exp a))
-searchOpCount e = runS $ search e
+searchOpCount = runSearch cache
 
-search :: (Typeable a, Typed a, Num (Exp a), MonadSpiral m)
-       => SPL (Exp a)
-       -> S m (SPL (Exp a))
-search e@(F n _) | n <= 2 =
-   return e
-
-search (F n w) = do
+cache :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
+      => Int
+      -> Exp a
+      -> S m (SPL (Exp a))
+cache n w = do
    maybe_e <- lookupDFT n w
    case maybe_e of
      Just (e, _) -> return e
      Nothing     -> bestBreakdown n w
-
-search (Kron e1 e2) =
-    Kron <$> search e1 <*> search e2
-
-search (DSum e1 e2) =
-    go <$> search e1 <*> search e2
-  where
-    go :: SPL a -> SPL a -> SPL a
-    go (Diag xs) (Diag ys) = Diag (xs <> ys)
-    go e1'       e2'       = DSum e1' e2'
-
-search (Prod e1 e2) =
-    Prod <$> search e1 <*> search e2
-
-search e@E{}     = return e
-search e@Diag{}  = return e
-search e@KDiag{} = return e
-search e@Circ{}  = return e
-search e@Toep{}  = return e
-search e@I{}     = return e
-search e@Rot{}   = return e
-search e@Pi{}    = return e
-search e@F2{}    = return e
-search (Re e)    = Re <$> search e
-search (DFT n)   = search $ F n (omega n)
-search (DFT' n)  = search $ F' n (omega n)
-search (F' n w)  = search $ KDiag n (1/fromIntegral n) × F n (1/w)
 
 -- | Find the best DFT breakdown.
 bestBreakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
@@ -86,7 +58,7 @@ bestBreakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSp
               -> S m (SPL (Exp a))
 bestBreakdown n w = do
     useComplexType <- asksConfig $ testDynFlag UseComplex
-    alts           <- observeAll (breakdown n w) >>= mapM search
+    alts           <- observeAll (breakdown n w) >>= mapM (search cache)
     opcs           <- mapM (countOps' useComplexType tau) alts
     traceSearch $ text "DFT size" <+> ppr n <> text ":" <+> commasep [ppr (mulOps ops) <> char '/' <> ppr (addOps ops) | ops <- opcs]
     let (e, m) = minimumBy metricOrdering (alts `zip` opcs)
