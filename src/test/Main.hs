@@ -14,6 +14,7 @@ module Main where
 import Control.Monad (replicateM)
 import Control.Monad.IO.Class (liftIO)
 import Data.Complex
+import Data.Typeable (Typeable)
 import qualified Data.Vector.Storable as V
 import System.Environment (getArgs)
 import Test.Framework (Test,
@@ -40,8 +41,11 @@ import Spiral.FFT.Bluestein
 import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas
 import Spiral.FFT.Rader
+import Spiral.Monad
 import Spiral.RootOfUnity
 import Spiral.SPL
+import Spiral.Search.Generic
+import Spiral.Search.Monad
 import Spiral.Search.OpCount
 
 import qualified Test.FFTW as FFTW
@@ -50,7 +54,14 @@ import Test.Gen
 main :: IO ()
 main = do
     (conf, args') <- getArgs >>= parseOpts
-    defaultMainWithArgs (tests ++ [searchTests, ditCodegenTests conf, difCodegenTests conf, searchCodegenTests conf]) args'
+    defaultMainWithArgs (tests ++
+      [ searchTests
+      , ditCodegenTests conf
+      , difCodegenTests conf
+      , splitRadixCodegenTests conf
+      , searchCodegenTests conf
+      ])
+      args'
 
 tests :: [Test]
 tests = [strideTest, l82Test, kroneckerTest, directSumTest, dftTests]
@@ -283,6 +294,25 @@ difCodegenTests conf =
         return $
             testProperty ("Generated DIF DFT of size " ++ show n) $
             forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
+
+splitRadixCodegenTests :: Config -> Test
+splitRadixCodegenTests conf =
+    testGroup "Generated splitRadix DFT" $
+    map (dftTest conf) [2^i | i <- [1..9::Int]]
+  where
+    dftTest :: Config -> Int -> Test
+    dftTest conf n = buildTest $ do
+        Re e <- Spiral.defaultMain $ \_ -> runSearch f (Re (DFT n) :: SPL (Exp Double))
+        dft  <- genComplexTransform conf ("dftsplitradix" ++ show n) e
+        return $
+            testProperty ("Split radix DFT of size " ++ show n) $
+            forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
+
+    f :: (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
+      => Int
+      -> Exp a
+      -> S m (SPL (Exp a))
+    f n w = search f (splitRadix n w)
 
 searchCodegenTests :: Config -> Test
 searchCodegenTests conf =
