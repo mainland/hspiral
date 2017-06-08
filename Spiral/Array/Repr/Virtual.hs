@@ -21,6 +21,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as MV
 
 import Spiral.Array
+import Spiral.Config
 import Spiral.Exp
 import Spiral.Monad
 import Spiral.Program.Monad
@@ -41,7 +42,8 @@ instance (Shape sh, Typed a, Num (Exp a)) => MArray V sh (Exp a) where
 
     write (V sh v) cix e = do
         ix <- fromExpShape cix
-        e' <- cache e
+        storeIntermediate <- asksConfig (testDynFlag StoreIntermediate)
+        e' <- if storeIntermediate then cacheExp e else return e
         MV.write v (toIndex sh ix) e'
 
 -- | Replicate the given value according to the specified shape to produce a

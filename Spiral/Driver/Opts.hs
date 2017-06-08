@@ -140,9 +140,12 @@ mkFlagOpts pfx opts set unset =
     [FlagOpt f (pfx ++ s) desc set unset | (f, s, desc) <- opts]
 
 fFlags :: [(DynFlag, String, String)]
-fFlags = [ (LinePragmas, "line-pragmas", "print line pragmas in generated C")
-         , (UseComplex,  "use-complex",  "use C99 _Complex type")
-         , (ThreeMults,  "three-mult",   "use real three-multiplication variant of complex multiply")
+fFlags = [ (LinePragmas,       "line-pragmas",       "print line pragmas in generated C")
+         , (UseComplex,        "use-complex",        "use C99 _Complex type")
+         , (ThreeMults,        "three-mult",         "use real three-multiplication variant of complex multiply")
+         , (StoreIntermediate, "store-intermediate", "explicitly store intermediate resultss")
+         , (CSE,               "cse",                "perform common subexpression elimination")
+         , (SplitComplex,      "split-complex",      "always split complex numbers when caching them")
          ]
 
 fOpts :: forall m . Monad m => [FlagOptDescr (Config -> m Config)]

@@ -58,6 +58,9 @@ data DynFlag = Quiet
              | UseComplex
              | GenComments
              | ThreeMults
+             | StoreIntermediate
+             | CSE
+             | SplitComplex
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data TraceFlag = TraceCg
@@ -105,7 +108,21 @@ instance Monoid Config where
         }
 
 defaultConfig :: Config
-defaultConfig = mempty
+defaultConfig =
+    setFlags setDynFlag defaultDynFlags
+    mempty
+  where
+    setFlags :: (a -> Config -> Config)
+             -> [a]
+             -> Config
+             -> Config
+    setFlags f xs flags = foldl' (flip f) flags xs
+
+    defaultDynFlags :: [DynFlag]
+    defaultDynFlags = [ StoreIntermediate
+                      , CSE
+                      , SplitComplex
+                      ]
 
 -- | A set of flags.
 newtype FlagSet a = FlagSet Word32

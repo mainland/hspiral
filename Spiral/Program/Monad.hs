@@ -31,7 +31,7 @@ module Spiral.Program.Monad (
     forP,
     tempP,
 
-    cache,
+    cacheExp,
 
     newArray,
     cacheArray
@@ -195,15 +195,8 @@ infix 4 .:=.
 
 -- | Assign one expression to another.
 assignP :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> Exp a -> P m ()
--- A very special hack to avoid creating a temporary to hold a value we are
--- about to stuff into an array anyway.
-assignP e1@IdxE{} (BinopE op e2a e2b) = do
-    e2a' <- cache e2a
-    e2b' <- cache e2b
-    assignS e1 (BinopE op e2a' e2b')
-
 assignP e1 e2 = do
-    e2' <- cache e2
+    e2' <- cacheExp e2
     assignS e1 e2'
 
 assignS :: (Typed a, MonadSpiral m) => Exp a -> Exp a -> P m ()
@@ -211,51 +204,136 @@ assignS e1@(VarE v) e2 = do
     insertCachedExp v e2
     appendStm $ AssignS e1 e2
 
+assignS (ComplexE e1r e1i) (ComplexE e2r e2i) = do
+    assignS e1r e2r
+    assignS e1i e2i
+
 assignS e1 e2 =
     appendStm $ AssignS e1 e2
 
 -- | Cache the given expression. This serves as a hint that it will be used
 -- more than once.
-cache :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> P m (Exp a)
-cache = go
+cacheExp :: forall a m . (Typed a, Num (Exp a), MonadSpiral m) => Exp a -> P m (Exp a)
+cacheExp e = do
+    config <- askConfig
+    cacheWithConfig config e
+
+cacheWithConfig :: forall a m . (Typed a, Num (Exp a), MonadSpiral m)
+                => Config
+                -> Exp a
+                -> P m (Exp a)
+cacheWithConfig config = cache
   where
-    go :: Exp a -> P m (Exp a)
-    go e@ConstE{} =
+    useComplex, splitComplex, cse :: Bool
+    useComplex   = UseComplex `testDynFlag` config
+    splitComplex = SplitComplex `testDynFlag` config
+    cse          = CSE `testDynFlag` config
+
+    cache :: forall a . (Typed a, Num (Exp a)) => Exp a -> P m (Exp a)
+    cache e
+      | cse       = cacheCSE e
+      | otherwise = mustCache e
+
+    cacheCSE :: forall a . (Typed a, Num (Exp a)) => Exp a -> P m (Exp a)
+    cacheCSE (ConstE (DoubleC x)) | x < 0 =
+        return $ UnopE Neg (ConstE (DoubleC (-x)))
+
+    cacheCSE e@ConstE{} =
         return e
 
-    go e@VarE{} =
+    cacheCSE e@VarE{} =
         return e
 
-    go (ComplexE er ei) =
-        ComplexE <$> cache er <*> cache ei
+    cacheCSE (ComplexE er ei) =
+        ComplexE <$> cacheCSE er <*> cacheCSE ei
+
+    -- Don't cache negated constants. We don't want to fall through to the next
+    -- case because the call to 'negate' will re-negate the constant!
+    cacheCSE e@(UnopE Neg ConstE{}) =
+        return e
 
     -- Cache the term we are negating, not the negated term.
-    go (UnopE Neg e) =
-        UnopE Neg <$> cache e
+    cacheCSE (UnopE Neg e) =
+        negate <$> cacheCSE e
 
-    go (UnopE op e) = do
-        e' <- cache e
+    cacheCSE (UnopE op e) = do
+        e' <- cacheCSE e
         mustCache (UnopE op e')
 
-    go (BinopE op e1 e2) = do
-        e1' <- cache e1
-        e2' <- cache e2
+    cacheCSE (BinopE op e1 e2) = do
+        e1' <- cacheCSE e1
+        e2' <- cacheCSE e2
+        -- Re-simplfy expressions after caching their subterms if the subterms
+        -- have changed.
         if e1' /= e1 || e2' /= e2
-          then cacheBinop op e1' e2'
-          else mustCache (BinopE op e1' e2')
+          then case op of
+                 Add -> cacheCSE (e1' + e2')
+                 Sub -> cacheCSE (e1' - e2')
+                 Mul -> cacheCSE (e1' * e2')
+                 _   -> go op e1' e2'
+          else go op e1' e2'
       where
-        -- In case we need to rearrange the newly-cached subterms, e.g., to
-        -- choose the canonical variable ordering.
-        cacheBinop :: Binop -> Exp a -> Exp a -> P m (Exp a)
-        cacheBinop Add e1' e2' = cache (e1' + e2')
-        cacheBinop Sub e1' e2' = cache (e1' - e2')
-        cacheBinop Mul e1' e2' = cache (e1' * e2')
-        cacheBinop op  e1' e2' = mustCache (BinopE op e1' e2')
+        go :: Binop -> Exp a -> Exp a -> P m (Exp a)
+        -- Choose canonical variable ordering
+        go Add e1@VarE{} e2@VarE{} | e2 < e1 =
+            mustCache (BinopE Add e2 e1)
 
-    go e =
+        go Sub e1@VarE{} e2@VarE{} | e2 < e1 =
+            UnopE Neg <$> mustCache (BinopE Sub e2 e1)
+
+        go Mul e1@VarE{} e2@VarE{} | e2 < e1 =
+            mustCache (BinopE Mul e2 e1)
+
+        -- Constants always come first
+        go Mul e1 e2@ConstE{} | not (isConstE e1) =
+            go Mul e2 e1
+
+        -- Push negation out
+        go Add e1 (UnopE Neg e2) =
+            cacheCSE $ e1 - e2
+
+        go Add (UnopE Neg e1) e2 =
+            cacheCSE $ e2 - e1
+
+        go Sub e1 (UnopE Neg e2) =
+            cacheCSE $ e1 + e2
+
+        go Sub (UnopE Neg e1) e2 =
+            cacheCSE $ -(e1 + e2)
+
+        go Mul e1 (UnopE Neg e2) =
+            cacheCSE $ -(e1 * e2)
+
+        go Mul (UnopE Neg e1) e2 =
+            cacheCSE $ -(e1 * e2)
+
+        go op e1 e2 =
+            mustCache (BinopE op e1 e2)
+
+    cacheCSE e =
         mustCache e
 
-    mustCache :: Exp a -> P m (Exp a)
+    -- When we are not using complex types, always separately cache the real and
+    -- imaginary parts of a complex expression.
+    mustCache :: forall a . (Typed a, Num (Exp a)) => Exp a -> P m (Exp a)
+    mustCache (ComplexE er ei) =
+        ComplexE <$> mustCache er <*> mustCache ei
+
+    mustCache (ReE e) | not useComplex, splitComplex = do
+        let (er, _ei) = forceUnComplexE e
+        cache er
+
+    mustCache (ImE e) | not useComplex, splitComplex = do
+        let (_er, ei) = forceUnComplexE e
+        cache ei
+
+    mustCache e | not useComplex, splitComplex, ComplexT{} <- tau = do
+        let (er, ei) = forceUnComplexE e
+        ComplexE <$> cache er <*> cache ei >>= cache
+      where
+        tau :: Type a
+        tau = typeOf (undefined :: a)
+
     mustCache e = do
         maybe_v <- lookupCachedExp e
         case maybe_v of

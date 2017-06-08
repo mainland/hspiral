@@ -85,7 +85,7 @@ data SPL a where
     Toep :: V.Vector e -> SPL e
 
     -- | Make a complex transform into a real transform.
-    Re :: Num (Exp (Complex a)) => SPL (Exp (Complex a)) -> SPL (Exp a)
+    Re :: (Typed a, Num (Exp (Complex a))) => SPL (Exp (Complex a)) -> SPL (Exp a)
 
     -- | The 2x2 DFT
     F2 :: SPL e
