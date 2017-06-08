@@ -12,7 +12,6 @@
 module Main where
 
 import Control.Monad (replicateM)
-import Control.Monad.IO.Class (liftIO)
 import Data.Complex
 import Data.Typeable (Typeable)
 import qualified Data.Vector.Storable as V
@@ -36,6 +35,7 @@ import qualified Spiral
 import Spiral (Config(..),
                parseOpts)
 import Spiral.Array
+import Spiral.Driver
 import Spiral.Exp
 import Spiral.FFT.Bluestein
 import Spiral.FFT.CooleyTukey
@@ -274,40 +274,18 @@ searchTests =
 ditCodegenTests :: Config -> Test
 ditCodegenTests conf =
     testGroup "Generated DIT" $
-    map (\i -> dftTest conf (2^i)) [1..9::Int]
-  where
-    dftTest :: Config -> Int -> Test
-    dftTest conf n = buildTest $ do
-        dft <- liftIO $ genComplexTransform conf ("dft" ++ show n) (dit n)
-        return $
-            testProperty ("Generated DIT DFT of size " ++ show n) $
-            forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
+    codegenTests conf "Generated DIT DFT of size" (\n -> return (Re (dit n)))
 
 difCodegenTests :: Config -> Test
 difCodegenTests conf =
     testGroup "Generated DIF" $
-    map (\i -> dftTest conf (2^i)) [1..9::Int]
-  where
-    dftTest :: Config -> Int -> Test
-    dftTest conf n = buildTest $ do
-        dft <- liftIO $ genComplexTransform conf ("dft" ++ show n) (dif n)
-        return $
-            testProperty ("Generated DIF DFT of size " ++ show n) $
-            forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
+    codegenTests conf "Generated DIF DFT of size" (\n -> return (Re (dif n)))
 
 splitRadixCodegenTests :: Config -> Test
 splitRadixCodegenTests conf =
     testGroup "Generated splitRadix DFT" $
-    map (dftTest conf) [2^i | i <- [1..9::Int]]
+    codegenTests conf "Split radix DFT of size" (\n -> runSearch f (Re (DFT n)))
   where
-    dftTest :: Config -> Int -> Test
-    dftTest conf n = buildTest $ do
-        Re e <- Spiral.defaultMain $ \_ -> runSearch f (Re (DFT n) :: SPL (Exp Double))
-        dft  <- genComplexTransform conf ("dftsplitradix" ++ show n) e
-        return $
-            testProperty ("Split radix DFT of size " ++ show n) $
-            forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
-
     f :: (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
       => Int
       -> Exp a
@@ -317,14 +295,21 @@ splitRadixCodegenTests conf =
 searchCodegenTests :: Config -> Test
 searchCodegenTests conf =
     testGroup "Generated opcount-optimized DFT" $
+    codegenTests conf "Opcount-optimized DFT of size" (\n -> searchOpCount (Re (DFT n)))
+
+codegenTests :: Config
+             -> String
+             -> (Int -> Spiral (SPL (Exp Double)))
+             -> [Test]
+codegenTests conf desc f =
     map (dftTest conf) [2^i | i <- [1..9::Int]]
   where
     dftTest :: Config -> Int -> Test
     dftTest conf n = buildTest $ do
-        Re e <- Spiral.defaultMain $ \_ -> searchOpCount (Re (DFT n) :: SPL (Exp Double))
-        dft  <- genComplexTransform conf ("dftop" ++ show n) e
+        Re e <- Spiral.defaultMain $ \_ -> f n
+        dft  <- genComplexTransform conf ("dft" ++ show n) e
         return $
-            testProperty ("Opcount-optimized DFT of size " ++ show n) $
+            testProperty (desc ++ " " ++ show n) $
             forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
 
 -- | Generate vectors of a given size.
