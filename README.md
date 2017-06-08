@@ -78,10 +78,22 @@ The following flags control debugging output.
 
 Runs a small test suite.
 
+### `opcount`
+
+The `opcount` binary generates operation counts and, optionally, C code, for a
+hard-coded SPL formula.
+
 ### `dftgen`
 
-The `dftgen` binary generates C code for the forward DFT of the size it is given
-as an argument.
+The `dftgen` binary generates operation counts and, optionally, C code, for the
+forward DFT of the size it is given as an argument. It always uses the split
+radix decomposition.
+
+### `search`
+
+The `search` binary generates operation counts and, optionally, C code, for the
+forward DFT of the size it is given as an argument. It performs search to find
+the decomposition with the fewest operations.
 
 ### `voronenko`
 
@@ -93,15 +105,3 @@ Should be run like this:
 ```
 ./voronenko -fmax-unroll=2 -fuse-complex
 ```
-
-### `opcount`
-
-The `opcount` binary generates operation counts and, optionally, C code, for the
-forward DFT of the size it is given as an argument. It always uses the split
-radix decomposition.
-
-### `search`
-
-The `search` binary generates operation counts and, optionally, C code, for the
-forward DFT of the size it is given as an argument. It performs search to find
-the decomposition with the fewest operations.
