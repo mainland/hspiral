@@ -1036,28 +1036,32 @@ intE = ConstE . IntC
 complexE :: Complex Double -> Exp (Complex Double)
 complexE (r :+ i) = ConstE $ ComplexC (DoubleC r) (DoubleC i)
 
--- | Ensure that a complex expression is represented using its constituent real
--- and imaginary parts.
-ensureComplexE :: (Num (Exp a), Monad m)
-               => Exp (Complex a)
-               -> m (Exp (Complex a))
-ensureComplexE (ConstE (ComplexC r i)) = return $ ComplexE (mkConstE r) (mkConstE i)
-ensureComplexE (ConstE (W _ _ c))      = ensureComplexE (mkConstE c)
-ensureComplexE (ConstE x@CycC{})       = return $ ComplexE (mkConstE (DoubleC r)) (mkConstE (DoubleC i))
+-- | Extract the complex and real portions of a 'Const (Complex a)'.
+unComplexC :: Const (Complex a) -> (Const a, Const a)
+unComplexC (ComplexC r i) = (r, i)
+unComplexC (W _ _ c)      = unComplexC c
+unComplexC x@CycC{}       = (DoubleC r, DoubleC i)
   where
     r :+ i = fromConst x
-ensureComplexE e@ComplexE{}            = return e
-ensureComplexE _                       = fail "Can't construct ComplexE"
+
+-- | Ensure that a complex expression is represented using its constituent real
+-- and imaginary parts.
+ensureComplexE :: (Typed a, Num (Exp a), Monad m)
+               => Exp (Complex a)
+               -> m (Exp (Complex a))
+ensureComplexE (ConstE c)   = return $ ComplexE (mkConstE cr) (mkConstE ci)
+  where
+    (cr, ci) = unComplexC c
+ensureComplexE e@ComplexE{} = return e
+ensureComplexE _            = fail "Can't construct ComplexE"
 
 -- | Extract the complex and real portions of an 'Exp (Complex a)'.
 unComplexE :: Num (Exp a) => Exp (Complex a) -> (Exp a, Exp a)
-unComplexE (ConstE (ComplexC r i)) = (mkConstE r, mkConstE i)
-unComplexE (ConstE (W _ _ c))      = unComplexE (mkConstE c)
-unComplexE (ConstE x@CycC{})       = (mkConstE (DoubleC r), mkConstE (DoubleC i))
+unComplexE (ConstE c)      = (mkConstE cr, mkConstE ci)
   where
-    r :+ i = fromConst x
-unComplexE (ComplexE r i )         = (r, i)
-unComplexE e                       = (ReE e, ImE e)
+    (cr, ci) = unComplexC c
+unComplexE (ComplexE r i ) = (r, i)
+unComplexE e               = (ReE e, ImE e)
 
 true, false :: Exp Bool
 true  = mkConstE (BoolC True)
