@@ -21,7 +21,7 @@ module Spiral.Program.Syntax (
 import Data.Foldable (toList)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
-import Text.PrettyPrint.Mainland hiding (flatten)
+import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array.Base hiding (toList)

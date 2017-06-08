@@ -55,7 +55,7 @@ import Data.IORef (IORef)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Sequence ((|>))
-import Text.PrettyPrint.Mainland hiding (flatten)
+import Text.PrettyPrint.Mainland
 
 import Data.Heterogeneous
 import Spiral.Array

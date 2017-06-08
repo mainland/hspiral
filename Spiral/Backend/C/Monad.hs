@@ -86,7 +86,7 @@ import qualified Data.Sequence as Seq
 import Language.C.Pretty ()
 import qualified Language.C.Quote as C
 import Language.C.Quote.C
-import Text.PrettyPrint.Mainland hiding (flatten)
+import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array hiding (toList)

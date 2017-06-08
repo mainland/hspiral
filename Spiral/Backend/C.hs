@@ -28,7 +28,7 @@ import Data.Symbol
 import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
 import Language.C.Quote.C
-import Text.PrettyPrint.Mainland hiding (flatten)
+import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array hiding (toList)
@@ -160,8 +160,8 @@ cgConst (IntegerC x)     = CInt (fromIntegral x)
 cgConst (RationalC x)    = CDouble (fromRational x)
 cgConst (DoubleC x)      = CDouble x
 cgConst (ComplexC e1 e2) = CComplex (cgConst e1) (cgConst e2)
-cgConst e@W{}            = cgConst (flatten e)
-cgConst e@CycC{}         = cgConst (flatten e)
+cgConst e@W{}            = cgConst (lower e)
+cgConst e@CycC{}         = cgConst (lower e)
 
 -- | Compile an 'Exp a'.
 cgExp :: forall a m . (Typed a, MonadSpiral m) => Exp a -> Cg m CExp

@@ -327,7 +327,7 @@ manifestComplex :: (IArray r DIM2 (Exp (Complex Double)))
 manifestComplex = fmap f . manifest
   where
     f :: Exp a -> Exp a
-    f (ConstE c) = ConstE (flatten c)
+    f (ConstE c) = ConstE (lower c)
     f e          = e
 
 -- | A small number

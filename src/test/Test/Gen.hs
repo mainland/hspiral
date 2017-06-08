@@ -34,7 +34,7 @@ import System.IO (IOMode(..),
                   openFile)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (callProcess)
-import Text.PrettyPrint.Mainland hiding (flatten)
+import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
 import qualified Spiral.Backend.C as C

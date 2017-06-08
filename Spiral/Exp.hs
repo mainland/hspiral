@@ -28,7 +28,7 @@ module Spiral.Exp (
 
     fromConst,
     fromComplex,
-    flatten,
+    lower,
 
     LiftNum(..),
 
@@ -56,7 +56,7 @@ import Data.String
 import Data.Symbol
 import Language.C.Quote (ToIdent(..))
 import Test.QuickCheck (Arbitrary(..))
-import Text.PrettyPrint.Mainland hiding (flatten)
+import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
 import Data.Heterogeneous
@@ -119,7 +119,7 @@ lift f (IntegerC x)  = IntegerC (f x)
 lift f (DoubleC x)   = DoubleC (f x)
 lift f (RationalC x) = RationalC (f x)
 lift f x@ComplexC{}  = fromComplex (f (fromConst x))
-lift f x             = lift f (flatten x)
+lift f x             = lift f (lower x)
 
 lift2 :: (a -> a -> a) -> Const a -> Const a -> Const a
 lift2 f (IntC x)      (IntC y)      = IntC (f x y)
@@ -127,7 +127,7 @@ lift2 f (IntegerC x)  (IntegerC y)  = IntegerC (f x y)
 lift2 f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
 lift2 f (RationalC x) (RationalC y) = RationalC (f x y)
 lift2 f x@ComplexC{}  y@ComplexC{}  = fromComplex (f (fromConst x) (fromConst y))
-lift2 f x             y             = lift2 f (flatten x) (flatten y)
+lift2 f x             y             = lift2 f (lower x) (lower y)
 
 instance Arbitrary (Const Int) where
     arbitrary = IntC <$> arbitrary
@@ -199,11 +199,13 @@ unCycC _         = fail "Not a cyclotomic number"
 isIntegral :: forall a . (RealFrac a, Eq a) => a -> Bool
 isIntegral x = snd (properFraction x :: (Int, a)) == 0
 
--- | Flatten a constant's representation.
-flatten :: Const a -> Const a
-flatten (W _ _ x) = flatten x
-flatten x@CycC{}  = fromComplex (fromConst x)
-flatten e         = e
+-- | Lower a constant's representation from a specialized representation to a
+-- standard representation. This ensures the constant is not constructed with
+-- the 'W' or 'CycC' data constructors.
+lower :: Const a -> Const a
+lower (W _ _ x) = lower x
+lower x@CycC{}  = fromComplex (fromConst x)
+lower e         = e
 
 -- | Representation of scalar constants.
 data Exp a where
@@ -278,7 +280,7 @@ instance HOrd Const where
     hcompare (RationalC x)    (RationalC y)    = compare x y
     hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
     hcompare (W n k _)        (W n' k' _)      = compare (n, k `mod` n) (n', k' `mod` n')
-    hcompare x@CycC{}         y@CycC{}         = compare (flatten x) (flatten y)
+    hcompare x@CycC{}         y@CycC{}         = compare (lower x) (lower y)
 
     hcompare x@ComplexC{} y | Just x' <- unCycC x = hcompare (CycC x') y
     hcompare x y@ComplexC{} | Just y' <- unCycC y = hcompare x (CycC y')
