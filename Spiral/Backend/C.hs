@@ -158,6 +158,7 @@ cgConst (BoolC x)        = CInt $ if x then 1 else 0
 cgConst (IntC x)         = CInt x
 cgConst (IntegerC x)     = CInt (fromIntegral x)
 cgConst (RationalC x)    = CDouble (fromRational x)
+cgConst (FloatC x)       = CFloat x
 cgConst (DoubleC x)      = CDouble x
 cgConst (ComplexC e1 e2) = CComplex (cgConst e1) (cgConst e2)
 cgConst e@W{}            = cgConst (lower e)

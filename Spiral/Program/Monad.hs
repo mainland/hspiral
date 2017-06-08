@@ -235,6 +235,9 @@ cacheWithConfig config = cache
       | otherwise = mustCache e
 
     cacheCSE :: forall a . (Typed a, Num (Exp a)) => Exp a -> P m (Exp a)
+    cacheCSE (ConstE (FloatC x)) | x < 0 =
+        return $ UnopE Neg (ConstE (FloatC (-x)))
+
     cacheCSE (ConstE (DoubleC x)) | x < 0 =
         return $ UnopE Neg (ConstE (DoubleC (-x)))
 

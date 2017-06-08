@@ -349,8 +349,12 @@ cgType :: Type a -> C.Type
 cgType BoolT     = [cty|int|]
 cgType IntT      = [cty|int|]
 cgType IntegerT  = [cty|int|]
+cgType FloatT    = [cty|float|]
 cgType DoubleT   = [cty|double|]
 cgType RationalT = [cty|double|]
+
+cgType (ComplexT FloatT) =
+    [cty|float _Complex|]
 
 cgType (ComplexT DoubleT) =
     [cty|double _Complex|]
