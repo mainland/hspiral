@@ -26,6 +26,7 @@ module Spiral.Exp (
     Type(..),
     Typed(..),
 
+    fromConst,
     fromComplex,
     flatten,
 
@@ -101,12 +102,23 @@ instance Eq (Const a) where
 instance Ord (Const a) where
     compare = hcompare
 
+-- | Convert a 'Const a' to the value of type 'a' that it represents.
+fromConst :: Const a -> a
+fromConst (BoolC x)      = x
+fromConst (IntC x)       = x
+fromConst (IntegerC x)   = x
+fromConst (DoubleC x)    = x
+fromConst (RationalC x)  = x
+fromConst (ComplexC r i) = fromConst r :+ fromConst i
+fromConst (W _ _ x)      = fromConst x
+fromConst (CycC x)       = toComplex x
+
 lift :: (a -> a) -> Const a -> Const a
 lift f (IntC x)      = IntC (f x)
 lift f (IntegerC x)  = IntegerC (f x)
 lift f (DoubleC x)   = DoubleC (f x)
 lift f (RationalC x) = RationalC (f x)
-lift f x@ComplexC{}  = fromComplex (f (lower x))
+lift f x@ComplexC{}  = fromComplex (f (fromConst x))
 lift f x             = lift f (flatten x)
 
 lift2 :: (a -> a -> a) -> Const a -> Const a -> Const a
@@ -114,19 +126,8 @@ lift2 f (IntC x)      (IntC y)      = IntC (f x y)
 lift2 f (IntegerC x)  (IntegerC y)  = IntegerC (f x y)
 lift2 f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
 lift2 f (RationalC x) (RationalC y) = RationalC (f x y)
-lift2 f x@ComplexC{}  y@ComplexC{}  = fromComplex (f (lower x) (lower y))
+lift2 f x@ComplexC{}  y@ComplexC{}  = fromComplex (f (fromConst x) (fromConst y))
 lift2 f x             y             = lift2 f (flatten x) (flatten y)
-
--- | Lower a 'Const a' to the value of type 'a' that it represents.
-lower :: Const a -> a
-lower (BoolC x)      = x
-lower (IntC x)       = x
-lower (IntegerC x)   = x
-lower (DoubleC x)    = x
-lower (RationalC x)  = x
-lower (ComplexC r i) = lower r :+ lower i
-lower (W _ _ x)      = lower x
-lower (CycC x)       = toComplex x
 
 instance Arbitrary (Const Int) where
     arbitrary = IntC <$> arbitrary
@@ -150,7 +151,7 @@ instance Pretty (Const a) where
     pprPrec _ (DoubleC x)   = ppr x
     pprPrec _ (RationalC x) = ppr x
 
-    pprPrec p x@ComplexC{} = pprComplex p (lower x)
+    pprPrec p x@ComplexC{} = pprComplex p (fromConst x)
 
     pprPrec _ (W _ 0 _) = text "1"
     pprPrec _ (W n 1 _) = text "ω_" <> ppr n
@@ -201,7 +202,7 @@ isIntegral x = snd (properFraction x :: (Int, a)) == 0
 -- | Flatten a constant's representation.
 flatten :: Const a -> Const a
 flatten (W _ _ x) = flatten x
-flatten x@CycC{}  = fromComplex (lower x)
+flatten x@CycC{}  = fromComplex (fromConst x)
 flatten e         = e
 
 -- | Representation of scalar constants.
@@ -1042,7 +1043,7 @@ ensureComplexE (ConstE (ComplexC r i)) = return $ ComplexE (mkConstE r) (mkConst
 ensureComplexE (ConstE (W _ _ c))      = ensureComplexE (mkConstE c)
 ensureComplexE (ConstE x@CycC{})       = return $ ComplexE (mkConstE (DoubleC r)) (mkConstE (DoubleC i))
   where
-    r :+ i = lower x
+    r :+ i = fromConst x
 ensureComplexE e@ComplexE{}            = return e
 ensureComplexE _                       = fail "Can't construct ComplexE"
 
@@ -1052,7 +1053,7 @@ unComplexE (ConstE (ComplexC r i)) = (mkConstE r, mkConstE i)
 unComplexE (ConstE (W _ _ c))      = unComplexE (mkConstE c)
 unComplexE (ConstE x@CycC{})       = (mkConstE (DoubleC r), mkConstE (DoubleC i))
   where
-    r :+ i = lower x
+    r :+ i = fromConst x
 unComplexE (ComplexE r i )         = (r, i)
 unComplexE e                       = (ReE e, ImE e)
 
