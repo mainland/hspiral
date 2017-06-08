@@ -26,6 +26,8 @@ module Spiral.Exp (
     Type(..),
     Typed(..),
 
+    ToConst(..),
+    RealFloatConst,
     fromConst,
     fromComplex,
     lower,
@@ -87,13 +89,13 @@ data Const a where
     IntegerC  :: Integer -> Const Integer
     DoubleC   :: Double -> Const Double
     RationalC :: Rational -> Const Rational
-    ComplexC  :: Const Double -> Const Double -> Const (Complex Double)
+    ComplexC  :: RealFloatConst a => Const a -> Const a -> Const (Complex a)
 
     -- | Constant multiple of root of unity tagged with n and k.
     W :: Fractional (Const a) => !Int -> !Int -> Const a -> Const a
 
     -- | Cyclotomic numbers
-    CycC :: Cyclotomic -> Const (Complex Double)
+    CycC :: RealFloatConst a => Cyclotomic -> Const (Complex a)
 
 deriving instance Show (Const a)
 
@@ -103,6 +105,39 @@ instance Eq (Const a) where
 
 instance Ord (Const a) where
     compare = hcompare
+
+class (Eq a, Pretty a) => ToConst a where
+    toConst :: a -> Const a
+
+instance ToConst Bool where
+    toConst = BoolC
+
+instance ToConst Int where
+    toConst = IntC
+
+instance ToConst Integer where
+    toConst = IntegerC
+
+instance ToConst Double where
+    toConst = DoubleC
+
+instance ToConst Rational where
+    toConst = RationalC
+
+instance RealFloatConst a => ToConst (Complex a) where
+    toConst (r :+ i) = ComplexC (toConst r) (toConst i)
+
+class ( Eq a
+      , RealFloat a
+      , Pretty a
+      , Typed a
+      , ToConst a
+      , Num (Const a)
+      , Num (Exp a)
+      , Num (Exp (Complex a))
+      ) => RealFloatConst a where
+
+instance RealFloatConst Double where
 
 -- | Convert a 'Const a' to the value of type 'a' that it represents.
 fromConst :: Const a -> a
@@ -115,20 +150,20 @@ fromConst (ComplexC r i) = fromConst r :+ fromConst i
 fromConst (W _ _ x)      = fromConst x
 fromConst (CycC x)       = toComplex x
 
-lift :: (a -> a) -> Const a -> Const a
+lift :: ToConst a => (a -> a) -> Const a -> Const a
 lift f (IntC x)      = IntC (f x)
 lift f (IntegerC x)  = IntegerC (f x)
 lift f (DoubleC x)   = DoubleC (f x)
 lift f (RationalC x) = RationalC (f x)
-lift f x@ComplexC{}  = fromComplex (f (fromConst x))
+lift f x@ComplexC{}  = toConst (f (fromConst x))
 lift f x             = lift f (lower x)
 
-lift2 :: (a -> a -> a) -> Const a -> Const a -> Const a
+lift2 :: ToConst a => (a -> a -> a) -> Const a -> Const a -> Const a
 lift2 f (IntC x)      (IntC y)      = IntC (f x y)
 lift2 f (IntegerC x)  (IntegerC y)  = IntegerC (f x y)
 lift2 f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
 lift2 f (RationalC x) (RationalC y) = RationalC (f x y)
-lift2 f x@ComplexC{}  y@ComplexC{}  = fromComplex (f (fromConst x) (fromConst y))
+lift2 f x@ComplexC{}  y@ComplexC{}  = toConst (f (fromConst x) (fromConst y))
 lift2 f x             y             = lift2 f (lower x) (lower y)
 
 instance Arbitrary (Const Int) where
@@ -173,23 +208,27 @@ pprComplex p (r :+ i)    = parensIf (p > addPrec) $
                            pprPrec addPrec r <+> text "+" <+> pprPrec mulPrec i <> char 'i'
 
 -- | Convert a 'Complex Double' to a 'Const (Complex Double)'
-fromComplex :: Complex Double -> Const (Complex Double)
-fromComplex (r :+ i) = ComplexC (DoubleC r) (DoubleC i)
+fromComplex :: RealFloatConst a => Complex a -> Const (Complex a)
+fromComplex (r :+ i) = ComplexC (toConst r) (toConst i)
 
 -- | Convert a 'Cyclotomic' value to a 'Double Complex' value.
 -- 'Data.Complex.Cyclotomic.toComplex' introduces some error that this function
 -- avoids. Ugh!
-toComplex :: Cyclotomic -> Complex Double
+toComplex :: RealFloat a => Cyclotomic -> Complex a
 toComplex x = r :+ i
   where
-    Just r = toReal (real x)
-    Just i = toReal (imag x)
+    Just r = (fromRational . toRational) <$> toReal (real x)
+    Just i = (fromRational . toRational) <$> toReal (imag x)
 
 -- | Convert a 'Const (Complex Double)' into a 'Cyclotomic' value
-unCycC :: Monad m => Const (Complex Double) -> m Cyclotomic
-unCycC (ComplexC (DoubleC re) (DoubleC im)) | isIntegral re && isIntegral im =
+unCycC :: forall a m . Monad m => Const (Complex a) -> m Cyclotomic
+unCycC (ComplexC cre cim) | isIntegral re && isIntegral im =
     return $ fromIntegral re' + fromIntegral im' * i
   where
+    re, im :: a
+    re = fromConst cre
+    im = fromConst cim
+
     re', im' :: Int
     re' = truncate re
     im' = truncate im
@@ -206,7 +245,7 @@ isIntegral x = snd (properFraction x :: (Int, a)) == 0
 -- the 'W' or 'CycC' data constructors.
 lower :: Const a -> Const a
 lower (W _ _ x) = lower x
-lower x@CycC{}  = fromComplex (fromConst x)
+lower x@CycC{}  = toConst (fromConst x)
 lower e         = e
 
 -- | Representation of scalar constants.
@@ -218,10 +257,10 @@ data Exp a where
     IdxE   :: Var -> [Exp Int] -> Exp a
 
     ComplexE :: (Typed a, Num (Exp a)) => Exp a -> Exp a -> Exp (Complex a)
-    ReE :: (Num (Exp a), Num (Exp (Complex a))) => Exp (Complex a) -> Exp a
-    ImE :: (Num (Exp a), Num (Exp (Complex a))) => Exp (Complex a) -> Exp a
+    ReE :: RealFloatConst a => Exp (Complex a) -> Exp a
+    ImE :: RealFloatConst a => Exp (Complex a) -> Exp a
 
-    BBinopE :: Typed a => BBinop -> Exp a -> Exp a -> Exp Bool
+    BBinopE :: (Typed a, ToConst a) => BBinop -> Exp a -> Exp a -> Exp Bool
     IfE     :: Exp Bool -> Exp a -> Exp a -> Exp a
 
 deriving instance Show (Exp a)
@@ -249,12 +288,12 @@ instance HEq Const where
     heq (IntegerC x)     (IntegerC y)     = x == y
     heq (DoubleC x)      (DoubleC y)      = x == y
     heq (RationalC x)    (RationalC y)    = x == y
-    heq (ComplexC r1 i1) (ComplexC r2 i2) = r1 == r2 && i1 == i2
+    heq (ComplexC r1 i1) (ComplexC r2 i2) = (Some r1, Some i1) == (Some r2, Some i2)
     heq (W n k _)        (W n' k' _)      = (n', k' `mod` n') == (n, k `mod` n)
     heq (CycC x)         (CycC y)         = x == y
 
-    heq x@ComplexC{} y | Just x' <- unCycC x = heq (CycC x') y
-    heq x y@ComplexC{} | Just y' <- unCycC y = heq x (CycC y')
+    heq (x@ComplexC{} :: Const a) y | Just x' <- unCycC x = heq (CycC x' :: Const a) y
+    heq x (y@ComplexC{} :: Const a) | Just y' <- unCycC y = heq x (CycC y' :: Const a)
 
     heq (W _ _ c) y = heq c y
     heq x (W _ _ c) = heq x c
@@ -280,12 +319,12 @@ instance HOrd Const where
     hcompare (IntegerC x)     (IntegerC y)     = compare x y
     hcompare (DoubleC x)      (DoubleC y)      = compare x y
     hcompare (RationalC x)    (RationalC y)    = compare x y
-    hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (r1, i1) (r2, i2)
+    hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (Some r1, Some i1) (Some r2, Some i2)
     hcompare (W n k _)        (W n' k' _)      = compare (n, k `mod` n) (n', k' `mod` n')
-    hcompare x@CycC{}         y@CycC{}         = compare (lower x) (lower y)
+    hcompare (CycC x)         (CycC y)         = compare (lower (CycC x) :: Const (Complex Double)) (lower (CycC y) :: Const (Complex Double))
 
-    hcompare x@ComplexC{} y | Just x' <- unCycC x = hcompare (CycC x') y
-    hcompare x y@ComplexC{} | Just y' <- unCycC y = hcompare x (CycC y')
+    hcompare (x@ComplexC{} :: Const a) y | Just x' <- unCycC x = hcompare (CycC x' :: Const a) y
+    hcompare x (y@ComplexC{} :: Const a) | Just y' <- unCycC y = hcompare x (CycC y' :: Const a)
 
     hcompare (W _ _ c) y = hcompare c y
     hcompare x (W _ _ c) = hcompare x c
@@ -430,7 +469,7 @@ data Type a where
     IntegerT  :: Type Integer
     DoubleT   :: Type Double
     RationalT :: Type Rational
-    ComplexT  :: (Typed a, Num (Exp a)) => Type a -> Type (Complex a)
+    ComplexT  :: RealFloatConst a => Type a -> Type (Complex a)
 
 deriving instance Eq (Type a)
 deriving instance Ord (Type a)
@@ -462,7 +501,7 @@ instance Typed Double where
 instance Typed Rational where
     typeOf _ = RationalT
 
-instance (Typed a, Num (Exp a)) => Typed (Complex a) where
+instance RealFloatConst a => Typed (Complex a) where
     typeOf _ = ComplexT (typeOf (undefined :: a))
 
 --------------------------------------------------------------------------------
@@ -479,7 +518,7 @@ class LiftNum b where
     -- | Lift a binary operation on 'Num' to the type 'b
     liftNum2 :: Binop -> (forall a . Num a => a -> a -> a) -> b -> b -> b
 
-instance (Typed a, Num a, Num (Const a)) => LiftNum (Const a) where
+instance (Typed a, Num a, ToConst a, Num (Const a)) => LiftNum (Const a) where
     liftNum Neg _ e
       | isZero e = 0
 
@@ -810,7 +849,7 @@ class LiftFrac b where
     -- | Lift a binary operation on 'Num' to the type 'b
     liftFrac2 :: Binop -> (forall a . Fractional a => a -> a -> a) -> b -> b -> b
 
-instance (Fractional a, Fractional (Const a)) => LiftFrac (Const a) where
+instance (Fractional a, ToConst a, Fractional (Const a)) => LiftFrac (Const a) where
     liftFrac2 Div _ c1 (W n k x) | isOne c1 = mkW (-k % n) (1/x)
 
     liftFrac2 Div _ (W n k x) (W n' k' y) = mkW (k % n - k' % n') (x/y)
@@ -897,11 +936,11 @@ class IsEq a b => IsOrd a b where
     (.>=.) :: a -> a -> b
     (.>.)  :: a -> a -> b
 
-instance (Typed a, Eq a) => IsEq (Exp a) (Exp Bool) where
+instance (Typed a, ToConst a, Eq a) => IsEq (Exp a) (Exp Bool) where
     e1 .==. e2 = BBinopE Eq e1 e2
     e1 ./=. e2 = BBinopE Ne e1 e2
 
-instance (Typed a, Eq a) => IsOrd (Exp a) (Exp Bool) where
+instance (Typed a, ToConst a, Eq a) => IsOrd (Exp a) (Exp Bool) where
     e1 .<.  e2 = BBinopE Lt e1 e2
     e1 .<=. e2 = BBinopE Le e1 e2
     e1 .>.  e2 = BBinopE Gt e1 e2
@@ -982,19 +1021,19 @@ intE :: Int -> Exp Int
 intE = ConstE . IntC
 
 -- | Create an 'Exp (Complex Double)' from a 'Complex Double'.
-complexE :: Complex Double -> Exp (Complex Double)
-complexE (r :+ i) = ConstE $ ComplexC (DoubleC r) (DoubleC i)
+complexE :: RealFloatConst a => Complex a -> Exp (Complex a)
+complexE (r :+ i) = ConstE $ ComplexC (toConst r) (toConst i)
 
 -- | Extract the complex and real portions of a 'Const (Complex a)'.
-unComplexC :: Const (Complex a) -> (Const a, Const a)
+unComplexC :: RealFloat a => Const (Complex a) -> (Const a, Const a)
 unComplexC (ComplexC r i) = (r, i)
 unComplexC (W _ _ c)      = unComplexC c
-unComplexC x@CycC{}       = (DoubleC r, DoubleC i)
+unComplexC x@CycC{}       = (toConst r, toConst i)
   where
     r :+ i = fromConst x
 
 -- | Extract the complex and real portions of an 'Exp (Complex a)'.
-unComplexE :: (Typed a, Num (Exp a), Num (Exp (Complex a))) => Exp (Complex a) -> (Exp a, Exp a)
+unComplexE :: RealFloatConst a => Exp (Complex a) -> (Exp a, Exp a)
 unComplexE (ConstE c) =
     (ConstE cr, ConstE ci)
   where
@@ -1007,7 +1046,7 @@ unComplexE e =
     (ReE e, ImE e)
 
 -- | Force extraction of the complex and real portions of an 'Exp (Complex a)'.
-forceUnComplexE :: (Typed a, Num (Exp a), Num (Exp (Complex a))) => Exp (Complex a) -> (Exp a, Exp a)
+forceUnComplexE :: RealFloatConst a => Exp (Complex a) -> (Exp a, Exp a)
 forceUnComplexE (ConstE c) =
     (ConstE cr, ConstE ci)
   where
@@ -1033,7 +1072,7 @@ forceUnComplexE e =
 
 -- | Ensure that a complex expression is represented using its constituent real
 -- and imaginary parts.
-ensureComplexE :: (Typed a, Num (Exp a), Num (Exp (Complex a))) => Exp (Complex a) -> Exp (Complex a)
+ensureComplexE :: RealFloatConst a => Exp (Complex a) -> Exp (Complex a)
 ensureComplexE e = ComplexE er ei
   where
     (er, ei) = forceUnComplexE e
