@@ -186,4 +186,30 @@ usage :: IO String
 usage = do
     progname   <- getProgName
     let header =  "Usage: " ++ progname ++ " [OPTION...] files..."
-    return $ usageInfo header (options :: [OptDescr (Config -> IO Config)])
+    return $ usageInfo header (options :: [OptDescr (Config -> IO Config)]) ++ "\n" ++
+             "  Compiler options:\n" ++
+             unlines (justify $ map (flagOpt2Desc "-f") fOpts ++
+                                map (flag2Desc "-f")    fFlags) ++
+             "\n" ++
+             "  Debug options:\n" ++
+             unlines (justify $ map (flag2Desc "-d")       dFlags ++
+                                map (flag2Desc "-dtrace-") dTraceFlags)
+  where
+    flagOpt2Desc :: String -> FlagOptDescr (Config -> IO Config) -> (String, String)
+    flagOpt2Desc pfx (FlagOption opt arg desc) = (pfx ++ opt ++ arg2Desc arg, desc)
+      where
+        arg2Desc :: ArgDescr a -> String
+        arg2Desc NoArg{}         = ""
+        arg2Desc (ReqArg _ desc) = "=" ++ desc
+        arg2Desc (OptArg _ desc) = "[]=" ++ desc ++ "]"
+
+    flag2Desc :: String -> (a, String, String) -> (String, String)
+    flag2Desc pfx (_, opt, desc) = (pfx ++ opt, desc)
+
+    justify :: [(String, String)] -> [String]
+    justify flags = ["    " ++ justify1 flag ++ "  " ++ desc | (flag, desc) <- flags]
+      where
+        n = maximum [length flag | (flag, _) <- flags]
+
+        justify1 :: String -> String
+        justify1 s = s ++ replicate (n - length s) ' '
