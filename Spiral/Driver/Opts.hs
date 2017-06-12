@@ -171,11 +171,16 @@ dOpts = []
 parseOpts :: [String] -> IO (Config, [String])
 parseOpts argv =
     case getOpt Permute options argv of
-      (fs,n,[])  -> do config <- foldl (>=>) return fs defaultConfig
-                       setThreeMults $ testDynFlag ThreeMults config
+      (fs,n,[])  -> do config <- optsToConfig fs
                        return (config, n)
       (_,_,errs) -> do usageDesc <- usage
                        ioError (userError (concat errs ++ usageDesc))
+
+optsToConfig :: [Config -> IO Config] -> IO Config
+optsToConfig fs = do
+    config <- foldl (>=>) return fs defaultConfig
+    setThreeMults $ testDynFlag ThreeMults config
+    return config
 
 usage :: IO String
 usage = do
