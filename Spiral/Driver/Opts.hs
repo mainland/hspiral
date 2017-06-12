@@ -143,7 +143,7 @@ fFlags :: [(DynFlag, String, String)]
 fFlags = [ (LinePragmas,       "line-pragmas",       "print line pragmas in generated C")
          , (UseComplex,        "use-complex",        "use C99 _Complex type")
          , (ThreeMults,        "three-mult",         "use real three-multiplication variant of complex multiply")
-         , (StoreIntermediate, "store-intermediate", "explicitly store intermediate resultss")
+         , (StoreIntermediate, "store-intermediate", "explicitly store intermediate results")
          , (CSE,               "cse",                "perform common subexpression elimination")
          , (SplitComplex,      "split-complex",      "always split complex numbers when caching them")
          ]
