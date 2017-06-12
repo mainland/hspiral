@@ -21,7 +21,7 @@ import Spiral.Globals
 
 options :: forall m . Monad m => [OptDescr (Config -> m Config)]
 options =
-    [ Option ['h', '?'] ["--help"]  (NoArg (setModeM Help))              "Show help"
+    [ Option ['h', '?'] ["help"]    (NoArg (setModeM Help))              "Show help"
     , Option ['q']      ["quiet"]   (NoArg (setDynFlagM Quiet))          "Be quiet"
     , Option ['v']      ["verbose"] (OptArg maybeSetVerbLevel "LEVEL")   "Be verbose"
     , Option ['c']      []          (NoArg (setModeM Compile))           "Compile"
