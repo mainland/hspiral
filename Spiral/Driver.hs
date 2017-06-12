@@ -57,7 +57,7 @@ defaultMainWith :: Config -> ([String] -> Spiral a) -> IO a
 defaultMainWith config k = do
     args             <- getArgs
     (config', args') <- parseOpts args
-    if mode config == Help
+    if mode config' == Help
       then usage >>= hPutStrLn stderr >> exitFailure
       else runSpiral (localConfig (const (config <> config')) (k args')) `catch` printFailure
   where
