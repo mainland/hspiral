@@ -27,7 +27,7 @@ options =
     , Option ['c']      []          (NoArg (setModeM Compile))           "Compile"
     , Option ['o']      ["output"]  (ReqArg outOpt "FILE")               "Output to FILE"
     , Option ['f']      []          (ReqArg parseFFlags "")              "Specify compiler options"
-    , Option ['d']      []          (ReqArg parseDFlags "")              "Specify debug flags"
+    , Option ['d']      []          (ReqArg parseDFlags "")              "Specify debug options"
     ]
   where
     setModeM :: ModeFlag -> Config -> m Config
@@ -140,17 +140,17 @@ mkFlagOpts pfx opts set unset =
     [FlagOpt f (pfx ++ s) desc set unset | (f, s, desc) <- opts]
 
 fFlags :: [(DynFlag, String, String)]
-fFlags = [ (LinePragmas,       "line-pragmas",       "print line pragmas in generated C")
-         , (UseComplex,        "use-complex",        "use C99 _Complex type")
-         , (ThreeMults,        "three-mult",         "use real three-multiplication variant of complex multiply")
-         , (StoreIntermediate, "store-intermediate", "explicitly store intermediate results")
-         , (CSE,               "cse",                "perform common subexpression elimination")
-         , (SplitComplex,      "split-complex",      "always split complex numbers when caching them")
+fFlags = [ (LinePragmas,       "line-pragmas",       "Print line pragmas in generated C")
+         , (UseComplex,        "use-complex",        "Use C99 _Complex type")
+         , (ThreeMults,        "three-mult",         "Use real three-multiplication variant of complex multiply")
+         , (StoreIntermediate, "store-intermediate", "Explicitly store intermediate results")
+         , (CSE,               "cse",                "Perform common subexpression elimination")
+         , (SplitComplex,      "split-complex",      "Always split complex numbers when caching them")
          ]
 
 fOpts :: forall m . Monad m => [FlagOptDescr (Config -> m Config)]
 fOpts =
-    [FlagOption "max-unroll" (ReqArg maxUnroll "INT") "set maximum number of iterations to automatically unroll"]
+    [FlagOption "max-unroll" (ReqArg maxUnroll "INT") "Set maximum number of iterations to automatically unroll"]
   where
     maxUnroll :: String -> Config -> m Config
     maxUnroll s fs =
@@ -159,11 +159,11 @@ fOpts =
         _          -> fail "argument to -fmax-unroll must be an integer"
 
 dFlags :: [(DynFlag, String, String)]
-dFlags = [(GenComments, "gen-comments", "add comments in generated code")]
+dFlags = [(GenComments, "gen-comments", "Add comments in generated code")]
 
 dTraceFlags :: [(TraceFlag, String, String)]
-dTraceFlags = [(TraceCg,     "cg",     "trace code generation")
-              ,(TraceSearch, "search", "trace DFT search")]
+dTraceFlags = [(TraceCg,     "cg",     "Trace code generation")
+              ,(TraceSearch, "search", "Trace search")]
 
 dOpts :: [FlagOptDescr (Config -> m Config)]
 dOpts = []
