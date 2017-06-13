@@ -9,7 +9,9 @@
 
 module Spiral.Driver.Opts (
     parseOpts,
-    usage
+    parseOpts',
+    usage,
+    usage'
   ) where
 
 import Control.Monad ((>=>))
@@ -21,13 +23,13 @@ import Spiral.Globals
 
 options :: forall m . Monad m => [OptDescr (Config -> m Config)]
 options =
-    [ Option ['h', '?'] ["--help"]  (NoArg (setModeM Help))              "Show help"
+    [ Option ['h', '?'] ["help"]    (NoArg (setModeM Help))              "Show help"
     , Option ['q']      ["quiet"]   (NoArg (setDynFlagM Quiet))          "Be quiet"
     , Option ['v']      ["verbose"] (OptArg maybeSetVerbLevel "LEVEL")   "Be verbose"
     , Option ['c']      []          (NoArg (setModeM Compile))           "Compile"
     , Option ['o']      ["output"]  (ReqArg outOpt "FILE")               "Output to FILE"
     , Option ['f']      []          (ReqArg parseFFlags "")              "Specify compiler options"
-    , Option ['d']      []          (ReqArg parseDFlags "")              "Specify debug flags"
+    , Option ['d']      []          (ReqArg parseDFlags "")              "Specify debug options"
     ]
   where
     setModeM :: ModeFlag -> Config -> m Config
@@ -140,17 +142,17 @@ mkFlagOpts pfx opts set unset =
     [FlagOpt f (pfx ++ s) desc set unset | (f, s, desc) <- opts]
 
 fFlags :: [(DynFlag, String, String)]
-fFlags = [ (LinePragmas,       "line-pragmas",       "print line pragmas in generated C")
-         , (UseComplex,        "use-complex",        "use C99 _Complex type")
-         , (ThreeMults,        "three-mult",         "use real three-multiplication variant of complex multiply")
-         , (StoreIntermediate, "store-intermediate", "explicitly store intermediate resultss")
-         , (CSE,               "cse",                "perform common subexpression elimination")
-         , (SplitComplex,      "split-complex",      "always split complex numbers when caching them")
+fFlags = [ (LinePragmas,       "line-pragmas",       "Print line pragmas in generated C")
+         , (UseComplex,        "use-complex",        "Use C99 _Complex type")
+         , (ThreeMults,        "three-mult",         "Use real three-multiplication variant of complex multiply")
+         , (StoreIntermediate, "store-intermediate", "Explicitly store intermediate results")
+         , (CSE,               "cse",                "Perform common subexpression elimination")
+         , (SplitComplex,      "split-complex",      "Always split complex numbers when caching them")
          ]
 
 fOpts :: forall m . Monad m => [FlagOptDescr (Config -> m Config)]
 fOpts =
-    [FlagOption "max-unroll" (ReqArg maxUnroll "INT") "set maximum number of iterations to automatically unroll"]
+    [FlagOption "max-unroll" (ReqArg maxUnroll "INT") "Set maximum number of iterations to automatically unroll"]
   where
     maxUnroll :: String -> Config -> m Config
     maxUnroll s fs =
@@ -159,26 +161,73 @@ fOpts =
         _          -> fail "argument to -fmax-unroll must be an integer"
 
 dFlags :: [(DynFlag, String, String)]
-dFlags = [(GenComments, "gen-comments", "add comments in generated code")]
+dFlags = [(GenComments, "gen-comments", "Add comments in generated code")]
 
 dTraceFlags :: [(TraceFlag, String, String)]
-dTraceFlags = [(TraceCg,     "cg",     "trace code generation")
-              ,(TraceSearch, "search", "trace DFT search")]
+dTraceFlags = [(TraceCg,     "cg",     "Trace code generation")
+              ,(TraceSearch, "search", "Trace search")]
 
 dOpts :: [FlagOptDescr (Config -> m Config)]
 dOpts = []
 
 parseOpts :: [String] -> IO (Config, [String])
-parseOpts argv =
-    case getOpt Permute options argv of
-      (fs,n,[])  -> do config <- foldl (>=>) return fs defaultConfig
-                       setThreeMults $ testDynFlag ThreeMults config
-                       return (config, n)
-      (_,_,errs) -> do usageDesc <- usage
+parseOpts argv = do
+    (config, _, n) <- parseOpts' argv []
+    return (config, n)
+
+parseOpts' :: forall o . [String] -> [OptDescr o] -> IO (Config, [o], [String])
+parseOpts' argv opts =
+    case getOpt Permute (mergeOpts opts) argv of
+      (fs,n,[])  -> do let fs_left  = [x | Left x <- fs]
+                           fs_right = [x | Right x <- fs]
+                       config <- optsToConfig fs_left
+                       return (config, fs_right, n)
+      (_,_,errs) -> do usageDesc <- usage' opts
                        ioError (userError (concat errs ++ usageDesc))
 
+mergeOpts :: Monad m => [OptDescr o] -> [OptDescr (Either (Config -> m Config) o)]
+mergeOpts opts = map (fmap Left) options ++ map (fmap Right) opts
+
+optsToConfig :: [Config -> IO Config] -> IO Config
+optsToConfig fs = do
+    config <- foldl (>=>) return fs defaultConfig
+    setThreeMults $ testDynFlag ThreeMults config
+    return config
+
 usage :: IO String
-usage = do
+usage = usage' []
+
+usage' :: forall o . [OptDescr o] -> IO String
+usage' opts = do
     progname   <- getProgName
     let header =  "Usage: " ++ progname ++ " [OPTION...] files..."
-    return $ usageInfo header (options :: [OptDescr (Config -> IO Config)])
+    return $ usageInfo header allOpts ++ "\n" ++
+             "  Compiler options:\n" ++
+             unlines (justify $ map (flagOpt2Desc "-f") fOpts ++
+                                map (flag2Desc "-f")    fFlags) ++
+             "\n" ++
+             "  Debug options:\n" ++
+             unlines (justify $ map (flag2Desc "-d")       dFlags ++
+                                map (flag2Desc "-dtrace-") dTraceFlags)
+  where
+    allOpts :: [OptDescr (Either (Config -> IO Config) o)]
+    allOpts = mergeOpts opts
+
+    flagOpt2Desc :: String -> FlagOptDescr (Config -> IO Config) -> (String, String)
+    flagOpt2Desc pfx (FlagOption opt arg desc) = (pfx ++ opt ++ arg2Desc arg, desc)
+      where
+        arg2Desc :: ArgDescr a -> String
+        arg2Desc NoArg{}         = ""
+        arg2Desc (ReqArg _ desc) = "=" ++ desc
+        arg2Desc (OptArg _ desc) = "[]=" ++ desc ++ "]"
+
+    flag2Desc :: String -> (a, String, String) -> (String, String)
+    flag2Desc pfx (_, opt, desc) = (pfx ++ opt, desc)
+
+    justify :: [(String, String)] -> [String]
+    justify flags = ["    " ++ justify1 flag ++ "  " ++ desc | (flag, desc) <- flags]
+      where
+        n = maximum [length flag | (flag, _) <- flags]
+
+        justify1 :: String -> String
+        justify1 s = s ++ replicate (n - length s) ' '
