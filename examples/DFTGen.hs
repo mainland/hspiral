@@ -6,6 +6,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Complex (Complex)
 import Data.Foldable (toList)
 import Data.Typeable (Typeable)
+import System.Console.GetOpt
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
@@ -26,12 +27,12 @@ import Spiral.Search.Generic
 import Spiral.Util.Uniq
 
 main :: IO ()
-main = defaultMain $ \args -> do
+main = defaultMainWith' options mempty $ \fs args -> do
     useComplexType <- asksConfig $ testDynFlag UseComplex
     n <- case args of
            [s] -> return (read s)
            _   -> return 4
-    f <- formula n
+    f <- formula fs n
     pprint f
     if useComplexType
       then toProgram "f" f >>= go
@@ -53,11 +54,28 @@ main = defaultMain $ \args -> do
           text "          Total:" <+> ppr (allOps ops)
 
 -- The SPL formula for which we generate code and count operations.
-formula :: MonadSpiral m => Int -> m (SPL (Exp (Complex Double)))
-formula n = runSearch f (DFT n)
+formula :: MonadSpiral m => [Flag] -> Int -> m (SPL (Exp (Complex Double)))
+formula fs n =
+  case fs of
+    [Dif]        -> return $ dif n
+    [Dit]        -> return $ dit n
+    [SplitRadix] -> runSearch f (DFT n)
+    _            -> fail "Must specify exactly on of --dif, --dit, or --splitradix"
   where
     f :: (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
       => Int
       -> Exp a
       -> S m (SPL (Exp a))
     f n w = search f (splitRadix n w)
+
+data Flag = Dif
+          | Dit
+          | SplitRadix
+  deriving (Eq, Ord, Show)
+
+options :: [OptDescr Flag]
+options =
+    [ Option [] ["dif"] (NoArg Dif)                "Use DIF"
+    , Option [] ["dit"] (NoArg Dit)                "Use DIT"
+    , Option [] ["split-radix"] (NoArg SplitRadix) "Use split radix"
+    ]
