@@ -12,6 +12,9 @@ module Spiral.Config (
     DynFlag(..),
     TraceFlag(..),
 
+    DynFlags,
+    TraceFlags,
+
     Config(..),
     defaultConfig,
 
@@ -68,15 +71,19 @@ data TraceFlag = TraceCg
                | TraceSearch
   deriving (Eq, Ord, Enum, Bounded, Show)
 
+type DynFlags = FlagSet DynFlag
+
+type TraceFlags = FlagSet TraceFlag
+
 data Config = Config
     { -- | Compiler mode
       mode :: !ModeFlag
 
     , -- | Dynamic flags
-      dynFlags :: !(FlagSet DynFlag)
+      dynFlags :: !DynFlags
 
       -- | Flags for tracing
-    , traceFlags  :: !(FlagSet TraceFlag)
+    , traceFlags  :: !TraceFlags
 
     , -- | Verbosity level
       verbLevel :: !Int
