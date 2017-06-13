@@ -64,6 +64,7 @@ data DynFlag = Quiet
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data TraceFlag = TraceCg
+               | TraceCache
                | TraceSearch
   deriving (Eq, Ord, Enum, Bounded, Show)
 

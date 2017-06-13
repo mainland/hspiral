@@ -14,6 +14,7 @@ module Spiral.Util.Trace (
     traceNest,
 
     traceCg,
+    traceCache,
     traceSearch
   ) where
 
@@ -96,6 +97,9 @@ traceIfSet flag prefix doc = do
 
 traceCg :: MonadTrace m => Doc -> m ()
 traceCg = traceIfSet TraceCg "traceCg:"
+
+traceCache :: MonadTrace m => Doc -> m ()
+traceCache = traceIfSet TraceCache "traceCache:"
 
 traceSearch :: MonadTrace m => Doc -> m ()
 traceSearch = traceIfSet TraceSearch "traceSearch:"
