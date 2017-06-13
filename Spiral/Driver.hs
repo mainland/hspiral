@@ -12,8 +12,9 @@ module Spiral.Driver (
     runSpiral,
     runSpiralWith,
 
-    defaultMainWith,
     defaultMain,
+    defaultMainWith,
+    defaultMainWith',
 
     parseOpts,
     usage,
@@ -29,6 +30,7 @@ import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString.Lazy as B
 import Data.Foldable (toList)
 import qualified Data.Text.Lazy.Encoding as E
+import System.Console.GetOpt
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO (IOMode(..),
@@ -54,12 +56,15 @@ defaultMain :: ([String] -> Spiral a) -> IO a
 defaultMain = defaultMainWith mempty
 
 defaultMainWith :: Config -> ([String] -> Spiral a) -> IO a
-defaultMainWith config k = do
+defaultMainWith config k = defaultMainWith' [] config $ \_ args -> k args
+
+defaultMainWith' :: [OptDescr o] -> Config -> ([o] -> [String] -> Spiral a) -> IO a
+defaultMainWith' opts config k = do
     args             <- getArgs
-    (config', args') <- parseOpts args
+    (config', fs, args') <- parseOpts' args opts
     if mode config' == Help
-      then usage >>= hPutStrLn stderr >> exitFailure
-      else runSpiral (localConfig (const (config <> config')) (k args')) `catch` printFailure
+      then usage' opts >>= hPutStrLn stderr >> exitFailure
+      else runSpiral (localConfig (const (config <> config')) (k fs args')) `catch` printFailure
   where
     printFailure :: SomeException -> IO a
     printFailure e = hPrint stderr e >> exitFailure

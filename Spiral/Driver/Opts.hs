@@ -9,7 +9,9 @@
 
 module Spiral.Driver.Opts (
     parseOpts,
-    usage
+    parseOpts',
+    usage,
+    usage'
   ) where
 
 import Control.Monad ((>=>))
@@ -169,12 +171,22 @@ dOpts :: [FlagOptDescr (Config -> m Config)]
 dOpts = []
 
 parseOpts :: [String] -> IO (Config, [String])
-parseOpts argv =
-    case getOpt Permute options argv of
-      (fs,n,[])  -> do config <- optsToConfig fs
-                       return (config, n)
-      (_,_,errs) -> do usageDesc <- usage
+parseOpts argv = do
+    (config, _, n) <- parseOpts' argv []
+    return (config, n)
+
+parseOpts' :: forall o . [String] -> [OptDescr o] -> IO (Config, [o], [String])
+parseOpts' argv opts =
+    case getOpt Permute (mergeOpts opts) argv of
+      (fs,n,[])  -> do let fs_left  = [x | Left x <- fs]
+                           fs_right = [x | Right x <- fs]
+                       config <- optsToConfig fs_left
+                       return (config, fs_right, n)
+      (_,_,errs) -> do usageDesc <- usage' opts
                        ioError (userError (concat errs ++ usageDesc))
+
+mergeOpts :: Monad m => [OptDescr o] -> [OptDescr (Either (Config -> m Config) o)]
+mergeOpts opts = map (fmap Left) options ++ map (fmap Right) opts
 
 optsToConfig :: [Config -> IO Config] -> IO Config
 optsToConfig fs = do
@@ -183,10 +195,13 @@ optsToConfig fs = do
     return config
 
 usage :: IO String
-usage = do
+usage = usage' []
+
+usage' :: forall o . [OptDescr o] -> IO String
+usage' opts = do
     progname   <- getProgName
     let header =  "Usage: " ++ progname ++ " [OPTION...] files..."
-    return $ usageInfo header (options :: [OptDescr (Config -> IO Config)]) ++ "\n" ++
+    return $ usageInfo header allOpts ++ "\n" ++
              "  Compiler options:\n" ++
              unlines (justify $ map (flagOpt2Desc "-f") fOpts ++
                                 map (flag2Desc "-f")    fFlags) ++
@@ -195,6 +210,9 @@ usage = do
              unlines (justify $ map (flag2Desc "-d")       dFlags ++
                                 map (flag2Desc "-dtrace-") dTraceFlags)
   where
+    allOpts :: [OptDescr (Either (Config -> IO Config) o)]
+    allOpts = mergeOpts opts
+
     flagOpt2Desc :: String -> FlagOptDescr (Config -> IO Config) -> (String, String)
     flagOpt2Desc pfx (FlagOption opt arg desc) = (pfx ++ opt ++ arg2Desc arg, desc)
       where
