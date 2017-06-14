@@ -65,6 +65,7 @@ data DynFlag = Quiet
              | SplitComplex
              | CSE
              | Rewrite
+             | DifRewrite
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data TraceFlag = TraceCg

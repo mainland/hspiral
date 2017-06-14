@@ -149,6 +149,7 @@ fFlags = [ (LinePragmas,       "line-pragmas",       "Print line pragmas in gene
          , (SplitComplex,      "split-complex",      "Always split complex numbers when performing CSE them")
          , (CSE,               "cse",                "Perform common subexpression elimination")
          , (Rewrite,           "rewrite",            "Apply rewrite rules")
+         , (DifRewrite,        "dif-rewrite",        "Apply DIF rewrite rules")
          ]
 
 fOpts :: forall m . Monad m => [FlagOptDescr (Config -> m Config)]

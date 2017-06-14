@@ -69,6 +69,7 @@ main = do
                  , dftTests
                  , searchTests
                  , splitRadixOpcountTests
+                 , difOpcountTests
                  , ditCodegenTests conf
                  , difCodegenTests conf
                  , splitRadixCodegenTests conf
@@ -373,6 +374,23 @@ splitRadixOpcounts = [ (4,    0,     16)
                      --, (2048, 16388, 61444)
                      --, (4096, 36868, 135172)
                      ]
+
+difOpcountTests :: Test
+difOpcountTests =
+    testGroup "DIF opcounts"
+    [ mkTest n (muls + adds) | (n, muls, adds) <- splitRadixOpcounts]
+  where
+    mkTest :: Int -> Int -> Test
+    mkTest n nops =
+      opCountTest ("DIF " ++ show n) fs nops (return $ dif n)
+      where
+        fs :: [DynFlag]
+        fs = [ StoreIntermediate
+             , SplitComplex
+             , CSE
+             , Rewrite
+             , DifRewrite
+             ]
 
 withOpcountFlags :: MonadConfig m => [DynFlag] -> m a -> m a
 withOpcountFlags fs =
