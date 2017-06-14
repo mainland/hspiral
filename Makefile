@@ -44,6 +44,7 @@ GHCFLAGS += \
 # Source locations
 #
 SRC = \
+	Data/FlagSet.hs \
 	Data/Heterogeneous.hs \
 	Spiral.hs \
 	Spiral/Array.hs \

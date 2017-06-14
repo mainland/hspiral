@@ -3,7 +3,7 @@
 
 -- |
 -- Module      :  Spiral.Config
--- Copyright   :  (c) 2016 Drexel University
+-- Copyright   :  (c) 2016-2017 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
@@ -49,8 +49,8 @@ import Control.Monad.Writer (WriterT(..))
 import qualified Control.Monad.Writer.Strict as S (WriterT(..))
 import Data.List (foldl')
 import Data.Monoid
-import Data.Word (Word32)
-import Data.Bits
+
+import Data.FlagSet
 
 data ModeFlag = Help
               | Compile
@@ -131,28 +131,6 @@ defaultConfig =
                       , CSE
                       , SplitComplex
                       ]
-
--- | A set of flags.
-newtype FlagSet a = FlagSet Word32
-  deriving (Eq, Ord)
-
-testFlag :: Enum a => FlagSet a -> a -> Bool
-testFlag (FlagSet fs) f = fs `testBit` fromEnum f
-
-setFlag :: Enum a => FlagSet a -> a -> FlagSet a
-setFlag (FlagSet fs) f = FlagSet $ fs `setBit` fromEnum f
-
-unsetFlag :: Enum a => FlagSet a -> a -> FlagSet a
-unsetFlag (FlagSet fs) f = FlagSet $ fs `clearBit` fromEnum f
-
-instance Monoid (FlagSet a) where
-    mempty = FlagSet 0
-
-    FlagSet x `mappend` FlagSet y = FlagSet (x .|. y)
-
-instance (Enum a, Bounded a, Show a) => Show (FlagSet a) where
-    show (FlagSet n) = show [f | f <- [minBound..maxBound::a],
-                                 n `testBit` fromEnum f]
 
 class Monad m => MonadConfig m where
     askConfig   :: m Config
