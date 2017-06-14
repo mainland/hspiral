@@ -266,7 +266,7 @@ cacheWithConfig config = cache
     cacheCSE (BinopE op e1 e2) = do
         e1' <- cacheCSE e1
         e2' <- cacheCSE e2
-        -- Re-simplfy expressions after caching their subterms if the subterms
+        -- Re-simplify expressions after caching their subterms if the subterms
         -- have changed.
         if e1' /= e1 || e2' /= e2
           then case op of
