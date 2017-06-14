@@ -312,6 +312,9 @@ cacheWithConfig config = cache
         go Mul (UnopE Neg e1) e2 =
             rewrite $ -(e1 * e2)
 
+        go Mul e1@(ConstE W{}) e2 =
+            return $ BinopE Mul e1 e2
+
         go op e1 e2 =
             mustCache (BinopE op e1 e2)
 
