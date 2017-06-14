@@ -282,10 +282,19 @@ cacheWithConfig config = cache
         go Add e1@VarE{} e2@VarE{} | e2 < e1 =
             mustCache (BinopE Add e2 e1)
 
+        go Add e1@IdxE{} e2@IdxE{} | e2 < e1 =
+            mustCache (BinopE Add e2 e1)
+
         go Sub e1@VarE{} e2@VarE{} | e2 < e1 =
             UnopE Neg <$> mustCache (BinopE Sub e2 e1)
 
+        go Sub e1@IdxE{} e2@IdxE{} | e2 < e1 =
+            UnopE Neg <$> mustCache (BinopE Sub e2 e1)
+
         go Mul e1@VarE{} e2@VarE{} | e2 < e1 =
+            mustCache (BinopE Mul e2 e1)
+
+        go Mul e1@IdxE{} e2@IdxE{} | e2 < e1 =
             mustCache (BinopE Mul e2 e1)
 
         -- Constants always come first
