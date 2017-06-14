@@ -224,55 +224,56 @@ cacheWithConfig :: forall a m . (Typed a, Num (Exp a), MonadSpiral m)
                 -> P m (Exp a)
 cacheWithConfig config = cache
   where
-    useComplex, splitComplex, cse :: Bool
+    useComplex, splitComplex, doCSE, doRewrite :: Bool
     useComplex   = UseComplex `testDynFlag` config
     splitComplex = SplitComplex `testDynFlag` config
-    cse          = CSE `testDynFlag` config
+    doCSE        = CSE `testDynFlag` config
+    doRewrite    = Rewrite `testDynFlag` config
 
     cache :: forall a . (Typed a, Num (Exp a)) => Exp a -> P m (Exp a)
     cache e
-      | cse       = cacheCSE e
+      | doRewrite = rewrite e
       | otherwise = mustCache e
 
-    cacheCSE :: forall a . (Typed a, Num (Exp a)) => Exp a -> P m (Exp a)
-    cacheCSE (ConstE (FloatC x)) | x < 0 =
+    rewrite :: forall a . (Typed a, Num (Exp a)) => Exp a -> P m (Exp a)
+    rewrite (ConstE (FloatC x)) | x < 0 =
         return $ UnopE Neg (ConstE (FloatC (-x)))
 
-    cacheCSE (ConstE (DoubleC x)) | x < 0 =
+    rewrite (ConstE (DoubleC x)) | x < 0 =
         return $ UnopE Neg (ConstE (DoubleC (-x)))
 
-    cacheCSE e@ConstE{} =
+    rewrite e@ConstE{} =
         return e
 
-    cacheCSE e@VarE{} =
+    rewrite e@VarE{} =
         return e
 
-    cacheCSE (ComplexE er ei) =
-        ComplexE <$> cacheCSE er <*> cacheCSE ei
+    rewrite (ComplexE er ei) =
+        ComplexE <$> rewrite er <*> rewrite ei
 
     -- Don't cache negated constants. We don't want to fall through to the next
     -- case because the call to 'negate' will re-negate the constant!
-    cacheCSE e@(UnopE Neg ConstE{}) =
+    rewrite e@(UnopE Neg ConstE{}) =
         return e
 
     -- Cache the term we are negating, not the negated term.
-    cacheCSE (UnopE Neg e) =
-        negate <$> cacheCSE e
+    rewrite (UnopE Neg e) =
+        negate <$> rewrite e
 
-    cacheCSE (UnopE op e) = do
-        e' <- cacheCSE e
+    rewrite (UnopE op e) = do
+        e' <- rewrite e
         mustCache (UnopE op e')
 
-    cacheCSE (BinopE op e1 e2) = do
-        e1' <- cacheCSE e1
-        e2' <- cacheCSE e2
+    rewrite (BinopE op e1 e2) = do
+        e1' <- rewrite e1
+        e2' <- rewrite e2
         -- Re-simplify expressions after caching their subterms if the subterms
         -- have changed.
         if e1' /= e1 || e2' /= e2
           then case op of
-                 Add -> cacheCSE (e1' + e2')
-                 Sub -> cacheCSE (e1' - e2')
-                 Mul -> cacheCSE (e1' * e2')
+                 Add -> rewrite (e1' + e2')
+                 Sub -> rewrite (e1' - e2')
+                 Mul -> rewrite (e1' * e2')
                  _   -> go op e1' e2'
           else go op e1' e2'
       where
@@ -293,27 +294,33 @@ cacheWithConfig config = cache
 
         -- Push negation out
         go Add e1 (UnopE Neg e2) =
-            cacheCSE $ e1 - e2
+            rewrite $ e1 - e2
 
         go Add (UnopE Neg e1) e2 =
-            cacheCSE $ e2 - e1
+            rewrite $ e2 - e1
 
         go Sub e1 (UnopE Neg e2) =
-            cacheCSE $ e1 + e2
+            rewrite $ e1 + e2
 
         go Sub (UnopE Neg e1) e2 =
-            cacheCSE $ -(e1 + e2)
+            rewrite $ -(e1 + e2)
 
         go Mul e1 (UnopE Neg e2) =
-            cacheCSE $ -(e1 * e2)
+            rewrite $ -(e1 * e2)
 
         go Mul (UnopE Neg e1) e2 =
-            cacheCSE $ -(e1 * e2)
+            rewrite $ -(e1 * e2)
 
         go op e1 e2 =
             mustCache (BinopE op e1 e2)
 
-    cacheCSE e =
+    rewrite (ReE e) =
+        ReE <$> rewrite e >>= mustCache
+
+    rewrite (ImE e) =
+        ImE <$> rewrite e >>= mustCache
+
+    rewrite e =
         mustCache e
 
     -- When we are not using complex types, always separately cache the real and
@@ -337,13 +344,16 @@ cacheWithConfig config = cache
         tau :: Type a
         tau = typeOf (undefined :: a)
 
-    mustCache e = do
+    mustCache e | doCSE = do
         maybe_v <- lookupCachedExp e
         case maybe_v of
           Just v  -> return $ VarE v
           Nothing -> do temp <- tempP
                         assignS temp e
                         return temp
+
+    mustCache e =
+        return e
 
 -- | Create a new concrete array of the given shape.
 newArray :: forall sh a m . (Shape sh, Typed a, Num (Exp a), MonadSpiral m)

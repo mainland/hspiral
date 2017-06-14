@@ -62,8 +62,9 @@ data DynFlag = Quiet
              | GenComments
              | ThreeMults
              | StoreIntermediate
-             | CSE
              | SplitComplex
+             | CSE
+             | Rewrite
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 data TraceFlag = TraceCg
@@ -128,8 +129,9 @@ defaultConfig =
 
     defaultDynFlags :: [DynFlag]
     defaultDynFlags = [ StoreIntermediate
-                      , CSE
                       , SplitComplex
+                      , CSE
+                      , Rewrite
                       ]
 
 class Monad m => MonadConfig m where

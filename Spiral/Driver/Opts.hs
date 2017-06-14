@@ -146,8 +146,9 @@ fFlags = [ (LinePragmas,       "line-pragmas",       "Print line pragmas in gene
          , (UseComplex,        "use-complex",        "Use C99 _Complex type")
          , (ThreeMults,        "three-mult",         "Use real three-multiplication variant of complex multiply")
          , (StoreIntermediate, "store-intermediate", "Explicitly store intermediate results")
+         , (SplitComplex,      "split-complex",      "Always split complex numbers when performing CSE them")
          , (CSE,               "cse",                "Perform common subexpression elimination")
-         , (SplitComplex,      "split-complex",      "Always split complex numbers when caching them")
+         , (Rewrite,           "rewrite",            "Apply rewrite rules")
          ]
 
 fOpts :: forall m . Monad m => [FlagOptDescr (Config -> m Config)]
