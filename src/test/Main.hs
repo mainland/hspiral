@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -9,7 +8,7 @@
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module Main where
+module Main (main) where
 
 import Control.Monad (replicateM)
 import Data.Complex
@@ -23,12 +22,10 @@ import Test.Framework (Test,
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.HUnit ((@?=))
-import Test.QuickCheck ((===),
-                        Arbitrary(..),
+import Test.QuickCheck (Arbitrary(..),
                         Gen,
                         Property,
                         forAll,
-                        choose,
                         counterexample)
 
 import qualified Spiral
@@ -53,18 +50,21 @@ import Test.Gen
 
 main :: IO ()
 main = do
-    (conf, args') <- getArgs >>= parseOpts
-    defaultMainWithArgs (tests ++
-      [ searchTests
-      , ditCodegenTests conf
-      , difCodegenTests conf
-      , splitRadixCodegenTests conf
-      , searchCodegenTests conf
-      ])
-      args'
-
-tests :: [Test]
-tests = [strideTest, l82Test, kroneckerTest, directSumTest, dftTests]
+    (conf, args) <- getArgs >>= parseOpts
+    defaultMainWithArgs (tests conf) args
+  where
+    tests :: Config -> [Test]
+    tests conf = [ strideTest
+                 , l82Test
+                 , kroneckerTest
+                 , directSumTest
+                 , dftTests
+                 , searchTests
+                 , ditCodegenTests conf
+                 , difCodegenTests conf
+                 , splitRadixCodegenTests conf
+                 , searchCodegenTests conf
+                 ]
 
 -- See:
 --   https://en.wikipedia.org/wiki/Kronecker_product
@@ -140,14 +140,6 @@ dftTests = testGroup "DFT tests"
     , testGroup "DIF" [dif_test n | n <- [1..7]]
     , testGroup "Split Radix" [split_radix_test n | n <- [1..3]]
     , testGroup "Split Radix 8" [split_radix8_test n | n <- [1..2]]]
---    , testProperty "DFT" prop_DFT]
-
--- | Test that 'dit' produces correct DFT matrices.
-prop_DFT :: SmallPowerOfTwo -> Property
-prop_DFT (SmallPowerOfTwo n) = toMatrix (DFT (2^n)) === toMatrix fft_spl
-  where
-    fft_spl :: SPL (Exp (Complex Double))
-    fft_spl = dit (2^n)
 
 -- $F_2$
 f2Test :: Test
@@ -333,24 +325,3 @@ epsDiff v1 v2 =
 
     eps :: a
     eps = 1e-7
-
--- | Manifest a flattened array of complex numbers so that we can easily compare
--- it.
-manifestComplex :: (IArray r DIM2 (Exp (Complex Double)))
-                => Matrix r (Exp (Complex Double))
-                -> Matrix M (Exp (Complex Double))
-manifestComplex = fmap f . manifest
-  where
-    f :: Exp a -> Exp a
-    f (ConstE c) = ConstE (lower c)
-    f e          = e
-
--- | A small number
-newtype SmallPowerOfTwo = SmallPowerOfTwo Int
-    deriving (Eq, Ord, Show, Num, Integral, Real, Enum)
-
-instance Arbitrary SmallPowerOfTwo where
-    arbitrary = SmallPowerOfTwo <$> (choose (1, 7) :: Gen Int)
-
-    shrink (SmallPowerOfTwo 0) = []
-    shrink (SmallPowerOfTwo n) = [SmallPowerOfTwo (n-1)]
