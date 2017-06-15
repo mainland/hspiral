@@ -28,10 +28,13 @@ import Test.QuickCheck (Arbitrary(..),
                         forAll,
                         counterexample)
 
+import qualified Data.FlagSet as FS
+
 import qualified Spiral
 import Spiral (Config(..),
                parseOpts)
 import Spiral.Array
+import Spiral.Config
 import Spiral.Driver
 import Spiral.Exp
 import Spiral.FFT.Bluestein
@@ -39,8 +42,10 @@ import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas
 import Spiral.FFT.Rader
 import Spiral.Monad
+import Spiral.OpCount
 import Spiral.RootOfUnity
 import Spiral.SPL
+import Spiral.SPL.Run
 import Spiral.Search.Generic
 import Spiral.Search.Monad
 import Spiral.Search.OpCount
@@ -60,6 +65,7 @@ main = do
                  , directSumTest
                  , dftTests
                  , searchTests
+                 , splitRadixOpcountTests
                  , ditCodegenTests conf
                  , difCodegenTests conf
                  , splitRadixCodegenTests conf
@@ -325,3 +331,60 @@ epsDiff v1 v2 =
 
     eps :: a
     eps = 1e-7
+
+splitRadixOpcountTests :: Test
+splitRadixOpcountTests =
+    testGroup "Split radix opcounts"
+    [ mkTest n (muls + adds) | (n, muls, adds) <- splitRadixOpcounts]
+  where
+    mkTest :: Int -> Int -> Test
+    mkTest n nops =
+      opCountTest ("Split radix " ++ show n) fs nops (runSearch f (DFT n))
+      where
+        fs :: [DynFlag]
+        fs = [ StoreIntermediate
+             , SplitComplex
+             , CSE
+             , Rewrite
+             ]
+
+    f :: (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
+      => Int
+      -> Exp a
+      -> S m (SPL (Exp a))
+    f n w = search f (splitRadix n w)
+
+-- The number of multiplies and additions for spit radix decomposition of size n
+-- when using three-multiply form of complex multiply. Taken from Table II of
+-- Heideman and Burrus.
+splitRadixOpcounts :: [(Int, Int, Int)]
+splitRadixOpcounts = [ (4,    0,     16)
+                     , (8,    4,     52)
+                     , (16,   20,    148)
+                     , (32,   68,    388)
+                     , (64,   196,   964)
+                     , (128,  516,   2308)
+                     , (256,  1284,  5380)
+                     --, (512,  3076,  12292)
+                     --, (1024, 7172,  27652)
+                     --, (2048, 16388, 61444)
+                     --, (4096, 36868, 135172)
+                     ]
+
+withOpcountFlags :: MonadConfig m => [DynFlag] -> m a -> m a
+withOpcountFlags fs =
+    localConfig $ \env -> env { dynFlags  = FS.fromList fs
+                              , maxUnroll = 256
+                              }
+
+opCountTest :: String
+            -> [DynFlag]
+            -> Int
+            -> Spiral (SPL (Exp (Complex Double)))
+            -> Test
+opCountTest desc fs nops gen = buildTest $ do
+    ops <- Spiral.defaultMain $ \_ -> withOpcountFlags fs $ do
+           f <- gen
+           toProgram "f" (Re f) >>= countProgramOps
+    return $ testCase desc $
+             mulOps ops + addOps ops @?= nops
