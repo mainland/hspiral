@@ -128,7 +128,7 @@ runSPL e@(Kron a (I n)) x | m' == m = do
       forP 0 n $ \i ->
         slice y i n m .<-. runSPL a (fromGather (slice t i n m))
   where
-   Z :. m :. m' = splExtent a
+    Z :. m :. m' = splExtent a
 
 runSPL e@(DSum a b) x | m' == m && n' == n = do
     t <- gather x
