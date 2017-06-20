@@ -55,7 +55,7 @@ data SPL a where
       -> SPL e
 
     -- | The $n \times n$ identity matrix.
-    I :: Int -> SPL e
+    I :: Num e => Int -> SPL e
 
     -- | A permutation
     Pi :: Permutation -> SPL e
@@ -346,7 +346,11 @@ infixl 7 ⊗
 -- | Alias for matrix direct sum.
 infixl 6 ⊕
 (⊕) :: SPL e -> SPL e -> SPL e
-(⊕) = DSum
+I m     ⊕ I n     = I (n + m)
+I n     ⊕ Diag xs = Diag (V.replicate n 1 <> xs)
+Diag xs ⊕ I n     = Diag (xs <> V.replicate n 1)
+Diag xs ⊕ Diag ys = Diag (xs <> ys)
+x       ⊕ y       = DSum x y
 
 -- | Alias for matrix product.
 infixl 7 ×
