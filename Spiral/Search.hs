@@ -53,22 +53,30 @@ search f = go
     go :: forall a . (Typeable a, Typed a, Num (Exp a))
        => SPL (Exp a)
        -> S s m (SPL (Exp a))
-    go e = (f e >>= go) <|> recurse e
+    go e = rewrite e <|> recurse e
+
+    rewrite :: forall a . (Typeable a, Typed a, Num (Exp a))
+            => SPL (Exp a)
+            -> S s m (SPL (Exp a))
+    rewrite e = do
+        e' <- f e
+        logRewrite
+        go e'
 
     recurse :: forall a . (Typeable a, Typed a, Num (Exp a))
             => SPL (Exp a)
             -> S s m (SPL (Exp a))
     recurse (Kron e1 e2) =
-        (⊗) <$> go e1 <*> go e2
+        whenRewritten ((⊗) <$> go e1 <*> go e2) go
 
     recurse (DSum e1 e2) =
-        (⊕) <$> go e1 <*> go e2
+        whenRewritten ((⊕) <$> go e1 <*> go e2) go
 
     recurse (Prod e1 e2) =
-        (×) <$> go e1 <*> go e2
+        whenRewritten ((×) <$> go e1 <*> go e2) go
 
     recurse (Re e) =
-        Re <$> go e
+        whenRewritten (Re <$> go e) go
 
     -- XXX We may want to break out the following rewrites into a separate rule.
     recurse (DFT 2) =
