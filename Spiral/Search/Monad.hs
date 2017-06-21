@@ -16,7 +16,10 @@ module Spiral.Search.Monad (
     S(..),
     runS,
 
-    observeAll
+    observeAll,
+
+    logRewrite,
+    whenRewritten
   ) where
 
 import Control.Applicative (Alternative)
@@ -27,7 +30,9 @@ import Control.Monad.Primitive (PrimMonad(..))
 import Control.Monad.Ref (MonadRef(..))
 import Control.Monad.State (MonadState(..),
                             StateT(..),
-                            evalStateT)
+                            evalStateT,
+                            gets,
+                            modify)
 import Control.Monad.Trans (MonadTrans(..))
 import Data.IORef (IORef)
 
@@ -37,7 +42,14 @@ import Spiral.Search.SFKT
 import Spiral.Util.Trace
 import Spiral.Util.Uniq
 
-newtype S s m a = S { unS :: SFKT (StateT s m) a }
+newtype SState = SState { rewrites :: Int }
+
+instance Monoid SState where
+    mempty = SState 0
+
+    x `mappend` y = SState { rewrites = rewrites x + rewrites y }
+
+newtype S s m a = S { unS :: StateT SState (SFKT (StateT s m)) a }
   deriving (Functor, Applicative, Monad,
             Alternative, MonadPlus,
             MonadIO,
@@ -47,7 +59,7 @@ newtype S s m a = S { unS :: SFKT (StateT s m) a }
             MonadTrace)
 
 instance MonadTrans (S s) where
-    lift m = S $ lift $ lift  m
+    lift m = S $ lift $ lift $ lift m
 
 deriving instance MonadRef IORef m => MonadRef IORef (S s m)
 
@@ -66,8 +78,20 @@ runS :: forall s m a . Monad m
      => S s m a
      -> s
      -> m a
-runS m s = evalStateT (runSFKT (unS m)) s
+runS m s = evalStateT (runSFKT (evalStateT (unS m) mempty)) s
 
 -- | Observe all search results.
 observeAll :: forall s m a . Monad m => S s m a -> S s m [a]
-observeAll m = S $ lift $ runSFKTM Nothing (unS m)
+observeAll m = S $ lift $ lift $ runSFKTM Nothing (evalStateT (unS m) mempty)
+
+logRewrite :: Monad m => S s m ()
+logRewrite = S $ modify $ \s -> s { rewrites = rewrites s + 1 }
+
+whenRewritten :: Monad m => S s m a -> (a -> S s m a) -> S s m a
+whenRewritten m f = do
+    n  <- S $ gets rewrites
+    x  <- m
+    n' <- S $ gets rewrites
+    if n' > n
+      then f x
+      else return x
