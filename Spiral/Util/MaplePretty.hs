@@ -67,9 +67,19 @@ instance MaplePretty Int where
 instance MaplePretty Integer where
     pprm = integer
 
+instance MaplePretty Float where
+    pprm x | isIntegral = ppr (ceiling x :: Integer)
+           | otherwise  = ppr x
+      where
+        x' :: Integer
+        x' = ceiling x
+
+        isIntegral :: Bool
+        isIntegral = fromIntegral x' == x
+
 instance MaplePretty Double where
     pprm x | isIntegral = ppr (ceiling x :: Integer)
-           | otherwise  = double x
+           | otherwise  = ppr x
       where
         x' :: Integer
         x' = ceiling x
@@ -90,6 +100,7 @@ instance MaplePretty (Const a) where
     pprmPrec _ (BoolC x)     = pprm x
     pprmPrec _ (IntC x)      = pprm x
     pprmPrec _ (IntegerC x)  = pprm x
+    pprmPrec _ (FloatC x)    = pprm x
     pprmPrec _ (DoubleC x)   = pprm x
     pprmPrec _ (RationalC x) = pprm x
 

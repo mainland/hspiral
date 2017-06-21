@@ -46,21 +46,21 @@ instance IsArray r (sh :. Int) (Exp (Complex a)) => IsArray (RE r) (sh :. Int) (
 instance Pretty (Array r (sh :. Int) (Exp (Complex a))) => Pretty (Array (RE r) (sh :. Int) (Exp a)) where
     ppr (RE a) = text "Re" <> parens (ppr a)
 
-instance (Typed a, Num (Exp a), Num (Exp (Complex a)), Shape sh, IArray r (sh :. Int) (Exp (Complex a))) => IArray (RE r) (sh :. Int) (Exp a) where
+instance (RealFloatConst a, Shape sh, IArray r (sh :. Int) (Exp (Complex a))) => IArray (RE r) (sh :. Int) (Exp a) where
     index (RE a) (sh :. i)
         | i `rem` 2 == 0 = re
         | otherwise      = im
       where
         (re, im) = unComplexE (index a (sh :. i `quot` 2))
 
-instance (Typed a, Num (Exp a), Num (Exp (Complex a)), SArray r (sh :. Int) (Exp (Complex a))) => SArray (RE r) (sh :. Int) (Exp a) where
+instance (RealFloatConst a, SArray r (sh :. Int) (Exp (Complex a))) => SArray (RE r) (sh :. Int) (Exp a) where
     indexS (RE a) (sh :. i)
         | i `rem` 2 == 0 = re
         | otherwise      = im
       where
         (re, im) = unComplexE (indexS a (sh :. i `quot` 2))
 
-instance (Typed a, Num (Exp a), Num (Exp (Complex a)), MArray r (sh :. Int) (Exp (Complex a))) => MArray (RE r) (sh :. Int) (Exp a) where
+instance (RealFloatConst a, MArray r (sh :. Int) (Exp (Complex a))) => MArray (RE r) (sh :. Int) (Exp a) where
     read (RE a) (sh :. i) = do
         (re, im) <- unComplexE <$> read a (sh :. i `quot` 2)
         if i `rem` 2 == 0
@@ -73,7 +73,7 @@ instance (Typed a, Num (Exp a), Num (Exp (Complex a)), MArray r (sh :. Int) (Exp
           then write a (sh :. i `quot` 2) (ComplexE e im)
           else write a (sh :. i `quot` 2) (ComplexE re e)
 
-instance (Typed a, Num (Exp a), Num (Exp (Complex a)), SArray r (sh :. Int) (Exp (Complex a))) => Computable (RE r) (sh :. Int) (Exp a) where
+instance (RealFloatConst a, SArray r (sh :. Int) (Exp (Complex a))) => Computable (RE r) (sh :. Int) (Exp a) where
     computeP a b =
         forShapeP (extent b) $ \ix ->
             write a ix (indexS b ix)
@@ -99,7 +99,7 @@ instance (Typed a, Num (Exp a), IArray r (sh :. Int) (Exp a)) => IArray (CMPLX r
 instance (Typed a, Num (Exp a), SArray r (sh :. Int) (Exp a)) => SArray (CMPLX r) (sh :. Int) (Exp (Complex a)) where
     indexS (CMPLX a) (sh :. i) = ComplexE (indexS a (sh :. 2*i)) (indexS a (sh :. 2*i+1))
 
-instance (Typed a, Num (Exp a), Num (Exp (Complex a)), MArray r (sh :. Int) (Exp a)) => MArray (CMPLX r) (sh :. Int) (Exp (Complex a)) where
+instance (RealFloatConst a, MArray r (sh :. Int) (Exp a)) => MArray (CMPLX r) (sh :. Int) (Exp (Complex a)) where
     read (CMPLX a) (sh :. i) = ComplexE <$> read a (sh :. 2*i) <*> read a (sh :. 2*i+1)
 
     write (CMPLX a) (sh :. i) e = do
@@ -108,5 +108,5 @@ instance (Typed a, Num (Exp a), Num (Exp (Complex a)), MArray r (sh :. Int) (Exp
       where
         (er, ei) = unComplexE e
 
-instance (Typed a, Num (Exp a), Num (Exp (Complex a)), Computable r (sh :. Int) (Exp a)) => Computable (CMPLX r) (sh :. Int) (Exp (Complex a)) where
+instance (RealFloatConst a, Computable r (sh :. Int) (Exp a)) => Computable (CMPLX r) (sh :. Int) (Exp (Complex a)) where
     computeP a (CMPLX b) = computeP (toRealArray a) b

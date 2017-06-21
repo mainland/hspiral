@@ -29,6 +29,8 @@ data CExp -- A known integer constant
           = CInt Int
           -- A known long long (at least 64 bit) constant
           | CLLInt Integer
+          -- A known float constant
+          | CFloat Float
           -- A known double constant
           | CDouble Double
           -- A complex number.
@@ -42,16 +44,19 @@ data CExp -- A known integer constant
 instance Eq CExp where
     CInt x       == CInt x'        = x' == x
     CLLInt x     == CLLInt x'      = x' == x
+    CFloat x     == CFloat x'      = x' == x
     CDouble x    == CDouble x'     = x' == x
     CComplex r i == CComplex r' i' = r' == r && i' == i
     CExp e       == CExp e'        = e' == e
     CInit i      == CInit i'       = i' == i
 
+    x@CFloat{}   == x'@CInt{}    = x' == x
     x@CDouble{}  == x'@CInt{}    = x' == x
     x@CComplex{} == x'@CDouble{} = x' == x
     x@CComplex{} == x'@CInt{}    = x' == x
 
     x@CInt{} == CComplex x' 0 = x' == x
+    CInt x   == CFloat x'    = x' == fromIntegral x
     CInt x   == CDouble x'    = x' == fromIntegral x
 
     _ == _ = False
@@ -67,6 +72,7 @@ unComplex ce             = (CExp [cexp|creal($ce)|], CExp [cexp|cimag($ce)|])
 instance Pretty CExp where
     ppr (CInt x)      = ppr x
     ppr (CLLInt x)    = ppr x
+    ppr (CFloat x)    = ppr x
     ppr (CDouble x)   = ppr x
     ppr ce@CComplex{} = ppr [cexp|$ce|]
     ppr (CExp ce)     = ppr ce
@@ -75,6 +81,7 @@ instance Pretty CExp where
 instance ToExp CExp where
     toExp (CInt i)    = const [cexp|$int:i|]
     toExp (CLLInt i)  = const [cexp|$llint:i|]
+    toExp (CFloat x)  = const [cexp|$float:x|]
     toExp (CDouble x) = const [cexp|$double:x|]
     toExp (CExp ce)   = const ce
     toExp (CInit _)   = error "ToExp CExp: cannot convert CInit to a C expression"
@@ -93,6 +100,7 @@ instance ToInitializer CExp where
 instance LiftNum CExp where
     liftNum _ f (CInt x)    = CInt (f x)
     liftNum _ f (CLLInt x)  = CLLInt (f x)
+    liftNum _ f (CFloat x)  = CFloat (f x)
     liftNum _ f (CDouble x) = CDouble (f x)
 
     liftNum Neg _ (CComplex cr ci)    = CComplex (-cr) (-ci)
@@ -104,6 +112,7 @@ instance LiftNum CExp where
 
     liftNum2 _ f (CInt x)    (CInt y)    = CInt (f x y)
     liftNum2 _ f (CLLInt x)  (CLLInt y)  = CLLInt (f x y)
+    liftNum2 _ f (CFloat x)  (CFloat y)  = CFloat (f x y)
     liftNum2 _ f (CDouble x) (CDouble y) = CDouble (f x y)
 
     liftNum2 Add _ (CComplex a b) (CComplex c d) =
@@ -171,6 +180,9 @@ instance Integral CExp where
 
 instance Fractional CExp where
     fromRational = CDouble . fromRational
+
+    CFloat x / CFloat y =
+        CFloat (x / y)
 
     CDouble x / CDouble y =
         CDouble (x / y)
