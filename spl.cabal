@@ -62,7 +62,8 @@ library
     Spiral.RootOfUnity
     Spiral.SPL
     Spiral.SPL.Run
-    Spiral.Search.Generic
+    Spiral.Search
+    Spiral.Search.FFTBreakdowns
     Spiral.Search.Monad
     Spiral.Search.OpCount
     Spiral.Search.SFKT

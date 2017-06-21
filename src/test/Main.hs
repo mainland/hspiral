@@ -10,7 +10,8 @@
 
 module Main (main) where
 
-import Control.Monad (replicateM)
+import Control.Monad (mzero,
+                      replicateM)
 import Data.Complex
 import Data.Typeable (Typeable)
 import qualified Data.Vector.Storable as V
@@ -46,8 +47,8 @@ import Spiral.OpCount
 import Spiral.RootOfUnity
 import Spiral.SPL
 import Spiral.SPL.Run
-import Spiral.Search.Generic
-import Spiral.Search.Monad
+import Spiral.Search
+import Spiral.Search.FFTBreakdowns
 import Spiral.Search.OpCount
 
 import qualified Test.FFTW as FFTW
@@ -282,13 +283,13 @@ difCodegenTests conf =
 splitRadixCodegenTests :: Config -> Test
 splitRadixCodegenTests conf =
     testGroup "Generated splitRadix DFT" $
-    codegenTests conf "Split radix DFT of size" (\n -> runSearch f (Re (DFT n)))
+    codegenTests conf "Split radix DFT of size" (\n -> runSearch () f (Re (DFT n)))
   where
-    f :: (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
-      => Int
-      -> Exp a
-      -> S m (SPL (Exp a))
-    f n w = search f (splitRadix n w)
+    f :: (Typeable a, Typed a, MonadSpiral m)
+      => SPL (Exp a)
+      -> S s m (SPL (Exp a))
+    f (F n w) = splitRadixBreakdown n w
+    f _       = mzero
 
 searchCodegenTests :: Config -> Test
 searchCodegenTests conf =
@@ -339,7 +340,7 @@ splitRadixOpcountTests =
   where
     mkTest :: Int -> Int -> Test
     mkTest n nops =
-      opCountTest ("Split radix " ++ show n) fs nops (runSearch f (DFT n))
+      opCountTest ("Split radix " ++ show n) fs nops (runSearch () f (DFT n))
       where
         fs :: [DynFlag]
         fs = [ StoreIntermediate
@@ -348,11 +349,11 @@ splitRadixOpcountTests =
              , Rewrite
              ]
 
-    f :: (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
-      => Int
-      -> Exp a
-      -> S m (SPL (Exp a))
-    f n w = search f (splitRadix n w)
+    f :: (Typeable a, Typed a, MonadSpiral m)
+      => SPL (Exp a)
+      -> S s m (SPL (Exp a))
+    f (F n w) = splitRadixBreakdown n w
+    f _       = mzero
 
 -- The number of multiplies and additions for spit radix decomposition of size n
 -- when using three-multiply form of complex multiply. Taken from Table II of

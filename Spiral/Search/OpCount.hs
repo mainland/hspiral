@@ -13,56 +13,112 @@ module Spiral.Search.OpCount (
   ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard,
-                      msum)
+import Control.Monad (mzero)
+import Control.Monad.State (gets,
+                            modify)
+import Data.Dynamic (Dynamic,
+                     TypeRep,
+                     fromDynamic,
+                     toDyn)
 import Data.List (minimumBy)
+import Data.Map (Map)
+import qualified Data.Map as Map
+import qualified Data.Typeable as T
 import Data.Typeable (Typeable)
-import Math.NumberTheory.Primes.Testing (isPrime)
 import Text.PrettyPrint.Mainland hiding ((<|>))
 import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Config
 import Spiral.Exp
-import Spiral.FFT.CooleyTukey
-import Spiral.FFT.GoodThomas (goodThomas)
-import Spiral.FFT.Rader (rader)
 import Spiral.Monad
-import Spiral.Search.Generic
-import Spiral.Search.Monad
-import Spiral.NumberTheory (primeFactorization)
+import Spiral.Search
 import Spiral.OpCount
 import Spiral.RootOfUnity
 import Spiral.SPL
+import Spiral.Search.FFTBreakdowns
 import Spiral.Util.Trace
+
+type Metric = OpCount Int
+
+type TypeMap = Map TypeRep Dynamic
+
+insertT :: (Typeable k, Typeable v, Ord k) => k -> v -> TypeMap -> TypeMap
+insertT k v m =
+    case Map.lookup tau m of
+      Nothing -> Map.insert tau (toDyn $ Map.singleton k v) m
+      Just m' -> case fromDynamic m' of
+                   Nothing  -> error "Bad TypeMap!"
+                   Just m'' -> Map.insert tau (toDyn $ Map.insert k v m'') m
+  where
+    tau :: TypeRep
+    tau = T.typeOf k
+
+lookupT :: (Typeable k, Typeable v, Ord k) => k -> TypeMap -> Maybe v
+lookupT k m =
+    case Map.lookup tau m of
+      Nothing -> Nothing
+      Just m' -> case fromDynamic m' of
+                   Nothing  -> error "Bad TypeMap!"
+                   Just m'' -> Map.lookup k m''
+  where
+    tau :: TypeRep
+    tau = T.typeOf k
+
+newtype Cache = Cache { cache :: TypeMap }
+
+instance Monoid Cache where
+    mempty = Cache mempty
+
+    x `mappend` y = Cache { cache = cache x `Map.union` cache y }
+
+type SDFT m a = S Cache m a
 
 -- | Search for the form of a transform with the best op-count.
 searchOpCount :: (Typeable a, Typed a, Num (Exp a), MonadSpiral m)
               => SPL (Exp a)
               -> m (SPL (Exp a))
-searchOpCount = runSearch cache
+searchOpCount = runSearch mempty findDFT
 
-cache :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
-      => Int
-      -> Exp a
-      -> S m (SPL (Exp a))
-cache n w = do
+lookupDFT :: (Typeable a, Ord a, Monad m)
+          => Int
+          -> a
+          -> S Cache m (Maybe (SPL a, Metric))
+lookupDFT n w = gets $ lookupT (n, w) . cache
+
+cacheDFT :: (Typeable a, Num a, Ord a, Pretty a, MonadTrace m)
+         => Int
+         -> a
+         -> SPL a
+         -> Metric
+         -> SDFT m ()
+cacheDFT n w e m = do
+    traceSearch $ text "Caching:" <+> ppr n <+> ppr w </> ppr e
+    modify $ \s -> s { cache = insertT (n, w) (e, m) (cache s) }
+
+findDFT :: forall a m . (Typeable a, Typed a, MonadSpiral m)
+        => SPL (Exp a)
+        -> SDFT m (SPL (Exp a))
+findDFT (F n w) = do
    maybe_e <- lookupDFT n w
    case maybe_e of
      Just (e, _) -> return e
      Nothing     -> bestBreakdown n w
 
+findDFT _ =
+    mzero
+
 -- | Find the best DFT breakdown.
 bestBreakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
               => Int
               -> Exp a
-              -> S m (SPL (Exp a))
+              -> SDFT m (SPL (Exp a))
 bestBreakdown n w = do
     useComplexType <- asksConfig $ testDynFlag UseComplex
-    alts           <- observeAll (breakdown n w) >>= mapM (search cache)
+    alts           <- observeAll (breakdown n w) >>= mapM (search findDFT)
     opcs           <- mapM (countOps' useComplexType tau) alts
     traceSearch $ text "DFT size" <+> ppr n <> text ":" <+> commasep [ppr (mulOps ops) <> char '/' <> ppr (addOps ops) | ops <- opcs]
     let (e, m) = minimumBy metricOrdering (alts `zip` opcs)
-    tryCacheDFT n w e m
+    cacheIfBetter n w e m
   where
     tau :: Type a
     tau = typeOf (undefined :: a)
@@ -73,7 +129,7 @@ bestBreakdown n w = do
               => Bool
               -> Type b
               -> SPL (Exp b)
-              -> S m (OpCount Int)
+              -> SDFT m (OpCount Int)
     countOps' False ComplexT{} = countOps . Re
     countOps' _     _          = countOps
 
@@ -81,50 +137,24 @@ bestBreakdown n w = do
 breakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
           => Int
           -> Exp a
-          -> S m (SPL (Exp a))
+          -> SDFT m (SPL (Exp a))
 breakdown n w =
-    bruteForce <|>
-    cooleyTukeyBreakdowns <|>
-    goodThomasBreakdowns <|>
-    raderBreakdowns
-  where
-    bruteForce :: S m (SPL (Exp a))
-    bruteForce = return $ (spl . toMatrix) (F n w)
-
-    cooleyTukeyBreakdowns :: S m (SPL (Exp a))
-    cooleyTukeyBreakdowns =
-        msum [return $ cooleyTukeyDIF r s w | (r, s) <- factors n] <|>
-        msum [return $ cooleyTukeyDIT r s w | (r, s) <- factors n] <|>
-        splitRadixBreakdown <|>
-        splitRadix8Breakdown
-
-    splitRadixBreakdown :: S m (SPL (Exp a))
-    splitRadixBreakdown = do
-        guard (n `rem` 4 == 0)
-        return $ splitRadix n w
-
-    splitRadix8Breakdown :: S m (SPL (Exp a))
-    splitRadix8Breakdown = do
-        guard (n `rem` 8 == 0)
-        return $ splitRadix8 n w
-
-    goodThomasBreakdowns :: S m (SPL (Exp a))
-    goodThomasBreakdowns = msum [return $ goodThomas r s w | (r, s) <- coprimeFactors n]
-
-    raderBreakdowns :: S m (SPL (Exp a))
-    raderBreakdowns = do
-        guard (isPrime (fromIntegral n))
-        return $ rader n w
+    bruteForce n w <|>
+    cooleyTukeyBreakdowns n w <|>
+    splitRadixBreakdown n w <|>
+    splitRadix8Breakdown n w <|>
+    goodThomasBreakdowns n w <|>
+    raderBreakdowns n w
 
 -- | Cache the given DFT transform if its metric improves on the previously
 -- best-known DFT.
-tryCacheDFT :: (Typeable a, Num (Exp a), MonadSpiral m)
-            => Int
-            -> Exp a
-            -> SPL (Exp a)
-            -> Metric
-            -> S m (SPL (Exp a))
-tryCacheDFT n w e m = do
+cacheIfBetter :: (Typeable a, Num (Exp a), MonadSpiral m)
+              => Int
+              -> Exp a
+              -> SPL (Exp a)
+              -> Metric
+              -> SDFT m (SPL (Exp a))
+cacheIfBetter n w e m = do
     maybe_e' <- lookupDFT n w
     case maybe_e' of
       Just t@(e', _) | metricOrdering t (e, m) /= LT -> return e'
@@ -136,41 +166,3 @@ metricOrdering (_, x) (_, y) =
     case compare (allOps x) (allOps y) of
       EQ -> compare (mulOps x) (mulOps y)
       o  -> o
-
--- | Return all possible ways to factor a number into two factors, neither of
--- which is one.
-factors :: Int -> [(Int,Int)]
-factors n =
-    filter (not . dumbFactors) $
-    factorSplits $ primeFactorization n
-
--- | Return all possible ways to factor a number into two coprime factors,
--- neither of which is one.
-coprimeFactors :: Int -> [(Int,Int)]
-coprimeFactors n =
-    filter (not . dumbFactors)
-    [(unfactor fs1, unfactor fs2) | (fs1, fs2) <- splits $ primeFactorization n]
-
-dumbFactors :: (Int,Int) -> Bool
-dumbFactors (1,_) = True
-dumbFactors (_,1) = True
-dumbFactors _     = False
-
--- | Generate all possible splittings of a list, avoiding empty lists.
-splits :: [a] -> [([a], [a])]
-splits []     = []
-splits [x]    = [([x], []), ([], [x])]
-splits (x:xs) = [(x:ys, zs) | (ys, zs) <- ss] ++ [(ys, x:zs) | (ys, zs) <- ss]
-  where
-    ss = splits xs
-
--- | Given a prime factorization, return all possible ways to split the original
--- number into two factors.
-factorSplits :: [(Int,Int)] -> [(Int,Int)]
-factorSplits []         = [(1, 1)]
-factorSplits ((p,n):fs) = [(p^i*x, p^(n-i)*y) | (x,y) <- factorSplits fs, i <- [0..n]]
-
--- | Convert a prime fatorization back into a number.
-unfactor :: [(Int,Int)] -> Int
-unfactor []         = 1
-unfactor ((p,n):fs) = p^n*unfactor fs

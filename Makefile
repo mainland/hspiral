@@ -89,7 +89,8 @@ SRC = \
 	Spiral/RootOfUnity.hs \
 	Spiral/SPL.hs \
 	Spiral/SPL/Run.hs \
-	Spiral/Search/Generic.hs \
+	Spiral/Search.hs \
+	Spiral/Search/FFTBreakdowns.hs \
 	Spiral/Search/Monad.hs \
 	Spiral/Search/OpCount.hs \
 	Spiral/Search/SFKT.hs \

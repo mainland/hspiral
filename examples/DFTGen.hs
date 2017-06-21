@@ -2,6 +2,7 @@
 
 module Main (main) where
 
+import Control.Monad (mzero)
 import Control.Monad.IO.Class (liftIO)
 import Data.Complex (Complex)
 import Data.Foldable (toList)
@@ -19,11 +20,10 @@ import Spiral.FFT.CooleyTukey
 import Spiral.Monad
 import Spiral.OpCount
 import Spiral.Program
-import Spiral.RootOfUnity
 import Spiral.SPL
 import Spiral.SPL.Run
-import Spiral.Search.Monad
-import Spiral.Search.Generic
+import Spiral.Search
+import Spiral.Search.FFTBreakdowns
 import Spiral.Util.Uniq
 
 main :: IO ()
@@ -59,14 +59,14 @@ formula fs n =
   case fs of
     [Dif]        -> return $ dif n
     [Dit]        -> return $ dit n
-    [SplitRadix] -> runSearch f (DFT n)
+    [SplitRadix] -> runSearch () f (DFT n)
     _            -> fail "Must specify exactly on of --dif, --dit, or --splitradix"
   where
-    f :: (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
-      => Int
-      -> Exp a
-      -> S m (SPL (Exp a))
-    f n w = search f (splitRadix n w)
+    f :: (Typeable a, Typed a, MonadSpiral m)
+      => SPL (Exp a)
+      -> S s m (SPL (Exp a))
+    f (F n w) = splitRadixBreakdown n w
+    f _       = mzero
 
 data Flag = Dif
           | Dit
