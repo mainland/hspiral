@@ -341,7 +341,10 @@ col e j = V.generate n f
 -- | Alias for Kronecker product.
 infixl 7 ⊗
 (⊗) :: SPL e -> SPL e -> SPL e
-(⊗) = Kron
+I m ⊗ (Kron (I n) y) = I (m+n) ⊗ y
+I 1 ⊗ y              = y
+x   ⊗ I 1            = x
+x   ⊗ y              = Kron x y
 
 -- | Alias for matrix direct sum.
 infixl 6 ⊕
