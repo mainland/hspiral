@@ -46,6 +46,7 @@ library
     Spiral.Backend.C.Util
     Spiral.Config
     Spiral.Driver
+    Spiral.Driver.Opts
     Spiral.Exp
     Spiral.FFT.Bluestein
     Spiral.FFT.CooleyTukey
@@ -72,7 +73,6 @@ library
   other-modules:
     Data.Heterogeneous
     Spiral.Driver.Monad
-    Spiral.Driver.Opts
     Spiral.Util.MaplePretty
     Spiral.Util.Name
     Spiral.Util.Pretty

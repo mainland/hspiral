@@ -13,12 +13,14 @@ module Main (main) where
 import Control.Monad (mzero,
                       replicateM)
 import Data.Complex
+import Data.Maybe (catMaybes)
 import Data.Typeable (Typeable)
 import qualified Data.Vector.Storable as V
 import System.Environment (getArgs)
 import Test.Framework (Test,
                        buildTest,
-                       defaultMainWithArgs,
+                       defaultMainWithOpts,
+                       optionsDescription,
                        testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
@@ -32,11 +34,11 @@ import Test.QuickCheck (Arbitrary(..),
 import qualified Data.FlagSet as FS
 
 import qualified Spiral
-import Spiral (Config(..),
-               parseOpts)
+import Spiral (Config(..))
 import Spiral.Array
 import Spiral.Config
 import Spiral.Driver
+import Spiral.Driver.Opts (parseOpts')
 import Spiral.Exp
 import Spiral.FFT.Bluestein
 import Spiral.FFT.CooleyTukey
@@ -56,8 +58,8 @@ import Test.Gen
 
 main :: IO ()
 main = do
-    (conf, args) <- getArgs >>= parseOpts
-    defaultMainWithArgs (tests conf) args
+    (conf, opts, _args) <- getArgs >>= \args -> parseOpts' args optionsDescription
+    defaultMainWithOpts (tests conf) (mconcat (catMaybes opts))
   where
     tests :: Config -> [Test]
     tests conf = [ strideTest
