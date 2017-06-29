@@ -110,6 +110,8 @@ instance LiftNum CExp where
     liftNum Abs    _ _ce = error "LiftNum CExp: cannot lift abs"
     liftNum Signum _ ce  = CExp [cexp|$ce == 0 ? 0 : ($ce > 0 ? 1 : -1)|]
 
+    liftNum _ _ _ = error "Not a Num operator"
+
     liftNum2 _ f (CInt x)    (CInt y)    = CInt (f x y)
     liftNum2 _ f (CLLInt x)  (CLLInt y)  = CLLInt (f x y)
     liftNum2 _ f (CFloat x)  (CFloat y)  = CFloat (f x y)
@@ -177,6 +179,38 @@ instance Integral CExp where
     toInteger (CInt i)   = fromIntegral i
     toInteger (CLLInt i) = fromIntegral i
     toInteger _          = error "Integral CExp: toInteger not implemented"
+
+instance LiftFloating CExp where
+    liftFloating Exp    _ ce  = CExp [cexp|exp($ce)|]
+    liftFloating Log    _ ce  = CExp [cexp|log($ce)|]
+    liftFloating Sin    _ ce  = CExp [cexp|sin($ce)|]
+    liftFloating Cos    _ ce  = CExp [cexp|cos($ce)|]
+    liftFloating Asin   _ ce  = CExp [cexp|asin($ce)|]
+    liftFloating Acos   _ ce  = CExp [cexp|acos($ce)|]
+    liftFloating Atan   _ ce  = CExp [cexp|atan($ce)|]
+    liftFloating Sinh   _ ce  = CExp [cexp|sinh($ce)|]
+    liftFloating Cosh   _ ce  = CExp [cexp|cosh($ce)|]
+    liftFloating Asinh  _ ce  = CExp [cexp|asinh($ce)|]
+    liftFloating Acosh  _ ce  = CExp [cexp|acosh($ce)|]
+    liftFloating Atanh  _ ce  = CExp [cexp|atanh($ce)|]
+
+    liftFloating _ _ _ = error "Not a Floating operator"
+
+instance Floating CExp where
+    pi = CExp [cexp|PI|]
+
+    exp   = liftFloating Exp exp
+    log   = liftFloating Log log
+    sin   = liftFloating Sin sin
+    cos   = liftFloating Cos cos
+    asin  = liftFloating Asin asin
+    acos  = liftFloating Acos acos
+    atan  = liftFloating Atan atan
+    sinh  = liftFloating Sinh sinh
+    cosh  = liftFloating Cosh cosh
+    asinh = liftFloating Asinh asinh
+    acosh = liftFloating Acosh acosh
+    atanh = liftFloating Atanh atanh
 
 instance Fractional CExp where
     fromRational = CDouble . fromRational

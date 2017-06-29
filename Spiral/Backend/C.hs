@@ -175,6 +175,18 @@ cgExp (UnopE op e) =
     go Neg ce    = return $ -ce
     go Abs ce    = return $ abs ce
     go Signum ce = return $ signum ce
+    go Exp ce    = return $ exp ce
+    go Log ce    = return $ log ce
+    go Sin ce    = return $ sin ce
+    go Cos ce    = return $ cos ce
+    go Asin ce   = return $ asin ce
+    go Acos ce   = return $ acos ce
+    go Atan ce   = return $ atan ce
+    go Sinh ce   = return $ sinh ce
+    go Cosh ce   = return $ cosh ce
+    go Asinh ce  = return $ asinh ce
+    go Acosh ce  = return $ acosh ce
+    go Atanh ce  = return $ atanh ce
 
 cgExp (BinopE op e1 e2) = do
     ce1 <- cgExp e1

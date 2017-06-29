@@ -33,6 +33,7 @@ module Spiral.Exp (
     lower,
 
     LiftNum(..),
+    LiftFloating(..),
 
     IfThenElse(..),
     IsEq(..),
@@ -392,6 +393,18 @@ instance HOrd Exp where
 data Unop = Neg
           | Abs
           | Signum
+          | Exp
+          | Log
+          | Sin
+          | Cos
+          | Asin
+          | Acos
+          | Atan
+          | Sinh
+          | Cosh
+          | Asinh
+          | Acosh
+          | Atanh
   deriving (Eq, Ord, Show)
 
 -- | Binary operators
@@ -416,6 +429,18 @@ instance HasFixity Unop where
     fixity Neg    = infixr_ 10
     fixity Abs    = infixr_ 10
     fixity Signum = infixr_ 10
+    fixity Exp    = infixr_ 10
+    fixity Log    = infixr_ 10
+    fixity Sin    = infixr_ 10
+    fixity Cos    = infixr_ 10
+    fixity Asin   = infixr_ 10
+    fixity Acos   = infixr_ 10
+    fixity Atan   = infixr_ 10
+    fixity Sinh   = infixr_ 10
+    fixity Cosh   = infixr_ 10
+    fixity Asinh  = infixr_ 10
+    fixity Acosh  = infixr_ 10
+    fixity Atanh  = infixr_ 10
 
 instance HasFixity Binop where
     fixity Add  = infixl_ 8
@@ -437,6 +462,18 @@ instance Pretty Unop where
     ppr Neg     = text "-"
     ppr Abs     = text "abs" <> space
     ppr Signum  = text "signum" <> space
+    ppr Exp     = text "exp" <> space
+    ppr Log     = text "log" <> space
+    ppr Sin     = text "sin" <> space
+    ppr Cos     = text "cos" <> space
+    ppr Asin    = text "asin" <> space
+    ppr Acos    = text "acos" <> space
+    ppr Atan    = text "atan" <> space
+    ppr Sinh    = text "sinh" <> space
+    ppr Cosh    = text "cosh" <> space
+    ppr Asinh   = text "asinh" <> space
+    ppr Acosh   = text "acosh" <> space
+    ppr Atanh   = text "atanh" <> space
 
 instance Pretty Binop where
     ppr Add  = text "+"
@@ -919,7 +956,7 @@ instance Integral (Exp Int) where
 
 --------------------------------------------------------------------------------
 --
--- Fractional/Floating instances
+-- Fractional instances
 --
 --------------------------------------------------------------------------------
 
@@ -963,38 +1000,6 @@ instance Fractional (Const Double) where
 
     fromRational = DoubleC . fromRational
 
-instance Floating (Const Float) where
-    pi = FloatC pi
-
-    exp   = lift exp
-    log   = lift log
-    asin  = lift asin
-    acos  = lift acos
-    atan  = lift atan
-    sinh  = lift sinh
-    cosh  = lift cosh
-    asinh = lift asinh
-    acosh = lift acosh
-    atanh = lift atanh
-    sin   = lift sin
-    cos   = lift cos
-
-instance Floating (Const Double) where
-    pi = DoubleC pi
-
-    exp   = lift exp
-    log   = lift log
-    asin  = lift asin
-    acos  = lift acos
-    atan  = lift atan
-    sinh  = lift sinh
-    cosh  = lift cosh
-    asinh = lift asinh
-    acosh = lift acosh
-    atanh = lift atanh
-    sin   = lift sin
-    cos   = lift cos
-
 instance Fractional (Const (Complex Float)) where
     (/) = liftFrac2 Div (/)
 
@@ -1024,6 +1029,153 @@ instance Fractional (Exp (Complex Double)) where
     (/) = liftFrac2 Div (/)
 
     fromRational x = ConstE (ComplexC (fromRational x) 0)
+
+--------------------------------------------------------------------------------
+--
+-- Floating instances
+--
+--------------------------------------------------------------------------------
+
+-- | Class to lift 'Floating' operators.
+class LiftFloating b where
+    -- | Lift a binary operation on 'Floating' to the type 'b
+    liftFloating :: Unop -> (forall a . Floating a => a -> a) -> b -> b
+
+instance (Floating a, Typed a, ToConst a) => LiftFloating (Const a) where
+    liftFloating _op f c = lift f c
+
+instance LiftFloating (Const a) => LiftFloating (Exp a) where
+    liftFloating op f (ConstE c) = ConstE $ liftFloating op f c
+
+    liftFloating op _ e = UnopE op e
+
+instance Floating (Const Float) where
+    pi = toConst pi
+
+    exp   = liftFloating Exp exp
+    log   = liftFloating Log log
+    asin  = liftFloating Asin asin
+    acos  = liftFloating Acos acos
+    atan  = liftFloating Atan atan
+    sinh  = liftFloating Sinh sinh
+    cosh  = liftFloating Cosh cosh
+    asinh = liftFloating Asinh asinh
+    acosh = liftFloating Acosh acosh
+    atanh = liftFloating Atanh atanh
+    sin   = liftFloating Sin sin
+    cos   = liftFloating Cos cos
+
+instance Floating (Const Double) where
+    pi = toConst pi
+
+    exp   = liftFloating Exp exp
+    log   = liftFloating Log log
+    asin  = liftFloating Asin asin
+    acos  = liftFloating Acos acos
+    atan  = liftFloating Atan atan
+    sinh  = liftFloating Sinh sinh
+    cosh  = liftFloating Cosh cosh
+    asinh = liftFloating Asinh asinh
+    acosh = liftFloating Acosh acosh
+    atanh = liftFloating Atanh atanh
+    sin   = liftFloating Sin sin
+    cos   = liftFloating Cos cos
+
+instance Floating (Const (Complex Float)) where
+    pi = toConst pi
+
+    exp   = liftFloating Exp exp
+    log   = liftFloating Log log
+    asin  = liftFloating Asin asin
+    acos  = liftFloating Acos acos
+    atan  = liftFloating Atan atan
+    sinh  = liftFloating Sinh sinh
+    cosh  = liftFloating Cosh cosh
+    asinh = liftFloating Asinh asinh
+    acosh = liftFloating Acosh acosh
+    atanh = liftFloating Atanh atanh
+    sin   = liftFloating Sin sin
+    cos   = liftFloating Cos cos
+
+instance Floating (Const (Complex Double)) where
+    pi = toConst pi
+
+    exp   = liftFloating Exp exp
+    log   = liftFloating Log log
+    asin  = liftFloating Asin asin
+    acos  = liftFloating Acos acos
+    atan  = liftFloating Atan atan
+    sinh  = liftFloating Sinh sinh
+    cosh  = liftFloating Cosh cosh
+    asinh = liftFloating Asinh asinh
+    acosh = liftFloating Acosh acosh
+    atanh = liftFloating Atanh atanh
+    sin   = liftFloating Sin sin
+    cos   = liftFloating Cos cos
+
+instance Floating (Exp Float) where
+    pi = ConstE pi
+
+    exp   = liftFloating Exp exp
+    log   = liftFloating Log log
+    asin  = liftFloating Asin asin
+    acos  = liftFloating Acos acos
+    atan  = liftFloating Atan atan
+    sinh  = liftFloating Sinh sinh
+    cosh  = liftFloating Cosh cosh
+    asinh = liftFloating Asinh asinh
+    acosh = liftFloating Acosh acosh
+    atanh = liftFloating Atanh atanh
+    sin   = liftFloating Sin sin
+    cos   = liftFloating Cos cos
+
+instance Floating (Exp Double) where
+    pi = ConstE pi
+
+    exp   = liftFloating Exp exp
+    log   = liftFloating Log log
+    asin  = liftFloating Asin asin
+    acos  = liftFloating Acos acos
+    atan  = liftFloating Atan atan
+    sinh  = liftFloating Sinh sinh
+    cosh  = liftFloating Cosh cosh
+    asinh = liftFloating Asinh asinh
+    acosh = liftFloating Acosh acosh
+    atanh = liftFloating Atanh atanh
+    sin   = liftFloating Sin sin
+    cos   = liftFloating Cos cos
+
+instance Floating (Exp (Complex Float)) where
+    pi = ConstE pi
+
+    exp   = liftFloating Exp exp
+    log   = liftFloating Log log
+    asin  = liftFloating Asin asin
+    acos  = liftFloating Acos acos
+    atan  = liftFloating Atan atan
+    sinh  = liftFloating Sinh sinh
+    cosh  = liftFloating Cosh cosh
+    asinh = liftFloating Asinh asinh
+    acosh = liftFloating Acosh acosh
+    atanh = liftFloating Atanh atanh
+    sin   = liftFloating Sin sin
+    cos   = liftFloating Cos cos
+
+instance Floating (Exp (Complex Double)) where
+    pi = ConstE pi
+
+    exp   = liftFloating Exp exp
+    log   = liftFloating Log log
+    asin  = liftFloating Asin asin
+    acos  = liftFloating Acos acos
+    atan  = liftFloating Atan atan
+    sinh  = liftFloating Sinh sinh
+    cosh  = liftFloating Cosh cosh
+    asinh = liftFloating Asinh asinh
+    acosh = liftFloating Acosh acosh
+    atanh = liftFloating Atanh atanh
+    sin   = liftFloating Sin sin
+    cos   = liftFloating Cos cos
 
 --------------------------------------------------------------------------------
 --
