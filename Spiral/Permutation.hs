@@ -31,6 +31,8 @@ data Permutation -- | The $L^{mn}_n$ $mn \times mn$ stride permutation with
                  = L Int Int
                  -- | The reverse identity permutation.
                  | J Int
+                 -- | The circular shift permutation, sending element i to i+k.
+                 | CS Int Int
                  -- | The CRT permutation. Components are m, n, e_m, and e_n
                  | CRT Int Int Int Int
                  -- | The inverse CRT permutation.
@@ -50,6 +52,7 @@ data Permutation -- | The $L^{mn}_n$ $mn \times mn$ stride permutation with
 instance Pretty Permutation where
     ppr (L mn n)        = text "L^" <> ppr mn <> char '_' <> ppr n
     ppr (J n)           = text "J_" <> ppr n
+    ppr (CS n k)        = text "S_" <> ppr n <> parens (ppr k)
     ppr (CRT m n _ _)   = text "CRT_" <> ppr m <> char '_' <> ppr n
     ppr (CRT' m n _ _)  = text "CRT'_" <> ppr m <> char '_' <> ppr n
     ppr (Good m n _ _)  = text "Good_" <> ppr m <> char '_' <> ppr n
@@ -101,6 +104,15 @@ toIdxMapping' (J n0) = f
       where
         n :: a
         n = fromIntegral n0
+
+toIdxMapping' (CS n0 k0) = f
+  where
+    f :: a -> a
+    f i = (i + k) `mod` n
+      where
+        n, k :: a
+        n = fromIntegral n0
+        k = fromIntegral k0
 
 toIdxMapping' (CRT m0 n0 _em _en) = f
   where
@@ -169,6 +181,7 @@ toIdxMapping' (Inv _ v) = f
 dim :: Permutation -> Int
 dim (L mn _n)       = mn
 dim (J n)           = n
+dim (CS n _)        = n
 dim (CRT m n _ _)   = m*n
 dim (CRT' m n _ _)  = m*n
 dim (Good m n _ _)  = m*n
@@ -183,6 +196,8 @@ invert (L mn n) = L mn m
     m = mn `quot` n
 
 invert p@J{} = p
+
+invert (CS n k) = CS n (-k)
 
 invert (CRT m n em en) =
     CRT' m n em en
