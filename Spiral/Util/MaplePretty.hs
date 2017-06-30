@@ -118,6 +118,9 @@ instance MaplePretty (Const a) where
 
     pprmPrec p (CycC x) = text (showsPrec p x "")
 
+    pprmPrec p (PiC x) = parensIf (p > mulPrec) $
+                         pprPrec mulPrec1 x <> char '*' <> text "Pi"
+
 instance MaplePretty Var where
     pprm = ppr
 

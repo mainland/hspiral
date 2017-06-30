@@ -99,6 +99,9 @@ data Const a where
     -- | Cyclotomic numbers
     CycC :: RealFloatConst a => Cyclotomic -> Const (Complex a)
 
+    -- | Multiple of $\pi$
+    PiC :: (Floating a, ToConst a) => Rational -> Const a
+
 deriving instance Show (Const a)
 
 instance Eq (Const a) where
@@ -173,6 +176,7 @@ fromConst (RationalC x)  = fromRational x
 fromConst (ComplexC r i) = fromConst r :+ fromConst i
 fromConst (W _ _ x)      = fromConst x
 fromConst (CycC x)       = toComplex x
+fromConst (PiC x)        = pi*fromRational x
 
 lift :: ToConst a => (a -> a) -> Const a -> Const a
 lift f (IntC x)      = IntC (f x)
@@ -227,6 +231,9 @@ instance Pretty (Const a) where
     pprPrec _ (W n k _) = text "ω_" <> ppr n <> char '^' <> ppr k
 
     pprPrec p (CycC x) = text (showsPrec p x "")
+
+    pprPrec p (PiC x) = parensIf (p > mulPrec) $
+                        pprPrec mulPrec1 x <> char '*' <> text "pi"
 
 instance RootOfUnity (Const (Complex Float)) where
     rootOfUnity n k = mkW (k%n) (CycC (rootOfUnity n k))
@@ -310,6 +317,7 @@ lower x@(RationalC r) =
 lower (ComplexC r i) = ComplexC (lower r) (lower i)
 lower (W _ _ x)      = lower x
 lower x@CycC{}       = toConst (fromConst x)
+lower x@PiC{}        = toConst (fromConst x)
 lower e              = e
 
 -- | Representation of scalar constants.
@@ -410,6 +418,7 @@ instance HOrd Const where
             tag ComplexC{}  = 6
             tag W{}         = 7
             tag CycC{}      = 8
+            tag PiC{}       = 9
 
 instance HOrd Exp where
     hcompare (ConstE c1)           (ConstE c2)           = hcompare c1 c2
@@ -667,6 +676,12 @@ instance (Typed a, Num a, ToConst a, Num (Const a)) => LiftNum (Const a) where
     liftNum2 Mul _ (W n k x) (W n' k' y) = mkW (k % n + k' % n') (x*y)
 
     liftNum2 _op f (RationalC x) (RationalC y) = RationalC (f x y)
+
+    liftNum2 Add _ (PiC x) (PiC y) = PiC (x + y)
+    liftNum2 Sub _ (PiC x) (PiC y) = PiC (x - y)
+
+    liftNum2 Mul _ (PiC x) (RationalC y) = PiC (x * y)
+    liftNum2 Mul _ (RationalC x) (PiC y) = PiC (x * y)
 
     liftNum2 op f (W _ _ c) y = liftNum2 op f c y
     liftNum2 op f x (W _ _ c) = liftNum2 op f x c
@@ -960,11 +975,13 @@ instance Enum (Const Int) where
 
     fromEnum (IntC i)    = fromIntegral i
     fromEnum RationalC{} = error "can't happen"
+    fromEnum PiC{}       = error "can't happen"
     fromEnum W{}         = error "can't happen"
 
 instance Real (Const Int) where
     toRational (IntC i)    = toRational i
     toRational RationalC{} = error "can't happen"
+    toRational PiC{}       = error "can't happen"
     toRational W{}         = error "can't happen"
 
 instance Integral (Const Int) where
@@ -976,6 +993,7 @@ instance Integral (Const Int) where
     toInteger (IntC i)    = fromIntegral i
     toInteger RationalC{} = error "can't happen"
     toInteger W{}         = error "can't happen"
+    toInteger PiC{}       = error "can't happen"
 
 instance (LiftIntegral (Const a), Integral (Exp a)) => LiftIntegral (Exp a) where
     liftIntegral2 op f (ConstE x) (ConstE y) = ConstE $ liftIntegral2 op f x y
@@ -1022,6 +1040,8 @@ instance (Fractional a, ToConst a, Fractional (Const a)) => LiftFrac (Const a) w
     liftFrac2 Div _ c1 (W n k x) | isOne c1 = mkW (-k % n) (1/x)
 
     liftFrac2 Div _ (W n k x) (W n' k' y) = mkW (k % n - k' % n') (x/y)
+
+    liftFrac2 Div _ (PiC x) (RationalC y) = PiC (x / y)
 
     liftFrac2 _op f (RationalC x) (RationalC y) = RationalC (f x y)
 
@@ -1102,6 +1122,22 @@ class LiftFloating b where
     liftFloating :: Unop -> (forall a . Floating a => a -> a) -> b -> b
 
 instance (Floating a, Typed a, ToConst a) => LiftFloating (Const a) where
+    liftFloating Sin f c@(PiC r) =
+        case tau of
+          ComplexT{} -> CycC (sinRev (r / 2))
+          _          -> lift f c
+      where
+        tau :: Type a
+        tau = typeOf (undefined :: a)
+
+    liftFloating Cos f c@(PiC r) =
+        case tau of
+          ComplexT{} -> CycC (cosRev (r / 2))
+          _          -> lift f c
+      where
+        tau :: Type a
+        tau = typeOf (undefined :: a)
+
     liftFloating _op f c = lift f c
 
 instance LiftFloating (Const a) => LiftFloating (Exp a) where
@@ -1110,7 +1146,7 @@ instance LiftFloating (Const a) => LiftFloating (Exp a) where
     liftFloating op _ e = UnopE op e
 
 instance Floating (Const Float) where
-    pi = toConst pi
+    pi = PiC 1
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
@@ -1126,7 +1162,7 @@ instance Floating (Const Float) where
     cos   = liftFloating Cos cos
 
 instance Floating (Const Double) where
-    pi = toConst pi
+    pi = PiC 1
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
@@ -1142,7 +1178,7 @@ instance Floating (Const Double) where
     cos   = liftFloating Cos cos
 
 instance Floating (Const (Complex Float)) where
-    pi = toConst pi
+    pi = PiC 1
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
@@ -1158,7 +1194,7 @@ instance Floating (Const (Complex Float)) where
     cos   = liftFloating Cos cos
 
 instance Floating (Const (Complex Double)) where
-    pi = toConst pi
+    pi = PiC 1
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
@@ -1290,12 +1326,14 @@ isI RationalC{}    = False
 isI (ComplexC r i) = isZero r && isOne i
 isI (W _ _ c)      = isI c
 isI (CycC c)       = c == i
+isI PiC{}          = False
 
 isNegI :: Const (Complex a) -> Bool
 isNegI RationalC{}    = False
 isNegI (ComplexC r i) = isZero r && isNegOne i
 isNegI (W _ _ c)      = isNegI c
 isNegI (CycC c)       = c == -i
+isNegI PiC{}          = False
 
 instance IsZeroOne (Const a) where
     isZero (IntC 0)       = True
@@ -1361,6 +1399,7 @@ unComplexC :: RealFloatConst a => Const (Complex a) -> (Const a, Const a)
 unComplexC (RationalC r)  = (RationalC r, 0)
 unComplexC (ComplexC r i) = (r, i)
 unComplexC (W _ _ c)      = unComplexC c
+unComplexC (PiC k)        = (PiC k, 0)
 unComplexC x@CycC{}       = (toConst r, toConst i)
   where
     r :+ i = fromConst x

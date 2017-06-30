@@ -163,6 +163,7 @@ cgConst (DoubleC x)      = CDouble x
 cgConst (ComplexC e1 e2) = CComplex (cgConst e1) (cgConst e2)
 cgConst e@W{}            = cgConst (lower e)
 cgConst e@CycC{}         = cgConst (lower e)
+cgConst e@PiC{}          = cgConst (lower e)
 
 -- | Compile an 'Exp a'.
 cgExp :: forall a m . (Typed a, MonadSpiral m) => Exp a -> Cg m CExp
