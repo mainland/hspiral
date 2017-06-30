@@ -451,6 +451,7 @@ data Unop = Neg
           | Signum
           | Exp
           | Log
+          | Sqrt
           | Sin
           | Cos
           | Asin
@@ -487,6 +488,7 @@ instance HasFixity Unop where
     fixity Signum = infixr_ 10
     fixity Exp    = infixr_ 10
     fixity Log    = infixr_ 10
+    fixity Sqrt   = infixr_ 10
     fixity Sin    = infixr_ 10
     fixity Cos    = infixr_ 10
     fixity Asin   = infixr_ 10
@@ -520,6 +522,7 @@ instance Pretty Unop where
     ppr Signum  = text "signum" <> space
     ppr Exp     = text "exp" <> space
     ppr Log     = text "log" <> space
+    ppr Sqrt    = text "sqrt" <> space
     ppr Sin     = text "sin" <> space
     ppr Cos     = text "cos" <> space
     ppr Asin    = text "asin" <> space
@@ -1122,6 +1125,14 @@ class LiftFloating b where
     liftFloating :: Unop -> (forall a . Floating a => a -> a) -> b -> b
 
 instance (Floating a, Typed a, ToConst a) => LiftFloating (Const a) where
+    liftFloating Sqrt f c@(RationalC r) =
+        case tau of
+          ComplexT{} -> CycC (sqrtRat r)
+          _          -> lift f c
+      where
+        tau :: Type a
+        tau = typeOf (undefined :: a)
+
     liftFloating Sin f c@(PiC r) =
         case tau of
           ComplexT{} -> CycC (sinRev (r / 2))
@@ -1150,6 +1161,7 @@ instance Floating (Const Float) where
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
+    sqrt  = liftFloating Sqrt sqrt
     asin  = liftFloating Asin asin
     acos  = liftFloating Acos acos
     atan  = liftFloating Atan atan
@@ -1166,6 +1178,7 @@ instance Floating (Const Double) where
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
+    sqrt  = liftFloating Sqrt sqrt
     asin  = liftFloating Asin asin
     acos  = liftFloating Acos acos
     atan  = liftFloating Atan atan
@@ -1182,6 +1195,7 @@ instance Floating (Const (Complex Float)) where
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
+    sqrt  = liftFloating Sqrt sqrt
     asin  = liftFloating Asin asin
     acos  = liftFloating Acos acos
     atan  = liftFloating Atan atan
@@ -1198,6 +1212,7 @@ instance Floating (Const (Complex Double)) where
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
+    sqrt  = liftFloating Sqrt sqrt
     asin  = liftFloating Asin asin
     acos  = liftFloating Acos acos
     atan  = liftFloating Atan atan
@@ -1214,6 +1229,7 @@ instance Floating (Exp Float) where
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
+    sqrt  = liftFloating Sqrt sqrt
     asin  = liftFloating Asin asin
     acos  = liftFloating Acos acos
     atan  = liftFloating Atan atan
@@ -1230,6 +1246,7 @@ instance Floating (Exp Double) where
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
+    sqrt  = liftFloating Sqrt sqrt
     asin  = liftFloating Asin asin
     acos  = liftFloating Acos acos
     atan  = liftFloating Atan atan
@@ -1246,6 +1263,7 @@ instance Floating (Exp (Complex Float)) where
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
+    sqrt  = liftFloating Sqrt sqrt
     asin  = liftFloating Asin asin
     acos  = liftFloating Acos acos
     atan  = liftFloating Atan atan
@@ -1262,6 +1280,7 @@ instance Floating (Exp (Complex Double)) where
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
+    sqrt  = liftFloating Sqrt sqrt
     asin  = liftFloating Asin asin
     acos  = liftFloating Acos acos
     atan  = liftFloating Atan atan

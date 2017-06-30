@@ -178,6 +178,7 @@ cgExp (UnopE op e) =
     go Signum ce = return $ signum ce
     go Exp ce    = return $ exp ce
     go Log ce    = return $ log ce
+    go Sqrt ce   = return $ sqrt ce
     go Sin ce    = return $ sin ce
     go Cos ce    = return $ cos ce
     go Asin ce   = return $ asin ce

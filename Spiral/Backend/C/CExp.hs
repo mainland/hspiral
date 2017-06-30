@@ -183,6 +183,7 @@ instance Integral CExp where
 instance LiftFloating CExp where
     liftFloating Exp    _ ce  = CExp [cexp|exp($ce)|]
     liftFloating Log    _ ce  = CExp [cexp|log($ce)|]
+    liftFloating Sqrt   _ ce  = CExp [cexp|sqrt($ce)|]
     liftFloating Sin    _ ce  = CExp [cexp|sin($ce)|]
     liftFloating Cos    _ ce  = CExp [cexp|cos($ce)|]
     liftFloating Asin   _ ce  = CExp [cexp|asin($ce)|]
@@ -201,6 +202,7 @@ instance Floating CExp where
 
     exp   = liftFloating Exp exp
     log   = liftFloating Log log
+    sqrt  = liftFloating Sqrt sqrt
     sin   = liftFloating Sin sin
     cos   = liftFloating Cos cos
     asin  = liftFloating Asin asin

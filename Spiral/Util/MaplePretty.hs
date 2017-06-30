@@ -171,6 +171,7 @@ instance MaplePretty Unop where
     pprm Signum = text "signum"
     pprm Exp    = text "exp"
     pprm Log    = text "log"
+    pprm Sqrt   = text "sqrt"
     pprm Sin    = text "sin"
     pprm Cos    = text "cos"
     pprm Asin   = text "asin"
