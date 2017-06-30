@@ -57,25 +57,34 @@ main = defaultMainWith' options mempty $ \fs args -> do
 formula :: MonadSpiral m => [Flag] -> Int -> m (SPL (Exp (Complex Double)))
 formula fs n =
   case fs of
-    [Dif]        -> return $ dif n
-    [Dit]        -> return $ dit n
-    [SplitRadix] -> runSearch () f (DFT n)
-    _            -> fail "Must specify exactly on of --dif, --dit, or --splitradix"
+    [Dif]                -> return $ dif n
+    [Dit]                -> return $ dit n
+    [SplitRadix]         -> runSearch () splitRadixSearch (DFT n)
+    [ConjPairSplitRadix] -> runSearch () conjSplitRadixSearch (DFT n)
+    _                    -> fail "Must specify exactly on of --dif, --dit, --split-radix, or conj-split-radix"
   where
-    f :: (Typeable a, Typed a, MonadSpiral m)
-      => SPL (Exp a)
-      -> S s m (SPL (Exp a))
-    f (F n w) = splitRadixBreakdown n w
-    f _       = mzero
+    splitRadixSearch :: (Typeable a, Typed a, MonadSpiral m)
+                     => SPL (Exp a)
+                     -> S s m (SPL (Exp a))
+    splitRadixSearch (F n w) = splitRadixBreakdown n w
+    splitRadixSearch _       = mzero
+
+    conjSplitRadixSearch :: (Typeable a, Typed a, MonadSpiral m)
+                         => SPL (Exp a)
+                         -> S s m (SPL (Exp a))
+    conjSplitRadixSearch (F n w) = conjPairSplitRadixBreakdown n w
+    conjSplitRadixSearch _       = mzero
 
 data Flag = Dif
           | Dit
           | SplitRadix
+          | ConjPairSplitRadix
   deriving (Eq, Ord, Show)
 
 options :: [OptDescr Flag]
 options =
-    [ Option [] ["dif"] (NoArg Dif)                "Use DIF"
-    , Option [] ["dit"] (NoArg Dit)                "Use DIT"
-    , Option [] ["split-radix"] (NoArg SplitRadix) "Use split radix"
+    [ Option [] ["dif"] (NoArg Dif)                             "Use DIF"
+    , Option [] ["dit"] (NoArg Dit)                             "Use DIT"
+    , Option [] ["split-radix"] (NoArg SplitRadix)              "Use split radix"
+    , Option [] ["conj-split-radix"] (NoArg ConjPairSplitRadix) "Use conjugate pair split radix"
     ]

@@ -12,6 +12,7 @@ module Spiral.FFT.CooleyTukey (
     cooleyTukeyDIF,
     splitRadix,
     splitRadix8,
+    conjPairSplitRadix,
     dit,
     dif
   ) where
@@ -84,6 +85,27 @@ splitRadix8 n w =
     w4, w8 :: a
     w4 = omega 4
     w8 = omega 8
+
+-- | Conjugate-pair split-radix DFT decomposition.
+conjPairSplitRadix :: forall a . RootOfUnity a => Int -> a -> SPL a
+conjPairSplitRadix n _ | n `mod` 4 /= 0 =
+    error "Cannot call splitRadix when n is not divisible by 4"
+
+conjPairSplitRadix n w =
+    (sigma4 ⊗ I p) ×
+    (I (2*p) ⊕ ws p w ⊕ ws p (w^^(-1))) ×
+    (F (2*p) (w^2) ⊕ F p (w^4) ⊕ F p (w^4)×Pi (CS p 1)) ×
+    (I (2*p) ⊕ Pi (L (2*p) 2)) ×
+    Pi (L (4*p) 2)
+  where
+    p :: Int
+    p = n `quot` 4
+
+    sigma4 :: SPL a
+    sigma4 = (F2 ⊗ I 2) × (I 2 ⊕ (ws 2 w4 × F2))
+
+    w4 :: a
+    w4 = omega 4
 
 -- | Decimation in time DFT matrix $F_n$, for $n$ even
 dit :: (RootOfUnity a, Show a) => Int -> SPL a

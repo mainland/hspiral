@@ -151,7 +151,8 @@ dftTests = testGroup "DFT tests"
     , testGroup "DIT" [dit_test n | n <- [1..7]]
     , testGroup "DIF" [dif_test n | n <- [1..7]]
     , testGroup "Split Radix" [split_radix_test n | n <- [1..3]]
-    , testGroup "Split Radix 8" [split_radix8_test n | n <- [1..2]]]
+    , testGroup "Split Radix 8" [split_radix8_test n | n <- [1..2]]
+    , testGroup "Conjugate Pair Split Radix" [conj_pair_split_radix_test n | n <- [1..3]]]
 
 -- $F_2$
 f2Test :: Test
@@ -225,6 +226,14 @@ split_radix8_test n = testCase ("SplitRadix(8^" ++ show n ++ ")") $
   where
     w :: Exp (Complex Double)
     w = omega (8^n)
+
+-- Split radix test
+conj_pair_split_radix_test :: Int -> Test
+conj_pair_split_radix_test n = testCase ("ConjPairSplitRadix(4^" ++ show n ++ ")") $
+    toMatrix (conjPairSplitRadix (4^n) w) @?= toMatrix (DFT (4^n))
+  where
+    w :: Exp (Complex Double)
+    w = omega (4^n)
 
 -- Test Cooley-Tukey with factors 5 and 7
 ck_dit_5_7_test :: Test

@@ -14,6 +14,7 @@ module Spiral.Search.FFTBreakdowns (
     cooleyTukeyBreakdowns,
     splitRadixBreakdown,
     splitRadix8Breakdown,
+    conjPairSplitRadixBreakdown,
     goodThomasBreakdowns,
     raderBreakdowns
   ) where
@@ -62,6 +63,14 @@ splitRadix8Breakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), 
 splitRadix8Breakdown n w = do
     guard (n `rem` 8 == 0)
     return $ splitRadix8 n w
+
+conjPairSplitRadixBreakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+                            => Int
+                            -> Exp a
+                            -> m (SPL (Exp a))
+conjPairSplitRadixBreakdown n w = do
+    guard (n `rem` 4 == 0)
+    return $ conjPairSplitRadix n w
 
 goodThomasBreakdowns :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
                      => Int
