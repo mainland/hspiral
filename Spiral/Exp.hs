@@ -237,12 +237,20 @@ toComplex x = r :+ i
     Just r = (fromRational . toRational) <$> toReal (real x)
     Just i = (fromRational . toRational) <$> toReal (imag x)
 
--- | Convert a 'Const (Complex Double)' into a 'Cyclotomic' value
-unCycC :: forall a m . Monad m => Const (Complex a) -> m Cyclotomic
-unCycC (ComplexC cre cim) | isIntegral re && isIntegral im =
-    return $ fromIntegral re' + fromIntegral im' * i
+-- | Convert a constant into the most general value that can be used for exact
+-- comparison.
+exact :: forall m a . Monad m => Const a -> m (Const a)
+exact x@BoolC{}     = return x
+exact x@IntC{}      = return x
+exact x@IntegerC{}  = return x
+exact x@FloatC{}    = return x
+exact x@DoubleC{}   = return x
+exact x@RationalC{} = return x
+
+exact (ComplexC cre cim) | isIntegral re && isIntegral im =
+    return $ CycC $ fromIntegral re' + fromIntegral im' * i
   where
-    re, im :: a
+    re, im :: a ~ Complex b => b
     re = fromConst cre
     im = fromConst cim
 
@@ -250,9 +258,9 @@ unCycC (ComplexC cre cim) | isIntegral re && isIntegral im =
     re' = truncate re
     im' = truncate im
 
-unCycC (W n k _) = return $ rootOfUnity n k
-unCycC (CycC x)  = return x
-unCycC _         = fail "Not a cyclotomic number"
+exact (W _ _ x) = exact x
+exact x@CycC{}  = return x
+exact _         = fail "Cannot represent exactly"
 
 isIntegral :: forall a . (RealFrac a, Eq a) => a -> Bool
 isIntegral x = snd (properFraction x :: (Int, a)) == 0
@@ -303,23 +311,21 @@ instance RootOfUnity (Exp (Complex Double)) where
 --
 
 instance HEq Const where
-    heq (BoolC x)        (BoolC y)        = x == y
-    heq (IntC x)         (IntC y)         = x == y
-    heq (IntegerC x)     (IntegerC y)     = x == y
-    heq (FloatC x)       (FloatC y)       = x == y
-    heq (DoubleC x)      (DoubleC y)      = x == y
-    heq (RationalC x)    (RationalC y)    = x == y
-    heq (ComplexC r1 i1) (ComplexC r2 i2) = (Some r1, Some i1) == (Some r2, Some i2)
-    heq (W n k _)        (W n' k' _)      = (n', k' `mod` n') == (n, k `mod` n)
-    heq (CycC x)         (CycC y)         = x == y
-
-    heq (x@ComplexC{} :: Const a) y | Just x' <- unCycC x = heq (CycC x' :: Const a) y
-    heq x (y@ComplexC{} :: Const a) | Just y' <- unCycC y = heq x (CycC y' :: Const a)
-
-    heq (W _ _ c) y = heq c y
-    heq x (W _ _ c) = heq x c
-
-    heq _ _ = False
+    heq x y =
+      case (exact x, exact y) of
+        (Just x', Just y') -> go x' y'
+        _                  -> go (lower x) (lower y)
+      where
+        go :: Const a -> Const b -> Bool
+        go (BoolC x)        (BoolC y)        = x == y
+        go (IntC x)         (IntC y)         = x == y
+        go (IntegerC x)     (IntegerC y)     = x == y
+        go (FloatC x)       (FloatC y)       = x == y
+        go (DoubleC x)      (DoubleC y)      = x == y
+        go (RationalC x)    (RationalC y)    = x == y
+        go (ComplexC r1 i1) (ComplexC r2 i2) = (Some r1, Some i1) == (Some r2, Some i2)
+        go (CycC x)         (CycC y)         = x == y
+        go _                _                = False
 
 instance HEq Exp where
     heq (ConstE c1)           (ConstE c2)           = heq c1 c2
@@ -335,34 +341,36 @@ instance HEq Exp where
     heq _                     _                     = False
 
 instance HOrd Const where
-    hcompare (BoolC x)         (BoolC y)       = compare x y
-    hcompare (IntC x)         (IntC y)         = compare x y
-    hcompare (IntegerC x)     (IntegerC y)     = compare x y
-    hcompare (FloatC x)       (FloatC y)       = compare x y
-    hcompare (DoubleC x)      (DoubleC y)      = compare x y
-    hcompare (RationalC x)    (RationalC y)    = compare x y
-    hcompare (ComplexC r1 i1) (ComplexC r2 i2) = compare (Some r1, Some i1) (Some r2, Some i2)
-    hcompare (W n k _)        (W n' k' _)      = compare (n, k `mod` n) (n', k' `mod` n')
-    hcompare (CycC x)         (CycC y)         = compare (lower (CycC x) :: Const (Complex Double)) (lower (CycC y) :: Const (Complex Double))
-
-    hcompare (x@ComplexC{} :: Const a) y | Just x' <- unCycC x = hcompare (CycC x' :: Const a) y
-    hcompare x (y@ComplexC{} :: Const a) | Just y' <- unCycC y = hcompare x (CycC y' :: Const a)
-
-    hcompare (W _ _ c) y = hcompare c y
-    hcompare x (W _ _ c) = hcompare x c
-
-    hcompare x y = compare (tag x) (tag y)
+    hcompare x y =
+      case (exact x, exact y) of
+        (Just x', Just y') -> go x' y'
+        _                  -> go (lower x) (lower y)
       where
-        tag :: Const a -> Int
-        tag BoolC{}     = 0
-        tag IntC{}      = 1
-        tag IntegerC{}  = 2
-        tag FloatC{}    = 3
-        tag DoubleC{}   = 4
-        tag RationalC{} = 5
-        tag ComplexC{}  = 6
-        tag W{}         = 7
-        tag CycC{}      = 8
+        go :: Const a -> Const b -> Ordering
+        go (BoolC x)        (BoolC y)        = compare x y
+        go (IntC x)         (IntC y)         = compare x y
+        go (IntegerC x)     (IntegerC y)     = compare x y
+        go (FloatC x)       (FloatC y)       = compare x y
+        go (DoubleC x)      (DoubleC y)      = compare x y
+        go (RationalC x)    (RationalC y)    = compare x y
+        go (ComplexC r1 i1) (ComplexC r2 i2) = compare (Some r1, Some i1) (Some r2, Some i2)
+        go (CycC x)         (CycC y)         = compare (xr, xi) (yr, yi)
+          where
+            xr :+ xi = fromConst (CycC x :: Const (Complex Double))
+            yr :+ yi = fromConst (CycC y :: Const (Complex Double))
+
+        go x y = compare (tag x) (tag y)
+          where
+            tag :: Const a -> Int
+            tag BoolC{}     = 0
+            tag IntC{}      = 1
+            tag IntegerC{}  = 2
+            tag FloatC{}    = 3
+            tag DoubleC{}   = 4
+            tag RationalC{} = 5
+            tag ComplexC{}  = 6
+            tag W{}         = 7
+            tag CycC{}      = 8
 
 instance HOrd Exp where
     hcompare (ConstE c1)           (ConstE c2)           = hcompare c1 c2
@@ -620,11 +628,11 @@ instance (Typed a, Num a, ToConst a, Num (Const a)) => LiftNum (Const a) where
     liftNum2 op f (W _ _ c) y = liftNum2 op f c y
     liftNum2 op f x (W _ _ c) = liftNum2 op f x c
 
-    -- Try to perform all operations in the cyclotomic domain
-    liftNum2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
-    liftNum2 _op f x0@CycC{}     y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
+    liftNum2 _op f (CycC x) (CycC y) = CycC (f x y)
 
-    liftNum2 _op f x y = lift2 f x y
+    liftNum2 op f x y
+      | Just x'@CycC{} <- exact x, Just y'@CycC{} <- exact y = liftNum2 op f x' y'
+      | otherwise                                            = lift2 f x y
 
 --- XXX Need UndecidableInstances for this...but we *must* call
 --- liftNum/liftNum2 on constants to ensure they are properly simplified.
@@ -976,11 +984,11 @@ instance (Fractional a, ToConst a, Fractional (Const a)) => LiftFrac (Const a) w
     liftFrac2 Div _ c1 c2 | isOne c2 =
         c1
 
-    -- Try to perform all operations in the cyclotomic domain
-    liftFrac2 _op f x0@ComplexC{} y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
-    liftFrac2 _op f x0@CycC{}     y0 | Just x <- unCycC x0, Just y <- unCycC y0 = CycC (f x y)
+    liftFrac2 _op f (CycC x) (CycC y) = CycC (f x y)
 
-    liftFrac2 _op f c1 c2 = lift2 f c1 c2
+    liftFrac2 op f x y
+      | Just x'@CycC{} <- exact x, Just y'@CycC{} <- exact y = liftFrac2 op f x' y'
+      | otherwise                                            = lift2 f x y
 
 instance (LiftFrac (Const a), Num (Exp a)) => LiftFrac (Exp a) where
     liftFrac2 op f (ConstE c1) (ConstE c2) = ConstE $ liftFrac2 op f c1 c2
