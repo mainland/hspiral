@@ -94,7 +94,7 @@ data Const a where
     ComplexC  :: RealFloatConst a => Const a -> Const a -> Const (Complex a)
 
     -- | Constant multiple of root of unity tagged with n and k.
-    W :: Fractional (Const a) => !Int -> !Int -> Const a -> Const a
+    W :: RootOfUnity (Const a) => !Int -> !Int -> Const a -> Const a
 
     -- | Cyclotomic numbers
     CycC :: RealFloatConst a => Cyclotomic -> Const (Complex a)
@@ -1276,7 +1276,7 @@ instance IsZeroOne (Exp a) where
     isNegOne (UnopE Neg (ConstE c)) = isOne c
     isNegOne _                      = False
 
-mkW :: Fractional (Const a) => Ratio Int -> Const a -> Const a
+mkW :: RootOfUnity (Const a) => Ratio Int -> Const a -> Const a
 mkW r c = W n (k `mod` n) c
   where
     k = numerator r
