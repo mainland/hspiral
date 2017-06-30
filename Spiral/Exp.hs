@@ -153,9 +153,9 @@ class ( Eq a
       , RealFloat a
       , Pretty a
       , FractionalConst a
-      , Num (Const a)
-      , Num (Exp a)
-      , Num (Exp (Complex a))
+      , Floating (Const a)
+      , Floating (Exp a)
+      , Floating (Exp (Complex a))
       ) => RealFloatConst a where
 
 instance RealFloatConst Float where
