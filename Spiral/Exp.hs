@@ -90,7 +90,7 @@ data Const a where
     IntegerC  :: Integer -> Const Integer
     FloatC    :: Float -> Const Float
     DoubleC   :: Double -> Const Double
-    RationalC :: Rational -> Const Rational
+    RationalC :: FractionalConst a => Rational -> Const a
     ComplexC  :: RealFloatConst a => Const a -> Const a -> Const (Complex a)
 
     -- | Constant multiple of root of unity tagged with n and k.
@@ -121,10 +121,12 @@ instance ToConst Integer where
     toConst = IntegerC
 
 instance ToConst Float where
-    toConst = FloatC
+    toConst x | isIntegral x = RationalC (fromIntegral (truncate x :: Int))
+              | otherwise    = FloatC x
 
 instance ToConst Double where
-    toConst = DoubleC
+    toConst x | isIntegral x = RationalC (fromIntegral (truncate x :: Int))
+              | otherwise    = DoubleC x
 
 instance ToConst Rational where
     toConst = RationalC
@@ -132,11 +134,25 @@ instance ToConst Rational where
 instance RealFloatConst a => ToConst (Complex a) where
     toConst (r :+ i) = ComplexC (toConst r) (toConst i)
 
+class ( Fractional a
+      , Typed a
+      , ToConst a
+      ) => FractionalConst a where
+
+instance FractionalConst Rational where
+
+instance FractionalConst Float where
+
+instance FractionalConst Double where
+
+instance FractionalConst (Complex Float) where
+
+instance FractionalConst (Complex Double) where
+
 class ( Eq a
       , RealFloat a
       , Pretty a
-      , Typed a
-      , ToConst a
+      , FractionalConst a
       , Num (Const a)
       , Num (Exp a)
       , Num (Exp (Complex a))
@@ -151,9 +167,9 @@ fromConst :: Const a -> a
 fromConst (BoolC x)      = x
 fromConst (IntC x)       = x
 fromConst (IntegerC x)   = x
-fromConst (FloatC x)    = x
+fromConst (FloatC x)     = x
 fromConst (DoubleC x)    = x
-fromConst (RationalC x)  = x
+fromConst (RationalC x)  = fromRational x
 fromConst (ComplexC r i) = fromConst r :+ fromConst i
 fromConst (W _ _ x)      = fromConst x
 fromConst (CycC x)       = toComplex x
@@ -163,7 +179,7 @@ lift f (IntC x)      = IntC (f x)
 lift f (IntegerC x)  = IntegerC (f x)
 lift f (FloatC x)    = FloatC (f x)
 lift f (DoubleC x)   = DoubleC (f x)
-lift f (RationalC x) = RationalC (f x)
+lift f x@RationalC{} = toConst (f (fromConst x))
 lift f x@ComplexC{}  = toConst (f (fromConst x))
 lift f x             = lift f (lower x)
 
@@ -172,7 +188,7 @@ lift2 f (IntC x)      (IntC y)      = IntC (f x y)
 lift2 f (IntegerC x)  (IntegerC y)  = IntegerC (f x y)
 lift2 f (FloatC x)    (FloatC y)    = FloatC (f x y)
 lift2 f (DoubleC x)   (DoubleC y)   = DoubleC (f x y)
-lift2 f (RationalC x) (RationalC y) = RationalC (f x y)
+lift2 f x@RationalC{} y@RationalC{} = toConst (f (fromConst x) (fromConst y))
 lift2 f x@ComplexC{}  y@ComplexC{}  = toConst (f (fromConst x) (fromConst y))
 lift2 f x             y             = lift2 f (lower x) (lower y)
 
@@ -245,7 +261,17 @@ exact x@IntC{}      = return x
 exact x@IntegerC{}  = return x
 exact x@FloatC{}    = return x
 exact x@DoubleC{}   = return x
-exact x@RationalC{} = return x
+
+exact x@(RationalC r) =
+    case tau of
+      FloatT     -> return $ FloatC $ fromConst x
+      DoubleT    -> return $ DoubleC $ fromConst x
+      RationalT  -> return x
+      ComplexT{} -> return $ CycC $ fromRational r
+      _          -> fail "Cannot represent exactly"
+  where
+    tau :: Type a
+    tau = typeOf (undefined :: a)
 
 exact (ComplexC cre cim) | isIntegral re && isIntegral im =
     return $ CycC $ fromIntegral re' + fromIntegral im' * i
@@ -268,10 +294,21 @@ isIntegral x = snd (properFraction x :: (Int, a)) == 0
 -- | Lower a constant's representation from a specialized representation to a
 -- standard representation. This ensures the constant is not constructed with
 -- the 'W' or 'CycC' data constructors.
-lower :: Const a -> Const a
-lower (W _ _ x) = lower x
-lower x@CycC{}  = toConst (fromConst x)
-lower e         = e
+lower :: forall a . Const a -> Const a
+lower x@(RationalC r) =
+    case tau of
+      FloatT     -> FloatC $ fromConst x
+      DoubleT    -> DoubleC $ fromConst x
+      ComplexT{} -> lower $ ComplexC (RationalC r) 0
+      _          -> x
+  where
+    tau :: Type a
+    tau = typeOf (undefined :: a)
+
+lower (ComplexC r i) = ComplexC (lower r) (lower i)
+lower (W _ _ x)      = lower x
+lower x@CycC{}       = toConst (fromConst x)
+lower e              = e
 
 -- | Representation of scalar constants.
 data Exp a where
@@ -599,6 +636,8 @@ instance (Typed a, Num a, ToConst a, Num (Const a)) => LiftNum (Const a) where
 
     liftNum Neg _ (W n k c) = mkW (k % n + 1 % 2) (-c)
 
+    liftNum _op f (RationalC x) = RationalC (f x)
+
     liftNum op f (W _ _ c) = liftNum op f c
 
     liftNum _op f c = lift f c
@@ -624,6 +663,8 @@ instance (Typed a, Num a, ToConst a, Num (Const a)) => LiftNum (Const a) where
     liftNum2 Mul _ (ComplexC a b) (ComplexC c d) = ComplexC (a*c - b*d) (b*c + a*d)
 
     liftNum2 Mul _ (W n k x) (W n' k' y) = mkW (k % n + k' % n') (x*y)
+
+    liftNum2 _op f (RationalC x) (RationalC y) = RationalC (f x y)
 
     liftNum2 op f (W _ _ c) y = liftNum2 op f c y
     liftNum2 op f x (W _ _ c) = liftNum2 op f x c
@@ -740,6 +781,19 @@ instance Num (Const Integer) where
 
     fromInteger = IntegerC
 
+instance Num (Const Rational) where
+    (+) = liftNum2 Add (+)
+    (-) = liftNum2 Sub (-)
+    (*) = liftNum2 Mul (*)
+
+    abs = liftNum Abs abs
+
+    negate = liftNum Neg negate
+
+    signum  = liftNum Signum signum
+
+    fromInteger = RationalC . fromInteger
+
 instance Num (Const Float) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
@@ -751,7 +805,7 @@ instance Num (Const Float) where
 
     signum  = liftNum Signum signum
 
-    fromInteger x = FloatC (fromInteger x)
+    fromInteger = RationalC . fromInteger
 
 instance Num (Const Double) where
     (+) = liftNum2 Add (+)
@@ -764,20 +818,7 @@ instance Num (Const Double) where
 
     signum  = liftNum Signum signum
 
-    fromInteger x = DoubleC (fromInteger x)
-
-instance Num (Const Rational) where
-    (+) = liftNum2 Add (+)
-    (-) = liftNum2 Sub (-)
-    (*) = liftNum2 Mul (*)
-
-    abs = liftNum Abs abs
-
-    negate = liftNum Neg negate
-
-    signum  = liftNum Signum signum
-
-    fromInteger x = RationalC (fromInteger x)
+    fromInteger = RationalC . fromInteger
 
 instance Num (Const (Complex Float)) where
     (+) = liftNum2 Add (+)
@@ -790,7 +831,7 @@ instance Num (Const (Complex Float)) where
 
     signum  = liftNum Signum signum
 
-    fromInteger x = fromComplex (fromInteger x)
+    fromInteger = RationalC . fromInteger
 
 instance Num (Const (Complex Double)) where
     (+) = liftNum2 Add (+)
@@ -803,7 +844,7 @@ instance Num (Const (Complex Double)) where
 
     signum  = liftNum Signum signum
 
-    fromInteger x = fromComplex (fromInteger x)
+    fromInteger = RationalC . fromInteger
 
 instance Num (Exp Int) where
     (+) = liftNum2 Add (+)
@@ -816,7 +857,7 @@ instance Num (Exp Int) where
 
     signum  = liftNum Signum signum
 
-    fromInteger = ConstE . IntC . fromInteger
+    fromInteger = ConstE . fromInteger
 
 instance Num (Exp Integer) where
     (+) = liftNum2 Add (+)
@@ -829,7 +870,7 @@ instance Num (Exp Integer) where
 
     signum  = liftNum Signum signum
 
-    fromInteger = ConstE . IntegerC
+    fromInteger = ConstE . fromInteger
 
 instance Num (Exp Float) where
     (+) = liftNum2 Add (+)
@@ -842,7 +883,7 @@ instance Num (Exp Float) where
 
     signum  = liftNum Signum signum
 
-    fromInteger = ConstE . FloatC . fromInteger
+    fromInteger = ConstE . fromInteger
 
 instance Num (Exp Double) where
     (+) = liftNum2 Add (+)
@@ -855,7 +896,7 @@ instance Num (Exp Double) where
 
     signum  = liftNum Signum signum
 
-    fromInteger = ConstE . DoubleC . fromInteger
+    fromInteger = ConstE . fromInteger
 
 instance Num (Exp Rational) where
     (+) = liftNum2 Add (+)
@@ -868,7 +909,7 @@ instance Num (Exp Rational) where
 
     signum  = liftNum Signum signum
 
-    fromInteger = ConstE . RationalC . fromInteger
+    fromInteger = ConstE . fromInteger
 
 instance Num (Exp (Complex Float)) where
     (+) = liftNum2 Add (+)
@@ -881,7 +922,7 @@ instance Num (Exp (Complex Float)) where
 
     signum  = liftNum Signum signum
 
-    fromInteger x = complexE (fromInteger x)
+    fromInteger = ConstE . fromInteger
 
 instance Num (Exp (Complex Double)) where
     (+) = liftNum2 Add (+)
@@ -894,7 +935,7 @@ instance Num (Exp (Complex Double)) where
 
     signum  = liftNum Signum signum
 
-    fromInteger x = complexE (fromInteger x)
+    fromInteger = ConstE . fromInteger
 
 --------------------------------------------------------------------------------
 --
@@ -910,18 +951,19 @@ class LiftIntegral b where
 instance LiftIntegral (Const Int) where
     liftIntegral2 _ f (IntC x) (IntC y) = IntC (f x y)
 
-    liftIntegral2 _ _ W{} _   = error "can't happen"
-    liftIntegral2 _ _ _   W{} = error "can't happen"
+    liftIntegral2 _op f c1 c2 = lift2 f c1 c2
 
 instance Enum (Const Int) where
     toEnum n = IntC (fromIntegral n)
 
-    fromEnum (IntC i) = fromIntegral i
-    fromEnum W{}      = error "can't happen"
+    fromEnum (IntC i)    = fromIntegral i
+    fromEnum RationalC{} = error "can't happen"
+    fromEnum W{}         = error "can't happen"
 
 instance Real (Const Int) where
-    toRational (IntC i) = toRational i
-    toRational W{}      = error "can't happen"
+    toRational (IntC i)    = toRational i
+    toRational RationalC{} = error "can't happen"
+    toRational W{}         = error "can't happen"
 
 instance Integral (Const Int) where
     quot = liftIntegral2 Quot quot
@@ -929,8 +971,9 @@ instance Integral (Const Int) where
 
     x `quotRem` y = (x `quot` y, x `rem` y)
 
-    toInteger (IntC i) = fromIntegral i
-    toInteger W{}      = error "can't happen"
+    toInteger (IntC i)    = fromIntegral i
+    toInteger RationalC{} = error "can't happen"
+    toInteger W{}         = error "can't happen"
 
 instance (LiftIntegral (Const a), Integral (Exp a)) => LiftIntegral (Exp a) where
     liftIntegral2 op f (ConstE x) (ConstE y) = ConstE $ liftIntegral2 op f x y
@@ -978,6 +1021,8 @@ instance (Fractional a, ToConst a, Fractional (Const a)) => LiftFrac (Const a) w
 
     liftFrac2 Div _ (W n k x) (W n' k' y) = mkW (k % n - k' % n') (x/y)
 
+    liftFrac2 _op f (RationalC x) (RationalC y) = RationalC (f x y)
+
     liftFrac2 op f (W _ _ c) y = liftFrac2 op f c y
     liftFrac2 op f x (W _ _ c) = liftFrac2 op f x c
 
@@ -998,45 +1043,50 @@ instance (LiftFrac (Const a), Num (Exp a)) => LiftFrac (Exp a) where
 
     liftFrac2 op _ e1 e2 = BinopE op e1 e2
 
+instance Fractional (Const Rational) where
+    (/) = liftFrac2 Div (/)
+
+    fromRational = RationalC
+
 instance Fractional (Const Float) where
     (/) = liftFrac2 Div (/)
 
-    fromRational = FloatC . fromRational
+    fromRational = RationalC
 
 instance Fractional (Const Double) where
     (/) = liftFrac2 Div (/)
 
-    fromRational = DoubleC . fromRational
+    fromRational = RationalC
 
 instance Fractional (Const (Complex Float)) where
     (/) = liftFrac2 Div (/)
 
-    fromRational x = ComplexC (FloatC (fromRational x)) 0
+    fromRational = RationalC
 
 instance Fractional (Const (Complex Double)) where
     (/) = liftFrac2 Div (/)
 
-    fromRational x = ComplexC (DoubleC (fromRational x)) 0
+    fromRational = RationalC
 
 instance Fractional (Exp Float) where
     (/) = liftFrac2 Div (/)
 
-    fromRational = ConstE . FloatC . fromRational
+    fromRational = ConstE . fromRational
 
 instance Fractional (Exp Double) where
     (/) = liftFrac2 Div (/)
 
-    fromRational = ConstE . DoubleC . fromRational
+    fromRational = ConstE . fromRational
 
 instance Fractional (Exp (Complex Float)) where
     (/) = liftFrac2 Div (/)
 
-    fromRational x = ConstE (ComplexC (fromRational x) 0)
+    fromRational = ConstE . fromRational
 
 instance Fractional (Exp (Complex Double)) where
     (/) = liftFrac2 Div (/)
 
-    fromRational x = ConstE (ComplexC (fromRational x) 0)
+    fromRational = ConstE . fromRational
 
 --------------------------------------------------------------------------------
 --
@@ -1234,11 +1284,13 @@ class IsZeroOne a where
     isZero, isOne, isNegOne :: a -> Bool
 
 isI :: Const (Complex a) -> Bool
+isI RationalC{}    = False
 isI (ComplexC r i) = isZero r && isOne i
 isI (W _ _ c)      = isI c
 isI (CycC c)       = c == i
 
 isNegI :: Const (Complex a) -> Bool
+isNegI RationalC{}    = False
 isNegI (ComplexC r i) = isZero r && isNegOne i
 isNegI (W _ _ c)      = isNegI c
 isNegI (CycC c)       = c == -i
@@ -1303,7 +1355,8 @@ complexE :: RealFloatConst a => Complex a -> Exp (Complex a)
 complexE (r :+ i) = ConstE $ ComplexC (toConst r) (toConst i)
 
 -- | Extract the complex and real portions of a 'Const (Complex a)'.
-unComplexC :: RealFloat a => Const (Complex a) -> (Const a, Const a)
+unComplexC :: RealFloatConst a => Const (Complex a) -> (Const a, Const a)
+unComplexC (RationalC r)  = (RationalC r, 0)
 unComplexC (ComplexC r i) = (r, i)
 unComplexC (W _ _ c)      = unComplexC c
 unComplexC x@CycC{}       = (toConst r, toConst i)
