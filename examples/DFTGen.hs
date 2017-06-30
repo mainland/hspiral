@@ -61,7 +61,8 @@ formula fs n =
     [Dit]                -> return $ dit n
     [SplitRadix]         -> runSearch () splitRadixSearch (DFT n)
     [ConjPairSplitRadix] -> runSearch () conjSplitRadixSearch (DFT n)
-    _                    -> fail "Must specify exactly on of --dif, --dit, --split-radix, or conj-split-radix"
+    [ImpSplitRadix]      -> runSearch () impSplitRadixSearch (DFT n)
+    _                    -> fail "Must specify exactly on of --dif, --dit, --split-radix, conj-split-radix, or --improved-split-radix"
   where
     splitRadixSearch :: (Typeable a, Typed a, MonadSpiral m)
                      => SPL (Exp a)
@@ -75,10 +76,17 @@ formula fs n =
     conjSplitRadixSearch (F n w) = conjPairSplitRadixBreakdown n w
     conjSplitRadixSearch _       = mzero
 
+    impSplitRadixSearch :: (Typeable a, Typed a, MonadSpiral m)
+                        => SPL (Exp a)
+                        -> S s m (SPL (Exp a))
+    impSplitRadixSearch (F n w) = improvedSplitRadixBreakdown n w
+    impSplitRadixSearch _       = mzero
+
 data Flag = Dif
           | Dit
           | SplitRadix
           | ConjPairSplitRadix
+          | ImpSplitRadix
   deriving (Eq, Ord, Show)
 
 options :: [OptDescr Flag]
@@ -87,4 +95,5 @@ options =
     , Option [] ["dit"] (NoArg Dit)                             "Use DIT"
     , Option [] ["split-radix"] (NoArg SplitRadix)              "Use split radix"
     , Option [] ["conj-split-radix"] (NoArg ConjPairSplitRadix) "Use conjugate pair split radix"
+    , Option [] ["imp-split-radix"] (NoArg ImpSplitRadix)       "Use improved split radix"
     ]
