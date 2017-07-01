@@ -70,6 +70,7 @@ data DynFlag = Quiet
 data TraceFlag = TraceCg
                | TraceCache
                | TraceSearch
+               | TraceRewrite
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 type DynFlags = FlagSet DynFlag

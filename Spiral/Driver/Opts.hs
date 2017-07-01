@@ -165,9 +165,11 @@ dFlags :: [(DynFlag, String, String)]
 dFlags = [(GenComments, "gen-comments", "Add comments in generated code")]
 
 dTraceFlags :: [(TraceFlag, String, String)]
-dTraceFlags = [(TraceCg,     "cg",     "Trace code generation")
-              ,(TraceCache,  "cache",  "Trace caching")
-              ,(TraceSearch, "search", "Trace search")]
+dTraceFlags = [(TraceCg,      "cg",      "Trace code generation")
+              ,(TraceCache,   "cache",   "Trace caching")
+              ,(TraceSearch,  "search",  "Trace search")
+              ,(TraceRewrite, "rewrite", "Trace rewrites")
+              ]
 
 dOpts :: [FlagOptDescr (Config -> m Config)]
 dOpts = []

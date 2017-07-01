@@ -15,7 +15,8 @@ module Spiral.Util.Trace (
 
     traceCg,
     traceCache,
-    traceSearch
+    traceSearch,
+    traceRewrite
   ) where
 
 import Control.Monad (when)
@@ -103,3 +104,6 @@ traceCache = traceIfSet TraceCache "traceCache:"
 
 traceSearch :: MonadTrace m => Doc -> m ()
 traceSearch = traceIfSet TraceSearch "traceSearch:"
+
+traceRewrite :: MonadTrace m => Doc -> m ()
+traceRewrite = traceIfSet TraceRewrite "traceRewrite:"
