@@ -216,7 +216,9 @@ instance Pretty (Const a) where
     pprPrec _ (IntegerC x)  = ppr x
     pprPrec _ (FloatC x)    = ppr x <> char 'f'
     pprPrec _ (DoubleC x)   = ppr x
-    pprPrec _ (RationalC x) = ppr x
+    pprPrec p (RationalC x)
+      | denominator x == 1  = ppr (numerator x)
+      | otherwise           = infixop p Div (numerator x) (denominator x)
 
     pprPrec p x@ComplexC{} = pprComplex p (fromConst x)
 
