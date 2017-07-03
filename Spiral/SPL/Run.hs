@@ -18,7 +18,8 @@ module Spiral.SPL.Run (
 
 import Prelude hiding ((!!), read)
 
-import Control.Monad (unless)
+import Control.Monad (unless,
+                      when)
 import Data.Complex
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
@@ -140,7 +141,9 @@ runSPL e@(DSum a b) x | m' == m && n' == n = do
     Z :. m :. m' = splExtent a
     Z :. n :. n' = splExtent b
 
-runSPL e@(Prod a b) x | n' == n = do
+runSPL e@(Prod a b) x = do
+    when (n' /= n) $
+        faildoc $ "Incompatible matrix product:" <+> ppr n <+> char 'x' <+> ppr n' </> ppr e
     comment $ ppr e
     t <- runSPL b x
     runSPL a t
