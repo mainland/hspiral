@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -16,6 +17,7 @@ import Data.Complex
 import Data.Maybe (catMaybes)
 import Data.Typeable (Typeable)
 import qualified Data.Vector.Storable as V
+import Data.Word (Word32)
 import System.Environment (getArgs)
 import Test.Framework (Test,
                        buildTest,
@@ -312,13 +314,39 @@ codegenTests conf desc f =
         dft  <- genComplexTransform conf ("dft" ++ show n) e
         return $
             testProperty (desc ++ " " ++ show n) $
-            forAll (vectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
+            forAll (uniformVectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
 
--- | Generate vectors of a given size.
-vectorsOfSize :: (Arbitrary a, V.Storable a)
-              => Int
-              -> Gen (V.Vector a)
-vectorsOfSize n = V.fromList <$> replicateM n arbitrary
+-- | Generate vectors of a given size with uniformly distributed elements.
+uniformVectorsOfSize :: (Arbitrary (Uniform01 a), V.Storable a)
+                     => Int
+                     -> Gen (V.Vector a)
+uniformVectorsOfSize n = do
+    xs <- replicateM n arbitrary
+    return $ V.fromList (map unUniform01 xs)
+
+-- | A uniform value i the range [0,1]
+newtype Uniform01 a = Uniform01 { unUniform01 :: a }
+  deriving (Eq, Ord, Show)
+
+instance Arbitrary (Uniform01 a) => Arbitrary (Uniform01 (Complex a)) where
+    arbitrary = do
+        Uniform01 r <- arbitrary
+        Uniform01 i <- arbitrary
+        return $ Uniform01 $ r :+ i
+
+instance Arbitrary (Uniform01 Double) where
+    -- This code take from the dsp Haskell library, authored by Matt Donadio.
+    -- 53 bits in [0,1], i.e., 64-bit IEEE 754 in [0,1]
+    -- 67108864 = 2^26
+    -- 9007199254740991 = 2^53 - 1
+    arbitrary = do
+        u1 :: Word32 <- arbitrary
+        u2 :: Word32 <- arbitrary
+        -- 27 bits
+        let a = fromIntegral u1 / 32.0
+        -- 26 bits
+        let b = fromIntegral u2 / 64.0
+        return $ Uniform01 $ (a * 67108864.0 + b) / 9007199254740991.0
 
 -- | Return 'True' if the maximum pairwise difference between two vectors is
 -- less than epsilon.
@@ -334,7 +362,7 @@ epsDiff v1 v2 =
     maxDelta = V.maximum $ V.zipWith (\x y -> magnitude (x - y)) v1 v2
 
     eps :: a
-    eps = 1e-7
+    eps = 1e-12
 
 splitRadixOpcountTests :: Test
 splitRadixOpcountTests =
