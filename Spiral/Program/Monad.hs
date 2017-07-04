@@ -51,9 +51,11 @@ import Control.Monad.State (MonadState(..),
                             gets,
                             modify)
 import Control.Monad.Trans.Class (MonadTrans(..))
+import Data.Complex
 import Data.IORef (IORef)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Ratio
 import Data.Sequence ((|>))
 import Text.PrettyPrint.Mainland
 
@@ -224,11 +226,12 @@ cacheWithConfig :: forall a m . (Typed a, Num (Exp a), MonadSpiral m)
                 -> P m (Exp a)
 cacheWithConfig config = cache
   where
-    useComplex, splitComplex, doCSE, doRewrite :: Bool
+    useComplex, splitComplex, doCSE, doRewrite, difRewrite :: Bool
     useComplex   = UseComplex `testDynFlag` config
     splitComplex = SplitComplex `testDynFlag` config
     doCSE        = CSE `testDynFlag` config
     doRewrite    = Rewrite `testDynFlag` config
+    difRewrite   = DifRewrite `testDynFlag` config
 
     cache :: forall a . (Typed a, Num (Exp a)) => Exp a -> P m (Exp a)
     cache e
@@ -312,8 +315,31 @@ cacheWithConfig config = cache
         go Mul (UnopE Neg e1) e2 =
             rewrite $ -(e1 * e2)
 
+        -- Rewrite @w1*w2*t@ to @(w1*w2)*t@
+        go Mul w1@(ConstE W{}) (BinopE Mul w2@(ConstE W{}) e) | difRewrite =
+            cache $ (w1*w2) * e
+
+        go Mul e1@(ConstE W{}) e2 =
+            return $ BinopE Mul e1 e2
+
+        -- Rewrite @w1*t1 + w2*t2@ to @w1*(t1 + (w2/w1)*t2)@ where either @w1@
+        -- or @w2/w1@ is a 4th root of unity.
+        go op e1@(BinopE Mul w1@(ConstE W{}) t1) e2@(BinopE Mul w2@(ConstE W{}) t2) | difRewrite, Just (+/-) <- fromAddSub op =
+            case tau of
+              ComplexT{} | isTrivialRoot w1 || isTrivialRoot (w2/w1) ->
+                cache $ w1 * (t1 +/- ((w2/w1) * t2))
+              _ -> mustCache (BinopE op e1 e2)
+          where
+            tau :: Type a
+            tau = typeOf (undefined :: a)
+
         go op e1 e2 =
             mustCache (BinopE op e1 e2)
+
+        fromAddSub :: Binop -> Maybe (Exp a -> Exp a -> Exp a)
+        fromAddSub Add = return (+)
+        fromAddSub Sub = return (-)
+        fromAddSub _   = fail "isAddSub: neither (+) nor (-)"
 
     rewrite (ReE e) =
         ReE <$> rewrite e >>= mustCache
@@ -355,6 +381,16 @@ cacheWithConfig config = cache
 
     mustCache e =
         return e
+
+-- | @isNthRoot n r@ returns 'True' if @r@ is an nth root of unity.
+isNthRoot :: Int -> Exp (Complex a) -> Bool
+isNthRoot n (ConstE (W n' k _)) = denominator ((k % n') * fromIntegral n) == 1
+isNthRoot _ _                   = False
+
+-- | 'isTrivialRoot' returns 'True' if its argument is a trivial root, i.e., a
+-- fourth root of unity.
+isTrivialRoot :: Exp (Complex a) -> Bool
+isTrivialRoot = isNthRoot 4
 
 -- | Create a new concrete array of the given shape.
 newArray :: forall sh a m . (Shape sh, Typed a, Num (Exp a), MonadSpiral m)
