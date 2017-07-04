@@ -118,6 +118,9 @@ instance MaplePretty (Const a) where
 
     pprmPrec p (CycC x) = text (showsPrec p x "")
 
+    pprmPrec p (PiC x) = parensIf (p > mulPrec) $
+                         pprPrec mulPrec1 x <> char '*' <> text "Pi"
+
 instance MaplePretty Var where
     pprm = ppr
 
@@ -125,14 +128,11 @@ instance MaplePretty (Exp a) where
     pprmPrec p (ConstE c) = pprmPrec p c
     pprmPrec p (VarE v)   = pprmPrec p v
 
-    pprmPrec _ (UnopE Abs e) =
-        text "abs" <> parens (pprm e)
-
-    pprmPrec _ (UnopE Signum e) =
-        text "signum" <> parens (pprm e)
-
-    pprmPrec p (UnopE op e) =
+    pprmPrec p (UnopE op@Neg e) =
         unop p op e
+
+    pprmPrec _ (UnopE op e) =
+        ppr op <> parens (ppr e)
 
     pprmPrec _ (BinopE Quot e1 e2) =
         text "iquo" <> pprArgs [pprm e1, pprm e2]
@@ -167,8 +167,21 @@ instance MaplePretty (Exp a) where
 
 instance MaplePretty Unop where
     pprm Neg    = char '-'
-    pprm Abs    = text "abs" <> space
-    pprm Signum = text "signum" <> space
+    pprm Abs    = text "abs"
+    pprm Signum = text "signum"
+    pprm Exp    = text "exp"
+    pprm Log    = text "log"
+    pprm Sqrt   = text "sqrt"
+    pprm Sin    = text "sin"
+    pprm Cos    = text "cos"
+    pprm Asin   = text "asin"
+    pprm Acos   = text "acos"
+    pprm Atan   = text "atan"
+    pprm Sinh   = text "sinh"
+    pprm Cosh   = text "cosh"
+    pprm Asinh  = text "asinh"
+    pprm Acosh  = text "acosh"
+    pprm Atanh  = text "atanh"
 
 instance MaplePretty Binop where
     pprm Add  = char '+'
