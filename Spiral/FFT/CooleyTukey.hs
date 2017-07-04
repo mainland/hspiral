@@ -12,6 +12,8 @@ module Spiral.FFT.CooleyTukey (
     cooleyTukeyDIF,
     splitRadix,
     splitRadix8,
+    conjPairSplitRadix,
+    improvedSplitRadix,
     dit,
     dif
   ) where
@@ -84,6 +86,102 @@ splitRadix8 n w =
     w4, w8 :: a
     w4 = omega 4
     w8 = omega 8
+
+-- | Conjugate-pair split-radix DFT decomposition.
+conjPairSplitRadix :: forall a . RootOfUnity a => Int -> a -> SPL a
+conjPairSplitRadix n _ | n `mod` 4 /= 0 =
+    error "Cannot call splitRadix when n is not divisible by 4"
+
+conjPairSplitRadix n w =
+    (sigma4 ⊗ I p) ×
+    (I (2*p) ⊕ ws p w ⊕ ws p (w^^(-1))) ×
+    (F (2*p) (w^2) ⊕ F p (w^4) ⊕ F p (w^4)×Pi (CS p 1)) ×
+    (I (2*p) ⊕ Pi (L (2*p) 2)) ×
+    Pi (L (4*p) 2)
+  where
+    p :: Int
+    p = n `quot` 4
+
+    sigma4 :: SPL a
+    sigma4 = (F2 ⊗ I 2) × (I 2 ⊕ (ws 2 w4 × F2))
+
+    w4 :: a
+    w4 = omega 4
+
+-- | Improved split-radix DFT decomposition.
+improvedSplitRadix :: forall a . (Floating a, RootOfUnity a) => Int -> a -> SPL a
+improvedSplitRadix n w = f n w
+  where
+    f, fs, fs2, fs4 :: Int -> a -> SPL a
+    f n _ | n `mod` 4 /= 0 =
+        error "Cannot call improvedSplitRadix when n is not divisible by 4"
+
+    f n w =
+        (sigma4 ⊗ I p) ×
+        (I (2*p) ⊕ diag [w^k * s p k | k <- [0..p-1]] ⊕ diag [w^^(-k) * s p k | k <- [0..p-1]]) ×
+        (F (2*p) (w^2) ⊕ fs p (w^4) ⊕ fs p (w^4)×Pi (CS p 1)) ×
+        (I (2*p) ⊕ Pi (L (2*p) 2)) ×
+        Pi (L (4*p) 2)
+      where
+        p :: Int
+        p = n `quot` 4
+
+    fs n w | n `mod` 4 /= 0 =
+        F n w
+
+    fs n w =
+        (sigma4 ⊗ I p) ×
+        (I (2*p) ⊕ diag [w^k * s p k / s (4*p) k | k <- [0..p-1]] ⊕ diag [w^^(-k) * s p k / s (4*p) k | k <- [0..p-1]]) ×
+        (fs (2*p) (w^2) ⊕ fs2 p (w^4) ⊕ fs2 p (w^4)×Pi (CS p 1)) ×
+        (I (2*p) ⊕ Pi (L (2*p) 2)) ×
+        Pi (L (4*p) 2)
+      where
+        p :: Int
+        p = n `quot` 4
+
+    fs2 n w | n `mod` 4 /= 0 =
+        F n w
+
+    fs2 n w =
+        (F2 ⊗ I (2*p)) ×
+        (I (2*p) ⊕ diag [s (4*p) k / s (2*4*p) k | k <- [0..2*p-1]]) ×
+        ((I 2 ⊕ (ws 2 w4 × F2)) ⊗ I p) ×
+        (I (2*p) ⊕ diag [w^k * s p k / s (4*p) k | k <- [0..p-1]] ⊕ diag [w^^(-k) * s p k / s (4*p) k | k <- [0..p-1]]) ×
+        (fs4 (2*p) (w^2) ⊕ fs p (w^4) ⊕ fs p (w^4)×Pi (CS p 1)) ×
+        (I (2*p) ⊕ Pi (L (2*p) 2)) ×
+        Pi (L (4*p) 2)
+      where
+        p :: Int
+        p = n `quot` 4
+
+    fs4 n w | n `mod` 4 /= 0 =
+        F n w
+
+    fs4 n w =
+        diag [s (4*p) k / s (4*4*p) k | k <- [0..(4*p)-1]] ×
+        (sigma4 ⊗ I p) ×
+        (I (2*p) ⊕ diag [w^k * s p k / s (4*p) k | k <- [0..p-1]] ⊕ diag [w^^(-k) * s p k / s (4*p) k | k <- [0..p-1]]) ×
+        (fs (2*p) (w^2) ⊕ fs2 p (w^4) ⊕ fs2 p (w^4)×Pi (CS p 1)) ×
+        (I (2*p) ⊕ Pi (L (2*p) 2)) ×
+        Pi (L (4*p) 2)
+      where
+        p :: Int
+        p = n `quot` 4
+
+    s :: Floating a => Int -> Int -> a
+    s n k
+      | n  <= 4         = 1
+      | k4 <= n `div` 8 = s (n `div` 4) k4 * cos (2 * pi * fromIntegral k4 / fromIntegral n)
+      | otherwise       = s (n `div` 4) k4 * sin (2 * pi * fromIntegral k4 / fromIntegral n)
+      where
+        k4 :: Int
+        k4 = k `mod` (n `div` 4)
+
+    sigma4 :: SPL a
+    sigma4 = (F2 ⊗ I 2) × (I 2 ⊕ (ws 2 w4 × F2))
+
+    w4 :: a
+    w4 = omega 4
 
 -- | Decimation in time DFT matrix $F_n$, for $n$ even
 dit :: (RootOfUnity a, Show a) => Int -> SPL a

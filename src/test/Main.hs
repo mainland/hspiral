@@ -75,6 +75,7 @@ main = do
                  , ditCodegenTests conf
                  , difCodegenTests conf
                  , splitRadixCodegenTests conf
+                 , improvedSplitRadixCodegenTests conf
                  , searchCodegenTests conf
                  ]
 
@@ -151,7 +152,10 @@ dftTests = testGroup "DFT tests"
     , testGroup "DIT" [dit_test n | n <- [1..7]]
     , testGroup "DIF" [dif_test n | n <- [1..7]]
     , testGroup "Split Radix" [split_radix_test n | n <- [1..3]]
-    , testGroup "Split Radix 8" [split_radix8_test n | n <- [1..2]]]
+    , testGroup "Split Radix 8" [split_radix8_test n | n <- [1..2]]
+    , testGroup "Conjugate Pair Split Radix" [conj_pair_split_radix_test n | n <- [1..3]]
+    , testGroup "Improved Split Radix" [improved_split_radix_test n | n <- [1..3]]
+    ]
 
 -- $F_2$
 f2Test :: Test
@@ -226,6 +230,22 @@ split_radix8_test n = testCase ("SplitRadix(8^" ++ show n ++ ")") $
     w :: Exp (Complex Double)
     w = omega (8^n)
 
+-- Split radix test
+conj_pair_split_radix_test :: Int -> Test
+conj_pair_split_radix_test n = testCase ("ConjPairSplitRadix(4^" ++ show n ++ ")") $
+    toMatrix (conjPairSplitRadix (4^n) w) @?= toMatrix (DFT (4^n))
+  where
+    w :: Exp (Complex Double)
+    w = omega (4^n)
+
+-- Split radix test
+improved_split_radix_test :: Int -> Test
+improved_split_radix_test n = testCase ("ImprovedSplitRadix(4^" ++ show n ++ ")") $
+    toMatrix (conjPairSplitRadix (4^n) w) @?= toMatrix (DFT (4^n))
+  where
+    w :: Exp (Complex Double)
+    w = omega (4^n)
+
 -- Test Cooley-Tukey with factors 5 and 7
 ck_dit_5_7_test :: Test
 ck_dit_5_7_test = testCase "CooleyTukeyDIT(5,7)" $
@@ -294,6 +314,17 @@ splitRadixCodegenTests conf =
       => SPL (Exp a)
       -> S s m (SPL (Exp a))
     f (F n w) = splitRadixBreakdown n w
+    f _       = mzero
+
+improvedSplitRadixCodegenTests :: Config -> Test
+improvedSplitRadixCodegenTests conf =
+    testGroup "Generated improved split radix DFT" $
+    codegenTests conf "Improved split radix DFT of size" (\n -> runSearch () f (Re (DFT n)))
+  where
+    f :: (Typeable a, Typed a, MonadSpiral m)
+      => SPL (Exp a)
+      -> S s m (SPL (Exp a))
+    f (F n w) = improvedSplitRadixBreakdown n w
     f _       = mzero
 
 searchCodegenTests :: Config -> Test
