@@ -267,15 +267,7 @@ cacheWithConfig config = cache
     rewrite (BinopE op e1 e2) = do
         e1' <- rewrite e1
         e2' <- rewrite e2
-        -- Re-simplify expressions after caching their subterms if the subterms
-        -- have changed.
-        if e1' /= e1 || e2' /= e2
-          then case op of
-                 Add -> rewrite (e1' + e2')
-                 Sub -> rewrite (e1' - e2')
-                 Mul -> rewrite (e1' * e2')
-                 _   -> go op e1' e2'
-          else go op e1' e2'
+        go op e1' e2'
       where
         go :: Binop -> Exp a -> Exp a -> P m (Exp a)
         -- Choose canonical variable ordering
