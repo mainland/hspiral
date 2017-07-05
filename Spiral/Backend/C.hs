@@ -170,37 +170,40 @@ cgExp :: forall a m . (Typed a, MonadSpiral m) => Exp a -> Cg m CExp
 cgExp (ConstE c) = return $ cgConst c
 cgExp (VarE v)   = lookupVar v
 
-cgExp (UnopE op e) =
-    cgExp e >>= go op
+cgExp (UnopE op e) = do
+    ce <- cgExp e
+    go op (typeOf (undefined :: a)) ce
   where
-    go Neg ce    = return $ -ce
-    go Abs ce    = return $ abs ce
-    go Signum ce = return $ signum ce
-    go Exp ce    = return $ exp ce
-    go Log ce    = return $ log ce
-    go Sqrt ce   = return $ sqrt ce
-    go Sin ce    = return $ sin ce
-    go Cos ce    = return $ cos ce
-    go Asin ce   = return $ asin ce
-    go Acos ce   = return $ acos ce
-    go Atan ce   = return $ atan ce
-    go Sinh ce   = return $ sinh ce
-    go Cosh ce   = return $ cosh ce
-    go Asinh ce  = return $ asinh ce
-    go Acosh ce  = return $ acosh ce
-    go Atanh ce  = return $ atanh ce
+    go :: Unop -> Type a -> CExp -> Cg m CExp
+    go Neg _ ce    = return $ -ce
+    go Abs _ ce    = return $ abs ce
+    go Signum _ ce = return $ signum ce
+    go Exp _ ce    = return $ exp ce
+    go Log _ ce    = return $ log ce
+    go Sqrt _ ce   = return $ sqrt ce
+    go Sin _ ce    = return $ sin ce
+    go Cos _ ce    = return $ cos ce
+    go Asin _ ce   = return $ asin ce
+    go Acos _ ce   = return $ acos ce
+    go Atan _ ce   = return $ atan ce
+    go Sinh _ ce   = return $ sinh ce
+    go Cosh _ ce   = return $ cosh ce
+    go Asinh _ ce  = return $ asinh ce
+    go Acosh _ ce  = return $ acosh ce
+    go Atanh _ ce  = return $ atanh ce
 
 cgExp (BinopE op e1 e2) = do
     ce1 <- cgExp e1
     ce2 <- cgExp e2
-    go op ce1 ce2
+    go op (typeOf (undefined :: a)) ce1 ce2
   where
-    go Add  ce1 ce2 = return $ ce1 + ce2
-    go Sub  ce1 ce2 = return $ ce1 - ce2
-    go Mul  ce1 ce2 = return $ ce1 * ce2
-    go Quot ce1 ce2 = return $ ce1 `quot` ce2
-    go Rem  ce1 ce2 = return $ ce1 `rem` ce2
-    go Div  _   _   = fail "Can't happen"
+    go :: Binop -> Type a -> CExp -> CExp -> Cg m CExp
+    go Add _  ce1 ce2 = return $ ce1 + ce2
+    go Sub _  ce1 ce2 = return $ ce1 - ce2
+    go Mul _  ce1 ce2 = return $ ce1 * ce2
+    go Quot _ ce1 ce2 = return $ ce1 `quot` ce2
+    go Rem _  ce1 ce2 = return $ ce1 `rem` ce2
+    go Div _  _   _   = fail "Can't happen"
 
 cgExp (IdxE v es) = do
     cv  <- lookupVar v
