@@ -29,6 +29,7 @@ import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.LibLTDL
 import Foreign.Ptr (FunPtr,
                     Ptr)
+import Foreign.Storable (Storable)
 import System.IO (IOMode(..),
                   hClose,
                   openFile)
@@ -51,12 +52,19 @@ genComplexTransform :: Config
                     -> IO (V.Vector (Complex Double) -> V.Vector (Complex Double))
 genComplexTransform conf name e =
     withCompiledTransform conf name (Re e) $ \fptr ->
-      return $ mkComplexTransform fptr
+      return $ mkTransform (dynComplexTransform fptr)
 
-mkComplexTransform :: FunPtr (Ptr (Complex Double) -> Ptr (Complex Double) -> IO ())
-                   -> V.Vector (Complex Double)
-                   -> V.Vector (Complex Double)
-mkComplexTransform fptr x = unsafePerformIO $ do
+foreign import ccall "dynamic"
+    dynComplexTransform :: FunPtr (Ptr (Complex Double) -> Ptr (Complex Double) -> IO ())
+                        -> Ptr (Complex Double)
+                        -> Ptr (Complex Double)
+                        -> IO ()
+
+mkTransform :: Storable a
+            => (Ptr a -> Ptr a -> IO ())
+            -> V.Vector a
+            -> V.Vector a
+mkTransform f x = unsafePerformIO $ do
     my <- MV.new n
     let (fptr_x, _) = V.unsafeToForeignPtr0 x
     let (fptr_y, _) = MV.unsafeToForeignPtr0 my
@@ -66,15 +74,6 @@ mkComplexTransform fptr x = unsafePerformIO $ do
     V.freeze my
   where
     n = V.length x
-
-    f :: Ptr (Complex Double) -> Ptr (Complex Double) -> IO ()
-    f = dynComplexTransform fptr
-
-foreign import ccall "dynamic"
-    dynComplexTransform :: FunPtr (Ptr (Complex Double) -> Ptr (Complex Double) -> IO ())
-                        -> Ptr (Complex Double)
-                        -> Ptr (Complex Double)
-                        -> IO ()
 
 withCompiledTransform :: (Typed a, Num (Exp a))
                       => Config
