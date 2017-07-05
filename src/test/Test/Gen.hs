@@ -1,6 +1,8 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Test.Gen
@@ -10,12 +12,14 @@
 
 module Test.Gen (
     genComplexTransform,
+    genModularTransform,
 
     withLibltdl,
     withDL
   ) where
 
 import Data.Complex
+import Data.Modular
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as MV
 import Control.Exception (bracket,
@@ -30,6 +34,7 @@ import Foreign.LibLTDL
 import Foreign.Ptr (FunPtr,
                     Ptr)
 import Foreign.Storable (Storable)
+import GHC.TypeLits (KnownNat)
 import System.IO (IOMode(..),
                   hClose,
                   openFile)
@@ -58,6 +63,21 @@ foreign import ccall "dynamic"
     dynComplexTransform :: FunPtr (Ptr (Complex Double) -> Ptr (Complex Double) -> IO ())
                         -> Ptr (Complex Double)
                         -> Ptr (Complex Double)
+                        -> IO ()
+
+genModularTransform :: KnownNat p
+                    => Config
+                    -> String
+                    -> SPL (Exp (ℤ/p))
+                    -> IO (V.Vector (ℤ/p) -> V.Vector (ℤ/p))
+genModularTransform conf name e =
+    withCompiledTransform conf name e $ \fptr ->
+      return $ mkTransform (dynModularTransform fptr)
+
+foreign import ccall "dynamic"
+    dynModularTransform :: FunPtr (Ptr (ℤ/p) -> Ptr (ℤ/p) -> IO ())
+                        -> Ptr (ℤ/p)
+                        -> Ptr (ℤ/p)
                         -> IO ()
 
 mkTransform :: Storable a

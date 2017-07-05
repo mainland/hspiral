@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -56,9 +57,14 @@ module Spiral.Exp (
 
 import Data.Complex
 import Data.Complex.Cyclotomic hiding (toComplex)
+import Data.Modular
+import Data.Modular.Instances ()
+import Data.Proxy (Proxy(..))
 import Data.Ratio
 import Data.String
 import Data.Symbol
+import GHC.TypeLits (KnownNat,
+                     natVal)
 import Language.C.Quote (ToIdent(..))
 import Test.QuickCheck (Arbitrary(..))
 import Text.PrettyPrint.Mainland
@@ -102,6 +108,9 @@ data Const a where
     -- | Multiple of $\pi$
     PiC :: (Floating a, ToConst a) => Rational -> Const a
 
+    -- | Integers modulo a prime
+    ModularC :: KnownNat p => ℤ/p -> Const (ℤ/p)
+
 deriving instance Show (Const a)
 
 instance Eq (Const a) where
@@ -136,6 +145,9 @@ instance ToConst Rational where
 
 instance RealFloatConst a => ToConst (Complex a) where
     toConst (r :+ i) = ComplexC (toConst r) (toConst i)
+
+instance KnownNat p => ToConst (ℤ/p) where
+    toConst = ModularC
 
 class ( Fractional a
       , Typed a
@@ -177,6 +189,7 @@ fromConst (ComplexC r i) = fromConst r :+ fromConst i
 fromConst (W _ _ x)      = fromConst x
 fromConst (CycC x)       = toComplex x
 fromConst (PiC x)        = pi*fromRational x
+fromConst (ModularC x)   = x
 
 lift :: ToConst a => (a -> a) -> Const a -> Const a
 lift f (IntC x)      = IntC (f x)
@@ -214,6 +227,9 @@ instance Arbitrary (Const Rational) where
 instance Arbitrary (Const (Complex Double)) where
     arbitrary = ComplexC <$> arbitrary <*> arbitrary
 
+instance KnownNat p => Arbitrary (Const (ℤ/p)) where
+    arbitrary = ModularC . toMod <$> arbitrary
+
 instance Pretty (Const a) where
     pprPrec _ (BoolC x)     = if x then text "true" else text "false"
     pprPrec _ (IntC x)      = ppr x
@@ -235,11 +251,16 @@ instance Pretty (Const a) where
     pprPrec p (PiC x) = parensIf (p > mulPrec) $
                         pprPrec mulPrec1 x <> char '*' <> text "pi"
 
+    pprPrec p (ModularC x) = pprPrec p x
+
 instance RootOfUnity (Const (Complex Float)) where
     rootOfUnity n k = mkW (k%n) (CycC (rootOfUnity n k))
 
 instance RootOfUnity (Const (Complex Double)) where
     rootOfUnity n k = mkW (k%n) (CycC (rootOfUnity n k))
+
+instance KnownNat p => RootOfUnity (Const (ℤ/p)) where
+    rootOfUnity n k = ModularC (rootOfUnity n k)
 
 pprComplex :: (Eq a, Num a, Pretty a) => Int -> Complex a -> Doc
 pprComplex p (r :+ 0)    = pprPrec p r
@@ -293,9 +314,10 @@ exact (ComplexC cre cim) | isIntegral re && isIntegral im =
     re' = truncate re
     im' = truncate im
 
-exact (W _ _ x) = exact x
-exact x@CycC{}  = return x
-exact _         = fail "Cannot represent exactly"
+exact (W _ _ x)    = exact x
+exact x@CycC{}     = return x
+exact x@ModularC{} = return x
+exact _            = fail "Cannot represent exactly"
 
 isIntegral :: forall a . (RealFrac a, Eq a) => a -> Bool
 isIntegral x = snd (properFraction x :: (Int, a)) == 0
@@ -353,9 +375,15 @@ instance RootOfUnity (Exp (Complex Float)) where
 instance RootOfUnity (Exp (Complex Double)) where
     rootOfUnity n k = ConstE (rootOfUnity n k)
 
+instance KnownNat p => RootOfUnity (Exp (ℤ/p)) where
+    rootOfUnity n k = ConstE (rootOfUnity n k)
+
 --
 -- Heterogeneous quality and comparison
 --
+
+modPair :: forall p . KnownNat p => ℤ/p -> (Integer, Integer)
+modPair x = (unMod x, natVal (Proxy :: Proxy p))
 
 instance HEq Const where
     heq x y =
@@ -372,6 +400,7 @@ instance HEq Const where
         go (RationalC x)    (RationalC y)    = x == y
         go (ComplexC r1 i1) (ComplexC r2 i2) = (Some r1, Some i1) == (Some r2, Some i2)
         go (CycC x)         (CycC y)         = x == y
+        go (ModularC x)     (ModularC y)     = modPair x == modPair y
         go _                _                = False
 
 instance HEq Exp where
@@ -405,6 +434,7 @@ instance HOrd Const where
           where
             xr :+ xi = fromConst (CycC x :: Const (Complex Double))
             yr :+ yi = fromConst (CycC y :: Const (Complex Double))
+        go (ModularC x)     (ModularC y)     = compare (modPair x) (modPair y)
 
         go x y = compare (tag x) (tag y)
           where
@@ -419,6 +449,7 @@ instance HOrd Const where
             tag W{}         = 7
             tag CycC{}      = 8
             tag PiC{}       = 9
+            tag ModularC{}  = 10
 
 instance HOrd Exp where
     hcompare (ConstE c1)           (ConstE c2)           = hcompare c1 c2
@@ -589,9 +620,9 @@ data Type a where
     DoubleT   :: Type Double
     RationalT :: Type Rational
     ComplexT  :: RealFloatConst a => Type a -> Type (Complex a)
+    ModPT     :: KnownNat p => Integer -> Type (ℤ/p)
 
 deriving instance Eq (Type a)
-deriving instance Ord (Type a)
 deriving instance Show (Type a)
 
 instance Pretty (Type a) where
@@ -602,6 +633,7 @@ instance Pretty (Type a) where
     ppr DoubleT        = text "double"
     ppr RationalT      = text "rational"
     ppr (ComplexT tau) = text "complex" <+> ppr tau
+    ppr (ModPT p)      = text "ℤ/" <> ppr p
 
 class Typed a where
     typeOf :: a -> Type a
@@ -626,6 +658,9 @@ instance Typed Rational where
 
 instance RealFloatConst a => Typed (Complex a) where
     typeOf _ = ComplexT (typeOf (undefined :: a))
+
+instance KnownNat p => Typed (ℤ/p) where
+    typeOf _ = ModPT (natVal (Proxy :: Proxy p))
 
 --------------------------------------------------------------------------------
 --
@@ -652,6 +687,7 @@ instance (Typed a, Num a, ToConst a, Num (Const a)) => LiftNum (Const a) where
 
     liftNum _op f (RationalC x) = RationalC (f x)
     liftNum op  f (W _ _ c)     = liftNum op f c
+    liftNum _op f (ModularC x)  = ModularC (f x)
 
     liftNum _op f c = lift f c
 
@@ -687,6 +723,7 @@ instance (Typed a, Num a, ToConst a, Num (Const a)) => LiftNum (Const a) where
     liftNum2 op  f (W _ _ c)     y             = liftNum2 op f c y
     liftNum2 op  f x             (W _ _ c)     = liftNum2 op f x c
     liftNum2 _op f (CycC x)      (CycC y)      = CycC (f x y)
+    liftNum2 _op f (ModularC x)  (ModularC y)  = ModularC (f x y)
 
     liftNum2 op f x y
       | Just x'@CycC{} <- exact x, Just y'@CycC{} <- exact y = liftNum2 op f x' y'
@@ -863,6 +900,19 @@ instance Num (Const (Complex Double)) where
 
     fromInteger = RationalC . fromInteger
 
+instance KnownNat p => Num (Const (ℤ/p)) where
+    (+) = liftNum2 Add (+)
+    (-) = liftNum2 Sub (-)
+    (*) = liftNum2 Mul (*)
+
+    abs = liftNum Abs abs
+
+    negate = liftNum Neg negate
+
+    signum  = liftNum Signum signum
+
+    fromInteger = ModularC . fromInteger
+
 instance Num (Exp Int) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
@@ -942,6 +992,19 @@ instance Num (Exp (Complex Float)) where
     fromInteger = ConstE . fromInteger
 
 instance Num (Exp (Complex Double)) where
+    (+) = liftNum2 Add (+)
+    (-) = liftNum2 Sub (-)
+    (*) = liftNum2 Mul (*)
+
+    abs = liftNum Abs abs
+
+    negate = liftNum Neg negate
+
+    signum  = liftNum Signum signum
+
+    fromInteger = ConstE . fromInteger
+
+instance KnownNat p => Num (Exp (ℤ/p)) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
     (*) = liftNum2 Mul (*)
@@ -1050,6 +1113,7 @@ instance (Fractional a, ToConst a, Fractional (Const a)) => LiftFrac (Const a) w
     liftFrac2 op  f (W _ _ c)     y             = liftFrac2 op f c y
     liftFrac2 op  f x             (W _ _ c)     = liftFrac2 op f x c
     liftFrac2 _op f (CycC x)      (CycC y)      = CycC (f x y)
+    liftFrac2 _op f (ModularC x)  (ModularC y)  = ModularC (f x y)
 
     liftFrac2 op f x y
       | Just x'@CycC{} <- exact x, Just y'@CycC{} <- exact y = liftFrac2 op f x' y'
@@ -1088,6 +1152,11 @@ instance Fractional (Const (Complex Double)) where
 
     fromRational = RationalC
 
+instance KnownNat p => Fractional (Const (ℤ/p)) where
+    (/) = liftFrac2 Div (/)
+
+    fromRational = ModularC . fromRational
+
 instance Fractional (Exp Float) where
     (/) = liftFrac2 Div (/)
 
@@ -1104,6 +1173,11 @@ instance Fractional (Exp (Complex Float)) where
     fromRational = ConstE . fromRational
 
 instance Fractional (Exp (Complex Double)) where
+    (/) = liftFrac2 Div (/)
+
+    fromRational = ConstE . fromRational
+
+instance KnownNat p => Fractional (Exp (ℤ/p)) where
     (/) = liftFrac2 Div (/)
 
     fromRational = ConstE . fromRational

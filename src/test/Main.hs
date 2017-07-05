@@ -1,7 +1,10 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Test
@@ -15,9 +18,14 @@ import Control.Monad (mzero,
                       replicateM)
 import Data.Complex
 import Data.Maybe (catMaybes)
+import Data.Modular
+import Data.Proxy (Proxy(..))
 import Data.Typeable (Typeable)
 import qualified Data.Vector.Storable as V
 import Data.Word (Word32)
+import GHC.TypeLits (KnownNat,
+                     Nat,
+                     natVal)
 import System.Environment (getArgs)
 import Test.Framework (Test,
                        buildTest,
@@ -27,11 +35,14 @@ import Test.Framework (Test,
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.HUnit ((@?=))
-import Test.QuickCheck (Arbitrary(..),
+import Test.QuickCheck ((===),
+                        Arbitrary(..),
                         Gen,
                         Property,
+                        choose,
+                        counterexample,
                         forAll,
-                        counterexample)
+                        ioProperty)
 
 import qualified Data.FlagSet as FS
 
@@ -47,6 +58,7 @@ import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas
 import Spiral.FFT.Rader
 import Spiral.Monad
+import Spiral.NumberTheory
 import Spiral.OpCount
 import Spiral.RootOfUnity
 import Spiral.SPL
@@ -60,6 +72,8 @@ import Test.Gen
 
 main :: IO ()
 main = do
+    setGenerator 17 3
+    setGenerator 2013265921 31
     (conf, opts, _args) <- getArgs >>= \args -> parseOpts' args optionsDescription
     defaultMainWithOpts (tests conf) (mconcat (catMaybes opts))
   where
@@ -69,6 +83,7 @@ main = do
                  , kroneckerTest
                  , directSumTest
                  , dftTests
+                 , moddftTests
                  , searchTests
                  , splitRadixOpcountTests
                  , difOpcountTests
@@ -77,6 +92,7 @@ main = do
                  , splitRadixCodegenTests conf
                  , improvedSplitRadixCodegenTests conf
                  , searchCodegenTests conf
+                 , modCodegenTests conf
                  ]
 
 -- See:
@@ -295,6 +311,30 @@ searchTests =
         Re e <- Spiral.defaultMain $ \_ -> searchOpCount (Re (DFT n) :: SPL (Exp Double))
         toMatrix e @?= toMatrix (DFT n)
 
+--
+-- Modular DFT tests
+--
+
+moddftTests :: Test
+moddftTests = testGroup "Modular DFT tests"
+    [modf4Test_17, modf128Test_2013265921]
+
+-- $F_4$
+modf4Test_17 :: Test
+modf4Test_17 = testCase "F_4 in ℤ/17" $
+    toMatrix fft_spl @?= toMatrix (DFT 4)
+  where
+    fft_spl :: SPL (Exp (ℤ/17))
+    fft_spl = dit 4
+
+-- $F_64$
+modf128Test_2013265921 :: Test
+modf128Test_2013265921 = testCase "F_128 in ℤ/2013265921" $
+    toMatrix fft_spl @?= toMatrix (DFT 128)
+  where
+    fft_spl :: SPL (Exp (ℤ/2013265921))
+    fft_spl = dit 128
+
 ditCodegenTests :: Config -> Test
 ditCodegenTests conf =
     testGroup "Generated DIT" $
@@ -346,6 +386,65 @@ codegenTests conf desc f =
         return $
             testProperty (desc ++ " " ++ show n) $
             forAll (uniformVectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
+
+data ModTest (p :: Nat) = ModTest Int Int
+  deriving (Eq, Ord, Show)
+
+instance Arbitrary (ModTest 2013265921) where
+    arbitrary = do
+        n <- choose (0, 12)
+        i <- choose (0, 2^n-1)
+        return $ ModTest n i
+
+instance Arbitrary (ModTest 17) where
+    arbitrary = do
+        n <- choose (0, 4)
+        i <- choose (0, 2^n-1)
+        return $ ModTest n i
+
+moddft17Test :: Config -> Test
+moddft17Test conf = testProperty "Generated ModDFT (p = 17)"
+    (modDFTTest conf :: ModTest 17 -> Property)
+
+moddft2013265921Test :: Config -> Test
+moddft2013265921Test conf = testProperty "Generated ModDFT (p = 2013265921)"
+    (modDFTTest conf :: ModTest 2013265921 -> Property)
+
+modDFTTest :: forall p . KnownNat p => Config -> ModTest p -> Property
+modDFTTest conf (ModTest n i) = ioProperty $ do
+    moddft <- genModularTransform conf
+                                  ("moddft_" ++ show p ++ "_" ++ show n)
+                                  fft_spl
+    return $ moddft e_i === res
+  where
+    fft_spl :: SPL (Exp (ℤ/p))
+    fft_spl = dit (2^n)
+
+    p :: Integer
+    p = natVal (Proxy :: Proxy p)
+
+    len :: Int
+    len = 2^n
+
+    e_i :: V.Vector (ℤ/p)
+    e_i = V.generate len $ \j -> if i == j then 1 else 0
+
+    res :: V.Vector (ℤ/p)
+    res = V.generate len $ \j -> a^j
+      where
+        a :: ℤ/p
+        a = w^i
+
+    w :: ℤ/p
+    w = omega len
+
+modCodegenTests :: Config
+                -> Test
+modCodegenTests conf =
+    testGroup "Generated ModDFT"
+    [ moddft17Test conf
+    , moddft2013265921Test conf
+    ]
 
 -- | Generate vectors of a given size with uniformly distributed elements.
 uniformVectorsOfSize :: (Arbitrary (Uniform01 a), V.Storable a)

@@ -352,6 +352,7 @@ cgType IntegerT  = [cty|int|]
 cgType FloatT    = [cty|float|]
 cgType DoubleT   = [cty|double|]
 cgType RationalT = [cty|double|]
+cgType ModPT{}   = [cty|typename int64_t|]
 
 cgType (ComplexT FloatT) =
     [cty|float _Complex|]
