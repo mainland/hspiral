@@ -651,8 +651,7 @@ instance (Typed a, Num a, ToConst a, Num (Const a)) => LiftNum (Const a) where
     liftNum Neg _ (W n k c) = mkW (k % n + 1 % 2) (-c)
 
     liftNum _op f (RationalC x) = RationalC (f x)
-
-    liftNum op f (W _ _ c) = liftNum op f c
+    liftNum op  f (W _ _ c)     = liftNum op f c
 
     liftNum _op f c = lift f c
 
@@ -678,18 +677,16 @@ instance (Typed a, Num a, ToConst a, Num (Const a)) => LiftNum (Const a) where
 
     liftNum2 Mul _ (W n k x) (W n' k' y) = mkW (k % n + k' % n') (x*y)
 
-    liftNum2 _op f (RationalC x) (RationalC y) = RationalC (f x y)
-
     liftNum2 Add _ (PiC x) (PiC y) = PiC (x + y)
     liftNum2 Sub _ (PiC x) (PiC y) = PiC (x - y)
 
     liftNum2 Mul _ (PiC x) (RationalC y) = PiC (x * y)
     liftNum2 Mul _ (RationalC x) (PiC y) = PiC (x * y)
 
-    liftNum2 op f (W _ _ c) y = liftNum2 op f c y
-    liftNum2 op f x (W _ _ c) = liftNum2 op f x c
-
-    liftNum2 _op f (CycC x) (CycC y) = CycC (f x y)
+    liftNum2 _op f (RationalC x) (RationalC y) = RationalC (f x y)
+    liftNum2 op  f (W _ _ c)     y             = liftNum2 op f c y
+    liftNum2 op  f x             (W _ _ c)     = liftNum2 op f x c
+    liftNum2 _op f (CycC x)      (CycC y)      = CycC (f x y)
 
     liftNum2 op f x y
       | Just x'@CycC{} <- exact x, Just y'@CycC{} <- exact y = liftNum2 op f x' y'
@@ -700,14 +697,14 @@ instance (Typed a, Num a, ToConst a, Num (Const a)) => LiftNum (Const a) where
 --- The other option would be to forgo the Const instance and push it into the
 --- Exp instance.
 instance (Typed a, Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Exp a) where
+    liftNum op f (ConstE c) = ConstE $ liftNum op f c
+
     liftNum Neg _ e
       | isZero e = 0
 
     liftNum Neg _ (UnopE Neg x)      = x
     liftNum Neg _ (BinopE Sub e1 e2) = e2 - e1
     liftNum Neg _ (ComplexE a b)     = ComplexE (-a) (-b)
-
-    liftNum op f (ConstE c) = ConstE $ liftNum op f c
 
     liftNum op _ e = UnopE op e
 
@@ -1046,15 +1043,13 @@ instance (Fractional a, ToConst a, Fractional (Const a)) => LiftFrac (Const a) w
 
     liftFrac2 Div _ (PiC x) (RationalC y) = PiC (x / y)
 
-    liftFrac2 _op f (RationalC x) (RationalC y) = RationalC (f x y)
-
-    liftFrac2 op f (W _ _ c) y = liftFrac2 op f c y
-    liftFrac2 op f x (W _ _ c) = liftFrac2 op f x c
-
     liftFrac2 Div _ c1 c2 | isOne c2 =
         c1
 
-    liftFrac2 _op f (CycC x) (CycC y) = CycC (f x y)
+    liftFrac2 _op f (RationalC x) (RationalC y) = RationalC (f x y)
+    liftFrac2 op  f (W _ _ c)     y             = liftFrac2 op f c y
+    liftFrac2 op  f x             (W _ _ c)     = liftFrac2 op f x c
+    liftFrac2 _op f (CycC x)      (CycC y)      = CycC (f x y)
 
     liftFrac2 op f x y
       | Just x'@CycC{} <- exact x, Just y'@CycC{} <- exact y = liftFrac2 op f x' y'
