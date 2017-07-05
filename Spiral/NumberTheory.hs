@@ -15,6 +15,7 @@ module Spiral.NumberTheory (
     inv,
     euclid,
     generator,
+    setGenerator,
 
     prop_euclid_gcd,
     prop_inv,
@@ -24,8 +25,12 @@ module Spiral.NumberTheory (
 
 import Control.Monad.State (StateT(..), State, evalState)
 import Data.Bits (xor)
+import Data.IORef
 import Data.List (sort)
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Math.NumberTheory.Primes.Factorisation (factorise)
+import System.IO.Unsafe (unsafePerformIO)
 import System.Random
 import Test.QuickCheck
 
@@ -70,9 +75,27 @@ euclid a b = go a b 1 0 0 1
       where
         (q, r) = a `quotRem` b
 
+-- | Cache for generators.
+gGenerators :: IORef (Map Integer Integer)
+{-# NOINLINE gGenerators #-}
+gGenerators = unsafePerformIO $ newIORef mempty
+
 -- | Find a generator for $Z_p$ given $p$.
 generator :: forall a . (Integral a, Random a) => a -> a
-generator p = evalState (go (factorise (fromIntegral p-1))) (mkStdGen $ fromIntegral p `xor` 0xdeadbeef)
+generator p =
+    case Map.lookup (fromIntegral p) (unsafePerformIO (readIORef gGenerators)) of
+      Just g  -> fromInteger g
+      Nothing -> let g = generator' p
+                 in
+                   unsafePerformIO (modifyIORef gGenerators $ \gs -> Map.insert (fromIntegral p) (fromIntegral g) gs) `seq` g
+
+-- | Set the cached generator for a prime. Naughty!
+setGenerator :: Integer -> Integer -> IO ()
+setGenerator p g = modifyIORef gGenerators $ \gs -> Map.insert p g gs
+
+-- Do the real work of finding a generator for $Z_p$ given $p$.
+generator' :: forall a . (Integral a, Random a) => a -> a
+generator' p = evalState (go (factorise (fromIntegral p-1))) (mkStdGen $ fromIntegral p `xor` 0xdeadbeef)
   where
     go :: [(Integer, Int)] -> Rand a
     go fs = do
