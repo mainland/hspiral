@@ -16,6 +16,7 @@ class Fractional a => RootOfUnity a where
     -- | @rootOfUnity n k@ computes the primitive @n@th root of unity raised to
     -- the @k@th power.
     rootOfUnity :: Int -> Int -> a
+    rootOfUnity n k = omega n ^^ k
 
     -- | Computes the primitive @n@th root of unity.
     omega :: Int -> a
