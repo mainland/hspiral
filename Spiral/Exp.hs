@@ -304,15 +304,11 @@ exact x@(RationalC r) =
     tau = typeOf (undefined :: a)
 
 exact (ComplexC cre cim) | isIntegral re && isIntegral im =
-    return $ CycC $ fromIntegral re' + fromIntegral im' * i
+    return $ CycC $ gaussianRat (fromIntegral (round re :: Integer)) (fromIntegral (round im :: Integer))
   where
     re, im :: a ~ Complex b => b
     re = fromConst cre
     im = fromConst cim
-
-    re', im' :: Int
-    re' = truncate re
-    im' = truncate im
 
 exact (W _ _ x)    = exact x
 exact x@CycC{}     = return x
