@@ -143,6 +143,7 @@ breakdown n w =
     cooleyTukeyBreakdowns n w <|>
     splitRadixBreakdown n w <|>
     splitRadix8Breakdown n w <|>
+    improvedSplitRadixBreakdown n w <|>
     goodThomasBreakdowns n w <|>
     raderBreakdowns n w
 
