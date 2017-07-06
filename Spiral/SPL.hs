@@ -350,8 +350,6 @@ x   ⊗ y              = Kron x y
 infixl 6 ⊕
 (⊕) :: SPL e -> SPL e -> SPL e
 I m     ⊕ I n     = I (n + m)
-I n     ⊕ Diag xs = Diag (V.replicate n 1 <> xs)
-Diag xs ⊕ I n     = Diag (xs <> V.replicate n 1)
 Diag xs ⊕ Diag ys = Diag (xs <> ys)
 x       ⊕ y       = DSum x y
 
