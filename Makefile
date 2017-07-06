@@ -1,6 +1,6 @@
 TOP=.
 
-TARGETS = test dftgen voronenko maple opcount search moddftgen
+TARGETS = test dftgen voronenko maple opcount opcounts search moddftgen
 
 .PHONY : all
 all : $(TARGETS)
@@ -139,6 +139,10 @@ maple : examples/Maple.hs $(SRC) dist/build/autogen/cabal_macros.h
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
 opcount : examples/OpCount.hs $(SRC) dist/build/autogen/cabal_macros.h
+	@mkdir -p obj
+	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
+
+opcounts : examples/OpCounts.hs $(SRC) dist/build/autogen/cabal_macros.h
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
