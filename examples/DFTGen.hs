@@ -35,8 +35,8 @@ main = defaultMainWith' options mempty $ \fs args -> do
     f <- formula fs n
     pprint f
     if useComplexType
-      then toProgram "f" f >>= go
-      else toProgram "f" (Re f) >>= go
+      then toProgram ("hspiral_dft_" ++ show n) f >>= go
+      else toProgram ("hspiral_dft_" ++ show n) (Re f) >>= go
   where
     go :: (Typed a, Num (Exp a)) => Program a -> Spiral ()
     go prog = do
