@@ -319,8 +319,8 @@ exact x@CycC{}     = return x
 exact x@ModularC{} = return x
 exact _            = fail "Cannot represent exactly"
 
-isIntegral :: forall a . (RealFrac a, Eq a) => a -> Bool
-isIntegral x = snd (properFraction x :: (Int, a)) == 0
+isIntegral :: RealFrac a => a -> Bool
+isIntegral x = x == fromInteger (round x)
 
 -- | Lower a constant's representation from a specialized representation to a
 -- standard representation. This ensures the constant is not constructed with
