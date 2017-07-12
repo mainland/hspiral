@@ -118,9 +118,12 @@ runSPL e@(Kron (I m) a) x | n' == n = do
     computeTransform e $ \y -> do
       comment $ ppr e
       forP 0 m $ \i ->
-        slice y (i*fromIntegral n) 1 n .<-. runSPL a (fromGather (slice t (i*fromIntegral n) 1 n))
+        slice y (i*e_n) 1 n .<-. runSPL a (fromGather (slice t (i*e_n) 1 n))
   where
     Z :. n :. n' = splExtent a
+
+    e_n :: Exp Int
+    e_n = fromIntegral n
 
 runSPL e@(Kron a (I n)) x | m' == m = do
     t <- gather x
