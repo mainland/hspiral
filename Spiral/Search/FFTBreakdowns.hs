@@ -46,8 +46,11 @@ cooleyTukeyBreakdowns :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a),
                       -> Exp a
                       -> m (SPL (Exp a))
 cooleyTukeyBreakdowns n w =
-    msum [return $ cooleyTukeyDIF r s w | (r, s) <- factors n] <|>
-    msum [return $ cooleyTukeyDIT r s w | (r, s) <- factors n]
+    msum [return $ cooleyTukeyDIF r s w | (r, s) <- fs] <|>
+    msum [return $ cooleyTukeyDIT r s w | (r, s) <- fs]
+  where
+    fs :: [(Int, Int)]
+    fs = factors n
 
 splitRadixBreakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
                     => Int
