@@ -41,7 +41,7 @@ class Permute r where
     -- | Backpermute a vector, AKA gather.
     backpermuteP :: MonadSpiral m => Permutation -> Vector r b -> P m (Vector r b)
 
--- | Cast an index mappign function to a reindexing function.
+-- | Cast an index mapping function to a reindexing function.
 toReindex :: (a -> a)
           -> Z :. a
           -> Z :. a
