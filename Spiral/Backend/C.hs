@@ -46,8 +46,8 @@ import Spiral.Util.Trace
 import Spiral.Util.Uniq
 
 cgProgram :: forall a m . (Num (Exp a), Typed a, MonadSpiral m)
-            => Program a
-            -> Cg m ()
+          => Program a
+          -> Cg m ()
 cgProgram t@(Program f (C n x) (C m y) block) = do
     traceCg $ text "Compiling:" </> ppr t
     appendTopDef [cedecl|$esc:("#include <complex.h>")|]
