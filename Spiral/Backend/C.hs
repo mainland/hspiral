@@ -52,8 +52,8 @@ cgProgram t@(Program f (C n x) (C m y) block) = do
     traceCg $ text "Compiling:" </> ppr t
     appendTopDef [cedecl|$esc:("#include <complex.h>")|]
     appendTopDef [cedecl|$esc:("#include <stdint.h>")|]
-    cx    <- return $ C.Id "X"
-    cy    <- return $ C.Id "Y"
+    let cx = C.Id "X"
+        cy = C.Id "Y"
     items <- inNewFunBlock_ $
              extendVars [(x, CExp [cexp|$id:cx|]), (y, CExp [cexp|$id:cy|])] $
              cgBlock block
