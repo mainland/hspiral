@@ -17,7 +17,6 @@ import Control.Monad (mzero)
 import Control.Monad.State (gets,
                             modify)
 import Data.Dynamic (Dynamic,
-                     TypeRep,
                      fromDynamic,
                      toDyn)
 import Data.List (minimumBy)
@@ -26,7 +25,8 @@ import qualified Data.Map as Map
 import Data.Monoid (Monoid(..))
 import Data.Semigroup (Semigroup(..))
 import qualified Data.Typeable as T
-import Data.Typeable (Typeable)
+import Data.Typeable (Typeable,
+                      TypeRep)
 import Text.PrettyPrint.Mainland hiding ((<|>))
 import Text.PrettyPrint.Mainland.Class
 

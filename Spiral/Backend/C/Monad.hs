@@ -81,7 +81,7 @@ import Data.List (foldl')
 import Data.Loc (noLoc)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Monoid
+import Data.Semigroup((<>))
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Language.C.Pretty ()

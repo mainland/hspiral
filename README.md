@@ -1,6 +1,6 @@
 # Building
 
-Building hspiral requires GHC 8.0.
+Building hspiral requires GHC 8.4.
 
 There are three ways to build `hspiral`:
 
@@ -19,7 +19,7 @@ command sequence above.
 
 #### Building with `stack`
 
-The `stack` build currently uses [LTS 9.21](https://www.stackage.org/lts-9.21).
+The `stack` build currently uses [LTS 12.26](https://www.stackage.org/lts-12.26).
 
 ```
 stack build
