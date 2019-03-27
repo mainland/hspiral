@@ -32,7 +32,7 @@ import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
-import Text.PrettyPrint.Mainland
+import Data.Monoid ((<>))
 
 import Spiral.Exp
 import Spiral.Monad (MonadSpiral)

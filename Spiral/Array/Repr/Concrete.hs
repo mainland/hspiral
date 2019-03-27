@@ -21,6 +21,7 @@ module Spiral.Array.Repr.Concrete (
 
 import Prelude hiding ((!!), read)
 
+import Data.Monoid ((<>))
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 

@@ -3,6 +3,7 @@
 module Main (main) where
 
 import Data.Complex
+import Data.Monoid ((<>))
 import Text.PrettyPrint.Mainland
 import Control.Monad.IO.Class (liftIO)
 

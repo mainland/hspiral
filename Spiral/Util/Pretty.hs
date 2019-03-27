@@ -24,6 +24,7 @@ module Spiral.Util.Pretty (
     mulPrec1
   ) where
 
+import Data.Monoid ((<>))
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 

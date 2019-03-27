@@ -29,6 +29,7 @@ import Control.Monad.Exception (SomeException,
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString.Lazy as B
 import Data.Foldable (toList)
+import Data.Monoid ((<>))
 import qualified Data.Text.Lazy.Encoding as E
 import System.Console.GetOpt
 import System.Environment (getArgs)

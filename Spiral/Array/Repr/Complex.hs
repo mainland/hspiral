@@ -25,6 +25,7 @@ module Spiral.Array.Repr.Complex (
 import Prelude hiding (read)
 
 import Data.Complex (Complex)
+import Data.Monoid ((<>))
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 

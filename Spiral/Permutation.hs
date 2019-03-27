@@ -16,6 +16,7 @@ module Spiral.Permutation (
 
 import Prelude hiding (read)
 
+import Data.Monoid ((<>))
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class

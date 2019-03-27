@@ -23,6 +23,7 @@ import Data.Dynamic (Dynamic,
 import Data.List (minimumBy)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Monoid ((<>))
 import qualified Data.Typeable as T
 import Data.Typeable (Typeable)
 import Text.PrettyPrint.Mainland hiding ((<|>))

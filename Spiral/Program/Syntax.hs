@@ -19,6 +19,7 @@ module Spiral.Program.Syntax (
   ) where
 
 import Data.Foldable (toList)
+import Data.Monoid ((<>))
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Text.PrettyPrint.Mainland

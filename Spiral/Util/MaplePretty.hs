@@ -13,6 +13,7 @@ module Spiral.Util.MaplePretty where
 
 import Data.Ratio
 import Data.Complex (Complex(..))
+import Data.Monoid ((<>))
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Vector as V

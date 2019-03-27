@@ -59,6 +59,7 @@ import Data.Complex
 import Data.Complex.Cyclotomic hiding (toComplex)
 import Data.Modular
 import Data.Modular.Instances ()
+import Data.Monoid ((<>))
 import Data.Proxy (Proxy(..))
 import Data.Ratio
 import Data.String

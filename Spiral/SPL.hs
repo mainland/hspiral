@@ -34,6 +34,7 @@ module Spiral.SPL (
   ) where
 
 import Data.Complex
+import Data.Monoid ((<>))
 import Data.Typeable (Typeable)
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland

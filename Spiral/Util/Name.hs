@@ -8,6 +8,7 @@
 
 module Spiral.Util.Name where
 
+import Data.Monoid ((<>))
 import Data.String
 import Data.Symbol
 import Language.C.Quote (ToIdent(..))
