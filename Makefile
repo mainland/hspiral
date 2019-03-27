@@ -117,11 +117,11 @@ clean :
 distclean : clean
 	$(_QUIET)rm -rf dist
 
-test : src/test/Main.hs $(SRC) $(TESTSRC) dist/build/autogen/cabal_macros.h
+test : src/test/Main.hs $(SRC) $(TESTSRC)
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -isrc/test -odir obj -hidir obj -o $@
 
-dftgen : examples/DFTGen.hs $(SRC) dist/build/autogen/cabal_macros.h
+dftgen : examples/DFTGen.hs $(SRC)
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
@@ -130,32 +130,29 @@ dftgen.prof : dftgen
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make examples/DFTGen.hs -odir obj -hidir obj \
 		-prof -auto-all -caf-all -osuf p_o -hisuf p_hi -hcsuf p_hc -o $@
 
-voronenko : examples/Voronenko.hs $(SRC) dist/build/autogen/cabal_macros.h
+voronenko : examples/Voronenko.hs $(SRC)
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
-maple : examples/Maple.hs $(SRC) dist/build/autogen/cabal_macros.h
+maple : examples/Maple.hs $(SRC)
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
-opcount : examples/OpCount.hs $(SRC) dist/build/autogen/cabal_macros.h
+opcount : examples/OpCount.hs $(SRC)
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
-opcounts : examples/OpCounts.hs $(SRC) dist/build/autogen/cabal_macros.h
+opcounts : examples/OpCounts.hs $(SRC)
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
-search : examples/Search.hs $(SRC) dist/build/autogen/cabal_macros.h
+search : examples/Search.hs $(SRC)
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
-moddftgen : examples/ModDFTGen.hs $(SRC) dist/build/autogen/cabal_macros.h
+moddftgen : examples/ModDFTGen.hs $(SRC)
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
-
-dist/build/autogen/cabal_macros.h :
-	cabal build
 
 #
 # Profiling
