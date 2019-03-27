@@ -3,7 +3,7 @@ version:       0.1
 cabal-version: >= 1.10
 license:       BSD3
 license-file:  LICENSE
-copyright:     (c) 2016-2017 Drexel University
+copyright:     (c) 2016-2019 Drexel University
 author:        Geoffrey Mainland <mainland@drexel.edu>
 maintainer:    Geoffrey Mainland <mainland@drexel.edu>
 stability:     alpha
@@ -87,9 +87,9 @@ library
     cyclotomic             == 0.4.*,
     exception-mtl          >= 0.3   && < 0.5,
     exception-transformers >= 0.3   && < 0.5,
-    language-c-quote       == 0.12.1,
+    language-c-quote       >= 0.12  && < 0.13,
     logict                 >= 0.6   && < 0.7,
-    mainland-pretty        == 0.6.1,
+    mainland-pretty        >= 0.6   && < 0.8,
     modular-arithmetic     >= 1.2.1.2 && < 1.3,
     mtl                    >= 2.0   && < 3,
     primitive              >= 0.6   && < 0.7,
@@ -99,7 +99,7 @@ library
     symbol                 >= 0.2.4 && < 0.3,
     text                   >= 1.1   && < 1.3,
     transformers           >= 0.2   && < 0.6,
-    vector                 >= 0.11  && < 0.12,
+    vector                 >= 0.11  && < 0.13,
     QuickCheck             >= 2.8   && < 2.10
 
   ghc-options:
@@ -114,7 +114,7 @@ executable dftgen
   build-depends:
     spl,
     base            >= 4.9 && < 4.10,
-    mainland-pretty == 0.6.1
+    mainland-pretty >= 0.6 && < 0.8
 
 executable opcount
   main-is: OpCount.hs
@@ -126,7 +126,7 @@ executable opcount
     spl,
     base            >= 4.9 && < 4.10,
     containers      >= 0.5 && < 0.6,
-    mainland-pretty == 0.6.1
+    mainland-pretty >= 0.6 && < 0.8
 
 executable opcounts
   main-is: OpCounts.hs
@@ -138,7 +138,7 @@ executable opcounts
     spl,
     base            >= 4.9 && < 4.10,
     containers      >= 0.5 && < 0.6,
-    mainland-pretty == 0.6.1
+    mainland-pretty >= 0.6 && < 0.8
 
 executable search
   main-is: Search.hs
@@ -150,7 +150,7 @@ executable search
     spl,
     base            >= 4.9 && < 4.10,
     containers      >= 0.5 && < 0.6,
-    mainland-pretty == 0.6.1
+    mainland-pretty >= 0.6 && < 0.8
 
 executable voronenko
   main-is: Voronenko.hs
@@ -161,7 +161,7 @@ executable voronenko
   build-depends:
     spl,
     base            >= 4.9 && < 4.10,
-    mainland-pretty == 0.6.1,
+    mainland-pretty >= 0.6 && < 0.8,
     transformers    >= 0.2 && < 0.6
 
 test-suite test
@@ -181,14 +181,14 @@ test-suite test
     bytestring                 >= 0.9   && < 0.11,
     modular-arithmetic         >= 1.2.1.2 && < 1.3,
     libltdl                    >= 0.1.1 && < 0.2,
-    mainland-pretty            == 0.6.1,
+    mainland-pretty            >= 0.6   && < 0.8,
     process                    >= 1.4   && < 1.5,
     test-framework             >= 0.8   && < 0.9,
     test-framework-hunit       >= 0.3   && < 0.4,
     test-framework-quickcheck2 >= 0.3   && < 0.4,
     text                       >= 1.1   && < 1.3,
     transformers               >= 0.2   && < 0.6,
-    vector                     >= 0.11  && < 0.12,
+    vector                     >= 0.11  && < 0.13,
     vector-fftw                >= 0.1   && < 0.2,
     HUnit                      >= 1.3   && < 1.7,
     QuickCheck                 >= 2.8   && < 2.10

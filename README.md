@@ -2,7 +2,9 @@
 
 Building hspiral requires GHC 8.0.
 
-Suggested method for building once the Haskell Platform has been installed:
+There are three ways to build `hspiral`:
+
+#### Building with `cabal`
 
 ```
 # cabal sandbox init
@@ -14,6 +16,25 @@ Suggested method for building once the Haskell Platform has been installed:
 
 If you don't want to run the tests, remove the `--enable-tests` flag from the
 command sequence above.
+
+#### Building with `stack`
+
+The `stack` build currently uses [LTS 9.21](https://www.stackage.org/lts-9.21).
+
+```
+stack build
+stack test
+```
+
+#### Building with `make`
+
+When `make` is used, packages installed in the current cabal sandbox or by stack as part of LTS 9.21 will be used. If the stack packages are present, they are preferred. Note that using the stack package database requires that the version of GHC in your path is the same as the version of GHC included in the stack LTS. It also requires that stack has already built the packages this project requires, which can be accomplished by building once with `stack build`.
+
+```
+make
+```
+
+## Building the tests
 
 Building the tests requires that `libltdl` and FFTW 3 are installed. On Ubuntu,
 that can be accomplished as follows:
