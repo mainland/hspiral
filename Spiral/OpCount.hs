@@ -32,7 +32,8 @@ import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>))
+import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 
 import Spiral.Exp
 import Spiral.Monad (MonadSpiral)
@@ -49,15 +50,18 @@ data OpCount a = OpCount
 instance Functor OpCount where
     fmap f o = o { unops  = fmap f (unops o)
                  , binops = fmap f (binops o)
-                 }
+               }
+
+instance Num a => Semigroup (OpCount a) where
+    x <> y = OpCount
+        { unops  = Map.unionWith (+) (unops x) (unops y)
+        , binops = Map.unionWith (+) (binops x) (binops y)
+        }
 
 instance Num a => Monoid (OpCount a) where
     mempty = OpCount mempty mempty
 
-    x `mappend` y = OpCount
-        { unops  = Map.unionWith (+) (unops x) (unops y)
-        , binops = Map.unionWith (+) (binops x) (binops y)
-        }
+    mappend = (<>)
 
 binopCount :: OpCount Int -> Binop -> Int
 binopCount opc op = fromMaybe 0 (Map.lookup op (binops opc))

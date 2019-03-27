@@ -24,6 +24,7 @@ module Spiral.Search.Monad (
 
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus(..))
+import Control.Monad.Fail (MonadFail)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Logic (MonadLogic(..),)
 import Control.Monad.Primitive (PrimMonad(..))
@@ -35,6 +36,8 @@ import Control.Monad.State (MonadState(..),
                             modify)
 import Control.Monad.Trans (MonadTrans(..))
 import Data.IORef (IORef)
+import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 
 import Spiral.Config
 import Spiral.Monad
@@ -44,13 +47,16 @@ import Spiral.Util.Uniq
 
 newtype SState = SState { rewrites :: Int }
 
+instance Semigroup SState where
+    x <> y = SState { rewrites = rewrites x + rewrites y }
+
 instance Monoid SState where
     mempty = SState 0
 
-    x `mappend` y = SState { rewrites = rewrites x + rewrites y }
+    mappend = (<>)
 
 newtype S s m a = S { unS :: StateT SState (SFKT (StateT s m)) a }
-  deriving (Functor, Applicative, Monad,
+  deriving (Functor, Applicative, Monad, MonadFail,
             Alternative, MonadPlus,
             MonadIO,
             MonadLogic,
@@ -74,7 +80,7 @@ instance Monad m => MonadState s (S s m) where
 
 instance MonadSpiral m => MonadSpiral (S s m) where
 
-runS :: forall s m a . Monad m
+runS :: forall s m a . MonadFail m
      => S s m a
      -> s
      -> m a

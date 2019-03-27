@@ -65,6 +65,7 @@ module Spiral.Backend.C.Monad (
   ) where
 
 import Control.Monad.Exception (MonadException(..))
+import Control.Monad.Fail (MonadFail)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Primitive (PrimMonad(..))
 import Control.Monad.Ref (MonadRef(..))
@@ -116,7 +117,7 @@ defaultCgState = CgState
 
 -- | The 'Cg' monad transformer.
 newtype Cg m a = Cg { unCg :: StateT CgState m a }
-    deriving (Functor, Applicative, Monad, MonadIO,
+    deriving (Functor, Applicative, Monad, MonadFail, MonadIO,
               MonadException,
               MonadState CgState,
               MonadUnique,

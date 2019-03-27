@@ -38,6 +38,7 @@ module Spiral.Program.Monad (
   ) where
 
 import Control.Monad.Exception (MonadException(..))
+import Control.Monad.Fail (MonadFail)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Primitive (PrimMonad(..))
 import Control.Monad.Ref (MonadRef(..))
@@ -90,7 +91,7 @@ defaultPState = PState
     }
 
 newtype P m a = P { unP :: StateT PState (ReaderT PEnv m) a}
-    deriving (Functor, Applicative, Monad, MonadIO,
+    deriving (Functor, Applicative, Monad, MonadFail, MonadIO,
               MonadException,
               MonadReader PEnv,
               MonadState PState,

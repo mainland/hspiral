@@ -11,6 +11,7 @@ module Spiral.Monad (
     MonadSpiral
   ) where
 
+import Control.Monad.Fail (MonadFail)
 import Control.Monad.Primitive (PrimMonad(..),
                                 RealWorld)
 import Control.Monad.Ref (MonadRef(..))
@@ -22,6 +23,7 @@ import Spiral.Util.Uniq
 
 class ( PrimMonad m
       , PrimState m ~ RealWorld
+      , MonadFail m
       , MonadRef IORef m
       , MonadConfig m
       , MonadUnique m

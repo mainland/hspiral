@@ -15,6 +15,7 @@ module Spiral.Driver.Monad (
   ) where
 
 import Control.Monad.Exception (MonadException(..))
+import Control.Monad.Fail (MonadFail)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Primitive (PrimMonad(..),
                                 RealWorld)
@@ -42,7 +43,7 @@ defaultSpiralEnv = do
     return SpiralEnv { uniq = r, config = mempty, tracedepth = 0 }
 
 newtype Spiral a = Spiral { unSpiral :: ReaderT SpiralEnv IO a }
-    deriving (Functor, Applicative, Monad, MonadIO,
+    deriving (Functor, Applicative, Monad, MonadFail, MonadIO,
               MonadException,
               MonadReader SpiralEnv,
               MonadRef IORef)

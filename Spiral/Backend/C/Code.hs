@@ -9,7 +9,8 @@ module Spiral.Backend.C.Code (
   ) where
 
 import Data.Foldable (toList)
-import Data.Monoid
+import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 import Data.Sequence (Seq)
 import Language.C.Pretty ()
 import qualified Language.C.Syntax as C
@@ -39,6 +40,15 @@ instance Pretty Code where
             (map ppr . toList . codeDecls) c ++
             (map ppr . toList . codeStms) c
 
+instance Semigroup Code where
+    a <> b = Code
+        { codeDefs     = codeDefs a <> codeDefs b
+        , codeFunDefs  = codeFunDefs a <> codeFunDefs b
+        , codeFunDecls = codeFunDecls a <> codeFunDecls b
+        , codeDecls    = codeDecls a <> codeDecls b
+        , codeStms     = codeStms a <> codeStms b
+        }
+
 instance Monoid Code where
     mempty = Code
         { codeDefs     = mempty
@@ -48,10 +58,4 @@ instance Monoid Code where
         , codeStms     = mempty
         }
 
-    a `mappend` b = Code
-        { codeDefs     = codeDefs a <> codeDefs b
-        , codeFunDefs  = codeFunDefs a <> codeFunDefs b
-        , codeFunDecls = codeFunDecls a <> codeFunDecls b
-        , codeDecls    = codeDecls a <> codeDecls b
-        , codeStms     = codeStms a <> codeStms b
-        }
+    mappend = (<>)

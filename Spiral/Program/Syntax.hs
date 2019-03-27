@@ -19,7 +19,8 @@ module Spiral.Program.Syntax (
   ) where
 
 import Data.Foldable (toList)
-import Data.Monoid ((<>))
+import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Text.PrettyPrint.Mainland
@@ -53,10 +54,13 @@ type Stms = Seq Stm
 
 data Block = Block Decls Stms
 
+instance Semigroup Block where
+    Block d1 s1 <> Block d2 s2 = Block (d1 <> d2) (s1 <> s2)
+
 instance Monoid Block where
     mempty = Block mempty mempty
 
-    Block d1 s1 `mappend` Block d2 s2 = Block (d1 <> d2) (s1 <> s2)
+    mappend = (<>)
 
 instance Typed a => Pretty (Program a) where
     ppr (Program f vin vout stms) =

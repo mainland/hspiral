@@ -23,7 +23,8 @@ import Data.Dynamic (Dynamic,
 import Data.List (minimumBy)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Monoid ((<>))
+import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 import qualified Data.Typeable as T
 import Data.Typeable (Typeable)
 import Text.PrettyPrint.Mainland hiding ((<|>))
@@ -67,10 +68,13 @@ lookupT k m =
 
 newtype Cache = Cache { cache :: TypeMap }
 
+instance Semigroup Cache where
+    x <> y = Cache { cache = cache x `Map.union` cache y }
+
 instance Monoid Cache where
     mempty = Cache mempty
 
-    x `mappend` y = Cache { cache = cache x `Map.union` cache y }
+    mappend = (<>)
 
 type SDFT m a = S Cache m a
 

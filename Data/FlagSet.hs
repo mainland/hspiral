@@ -14,18 +14,23 @@ module Data.FlagSet (
     toList
   ) where
 
-import Data.List (foldl')
-import Data.Word (Word32)
 import Data.Bits
+import Data.List (foldl')
+import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
+import Data.Word (Word32)
 
 -- | A set of flags.
 newtype FlagSet a = FlagSet Word32
   deriving (Eq, Ord)
 
+instance Semigroup (FlagSet a) where
+    FlagSet x <> FlagSet y = FlagSet (x .|. y)
+
 instance Monoid (FlagSet a) where
     mempty = FlagSet 0
 
-    FlagSet x `mappend` FlagSet y = FlagSet (x .|. y)
+    mappend = (<>)
 
 instance (Enum a, Bounded a, Show a) => Show (FlagSet a) where
     show = show . toList

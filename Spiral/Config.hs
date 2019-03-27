@@ -48,7 +48,8 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad.Writer (WriterT(..))
 import qualified Control.Monad.Writer.Strict as S (WriterT(..))
 import Data.List (foldl')
-import Data.Monoid
+import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 
 import Data.FlagSet
 
@@ -99,6 +100,16 @@ data Config = Config
     }
   deriving (Eq, Ord, Show)
 
+instance Semigroup Config where
+    x <> y = Config
+        { mode       = mode y
+        , dynFlags   = dynFlags x <> dynFlags y
+        , traceFlags = traceFlags x <> traceFlags y
+        , verbLevel  = verbLevel x + verbLevel y
+        , maxUnroll  = max (maxUnroll x) (maxUnroll y)
+        , output     = output x <> output y
+        }
+
 instance Monoid Config where
     mempty = Config
         { mode       = Compile
@@ -109,14 +120,7 @@ instance Monoid Config where
         , output     = Nothing
         }
 
-    mappend x y = Config
-        { mode       = mode y
-        , dynFlags   = dynFlags x <> dynFlags y
-        , traceFlags = traceFlags x <> traceFlags y
-        , verbLevel  = verbLevel x + verbLevel y
-        , maxUnroll  = max (maxUnroll x) (maxUnroll y)
-        , output     = output x <> output y
-        }
+    mappend = (<>)
 
 defaultConfig :: Config
 defaultConfig =
