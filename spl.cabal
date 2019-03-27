@@ -87,9 +87,9 @@ library
     cyclotomic             == 0.4.*,
     exception-mtl          >= 0.3   && < 0.5,
     exception-transformers >= 0.3   && < 0.5,
-    language-c-quote       >= 0.12  && < 0.13,
+    language-c-quote       == 0.12.1,
     logict                 >= 0.6   && < 0.7,
-    mainland-pretty        >= 0.6   && < 0.7,
+    mainland-pretty        == 0.6.1,
     modular-arithmetic     >= 1.2.1.2 && < 1.3,
     mtl                    >= 2.0   && < 3,
     primitive              >= 0.6   && < 0.7,
@@ -114,7 +114,7 @@ executable dftgen
   build-depends:
     spl,
     base            >= 4.9 && < 4.10,
-    mainland-pretty >= 0.6 && < 0.7
+    mainland-pretty == 0.6.1
 
 executable opcount
   main-is: OpCount.hs
@@ -126,7 +126,7 @@ executable opcount
     spl,
     base            >= 4.9 && < 4.10,
     containers      >= 0.5 && < 0.6,
-    mainland-pretty >= 0.6 && < 0.7
+    mainland-pretty == 0.6.1
 
 executable opcounts
   main-is: OpCounts.hs
@@ -138,7 +138,7 @@ executable opcounts
     spl,
     base            >= 4.9 && < 4.10,
     containers      >= 0.5 && < 0.6,
-    mainland-pretty >= 0.6 && < 0.7
+    mainland-pretty == 0.6.1
 
 executable search
   main-is: Search.hs
@@ -150,7 +150,7 @@ executable search
     spl,
     base            >= 4.9 && < 4.10,
     containers      >= 0.5 && < 0.6,
-    mainland-pretty >= 0.6 && < 0.7
+    mainland-pretty == 0.6.1
 
 executable voronenko
   main-is: Voronenko.hs
@@ -161,7 +161,7 @@ executable voronenko
   build-depends:
     spl,
     base            >= 4.9 && < 4.10,
-    mainland-pretty >= 0.6 && < 0.7,
+    mainland-pretty == 0.6.1,
     transformers    >= 0.2 && < 0.6
 
 test-suite test
@@ -181,7 +181,7 @@ test-suite test
     bytestring                 >= 0.9   && < 0.11,
     modular-arithmetic         >= 1.2.1.2 && < 1.3,
     libltdl                    >= 0.1.1 && < 0.2,
-    mainland-pretty            >= 0.6   && < 0.7,
+    mainland-pretty            == 0.6.1,
     process                    >= 1.4   && < 1.5,
     test-framework             >= 0.8   && < 0.9,
     test-framework-hunit       >= 0.3   && < 0.4,
