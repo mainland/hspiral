@@ -281,8 +281,8 @@ fromComplex (r :+ i) = ComplexC (toConst r) (toConst i)
 toComplex :: RealFloat a => Cyclotomic -> Complex a
 toComplex x = r :+ i
   where
-    Just r = (fromRational . toRational) <$> toReal (real x)
-    Just i = (fromRational . toRational) <$> toReal (imag x)
+    Just r = (fromRational . toRational) <$> (toReal (real x) :: Maybe Double)
+    Just i = (fromRational . toRational) <$> (toReal (imag x) :: Maybe Double)
 
 -- | Convert a constant into the most general value that can be used for exact
 -- comparison.
