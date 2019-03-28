@@ -1,4 +1,6 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Spiral.Permutation
@@ -22,6 +24,7 @@ import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array
+import Spiral.Array.Repr.Hidden (H)
 import Spiral.Exp
 import Spiral.Monad
 import Spiral.NumberTheory (modExp)
@@ -79,8 +82,12 @@ toSIdxMapping = go
     mkSIdxMapping :: Permutation -> P m (Exp Int -> Exp Int)
     mkSIdxMapping p = do
         table <- cacheArray $ fromList [intE (f i) | i <- [0..dim p-1]]
-        return $ \i -> indexS table (Z :. i)
+        return $ mapSIdx table
       where
+        mapSIdx :: Array H (Z :. Int) (Exp Int) -> Exp Int -> Exp Int
+        mapSIdx _     (ConstE (IntC i)) = intE (f i)
+        mapSIdx table i                 = indexS table (Z :. i)
+
         f :: Int -> Int
         f = toIdxMapping p
 
