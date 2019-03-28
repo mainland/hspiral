@@ -19,7 +19,7 @@ MAKEFLAGS += --no-builtin-rules
 # Misc flags
 #
 GHC=stack ghc --
-GHCFLAGS+=-XHaskell2010 -rtsopts -O -Wall -fno-warn-name-shadowing -Werror
+GHCFLAGS+=-XHaskell2010 -rtsopts -O -Wall -fno-warn-name-shadowing
 
 RUNGHC=stack runghc --
 RUNGHCFLAGS+=-W -fno-warn-unused-imports
