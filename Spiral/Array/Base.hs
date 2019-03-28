@@ -278,4 +278,4 @@ coerceSymbolic x = fromSFunction (extent x) f
 
     unExp :: Exp Int -> Int
     unExp (ConstE (IntC i)) = i
-    unExp _                 = error "coerceSymbolic: non-constant"
+    unExp e                 = errordoc $ text "coerceSymbolic: non-constant:" <+> ppr e
