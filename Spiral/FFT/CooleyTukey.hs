@@ -184,7 +184,7 @@ improvedSplitRadix n w = f n w
     w4 = omega 4
 
 -- | Decimation in time DFT matrix $F_n$, for $n$ even
-dit :: (RootOfUnity a, Show a) => Int -> SPL a
+dit :: RootOfUnity a => Int -> SPL a
 dit = f
   where
     f 1 = spl $ matrix [[1]]
@@ -199,7 +199,7 @@ dit = f
         error $ "dit: not even: " ++ show n
 
 -- | Decimation in frequency DFT matrix $F_n$, for $n$ even
-dif :: (RootOfUnity a, Show a) => Int -> SPL a
+dif :: RootOfUnity a => Int -> SPL a
 dif = f
   where
     f 1 = spl $ matrix [[1]]

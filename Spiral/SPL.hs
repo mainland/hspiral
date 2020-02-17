@@ -47,13 +47,17 @@ import Spiral.Permutation
 import Spiral.RootOfUnity
 import Spiral.Util.Pretty
 
+-- | Wrap an array to ensure it is unconditionally Show-able.
+newtype ShowArray r sh e = ShowArray { unShowArray :: Array r sh e }
+
+instance (Show sh, Show e, IArray r sh e) => Show (ShowArray r sh e) where
+    show arr = show (manifest (unShowArray arr))
+
 -- | An SPL transform. The type index is the type of the scalar values in the
 -- transformed vector.
 data SPL a where
     -- | An "embedded" array with an unknown representation.
-    E :: (IArray r DIM2 e, Show (Array r DIM2 e))
-      => Array r DIM2 e
-      -> SPL e
+    E :: IArray r DIM2 e => ShowArray r DIM2 e -> SPL e
 
     -- | The $n \times n$ identity matrix.
     I :: Num e => Int -> SPL e
@@ -107,10 +111,10 @@ deriving instance Show e => Show (SPL e)
 deriving instance Typeable e => Typeable (SPL e)
 
 -- | Embed any 'Array' as an SPL term.
-spl :: (IArray r DIM2 e, Show (Array r DIM2 e))
+spl :: IArray r DIM2 e
     => Array r DIM2 e
     -> SPL e
-spl = E
+spl = E . ShowArray
 
 -- | Create a diagonal matrix
 diag :: [a] -> SPL a
@@ -134,7 +138,7 @@ backpermute = Pi . invert
 
 -- | Return the extent of an SPL transform.
 splExtent :: SPL a -> DIM2
-splExtent (E a)     = extent a
+splExtent (E a)     = extent (unShowArray a)
 splExtent (I n)     = ix2 n n
 splExtent (Pi p)    = ix2 (dim p) (dim p)
 splExtent (Rot _)   = ix2 2 2
@@ -182,7 +186,7 @@ splExtent (F' n _) = ix2 n n
 -- | Convert an SPL transform to an explicit matrix.
 toMatrix :: forall e . Num e => SPL e -> Matrix M e
 toMatrix (E a) =
-    manifest a
+    manifest (unShowArray a)
 
 toMatrix (Diag xs) =
     manifest $ fromFunction (ix2 n n) f
@@ -291,7 +295,7 @@ toMatrix (F n w) = manifest $ fromFunction (ix2 n n) f
 toMatrix (F' n w) = toMatrix (KDiag n (1/fromIntegral n) × F n (1/w))
 
 instance (Num e, Pretty e) => Pretty (SPL e) where
-    pprPrec p (E a)       = pprPrec p (manifest a)
+    pprPrec p (E a)       = pprPrec p (manifest (unShowArray a))
     pprPrec _ (I n)       = text "I_" <> ppr n
     pprPrec _ (Pi p)      = ppr p
     pprPrec _ (Rot alpha) = text "R_" <> ppr alpha

@@ -19,7 +19,7 @@ import Spiral.SPL hiding (R)
 default (Int)
 
 -- | Decompose 'F n (w^2)'
-bluestein :: forall a . (RootOfUnity a, Show a) => Int -> Int -> a -> SPL a
+bluestein :: forall a . RootOfUnity a => Int -> Int -> a -> SPL a
 bluestein n m w = ws × t × ws
   where
     ws :: SPL a
@@ -41,7 +41,7 @@ bluestein n m w = ws × t × ws
 
 -- | The nxm matrix whose diagonal elements are 1 and off-diagonal elements are
 -- 0.
-ones :: (Num a, Show a) => Int -> Int -> SPL a
+ones :: Num a => Int -> Int -> SPL a
 ones n m = spl $ fromFunction (ix2 n m) f
   where
     f (Z :. i :. j) | i == j    = 1
