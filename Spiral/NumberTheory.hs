@@ -1,5 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 -- |
 -- Module      :  Spiral.NumberTheory
@@ -29,14 +31,14 @@ import Data.IORef
 import Data.List (sort)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Math.NumberTheory.Primes.Factorisation (factorise)
+import Math.NumberTheory.Primes (Prime, factorise, primes, unPrime)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random
 import Test.QuickCheck
 
 -- | Compute prime factorization,
 primeFactorization :: Int -> [(Int, Int)]
-primeFactorization x = [(fromInteger p, fromIntegral n) | (p,n) <- factorise (fromIntegral x)]
+primeFactorization x = [(fromInteger (unPrime p), fromIntegral n) | (p,n) <- factorise (fromIntegral x)]
 
 -- | Fast modular exponentiation
 modExp :: forall a b . (Integral a, Integral b) => a -> b -> a -> a
@@ -97,20 +99,22 @@ setGenerator p g = modifyIORef gGenerators $ \gs -> Map.insert p g gs
 generator' :: forall a . (Integral a, Random a) => a -> a
 generator' p = evalState (go (factorise (fromIntegral p-1))) (mkStdGen $ fromIntegral p `xor` 0xdeadbeef)
   where
-    go :: [(Integer, Word)] -> Rand a
+    go :: [(Prime Integer, Word)] -> Rand a
     go fs = do
         gammas <- mapM f fs
         return $ product gammas `mod` p
 
-    f :: (Integer, Word) -> Rand a
-    f (q, e) = do
+    f :: (Prime Integer, Word) -> Rand a
+    f (q_prime, e) = do
         r <- rand
         -- Use mod instead of rem to properly handle negative r
         let a = 1 + r `mod` (p-1)
         let b = modExp a ((p-1) `quot` fromInteger q) p
         if b == 1
-          then f (q, e)
+          then f (q_prime, e)
           else return $ modExp a ((p-1) `quot` fromInteger (q^e)) p
+      where
+        q = unPrime q_prime
 
 type Rand a = State StdGen a
 
@@ -125,29 +129,25 @@ prop_euclid_gcd (Positive a) (Positive b) = s*a + t*b == gcd a b
     (s, t) = euclid a b
 
 prop_inv :: Prime Int -> Positive Int -> Property
-prop_inv (Prime p) (Positive n0) = n /= 0 ==> (inv p n * n) `mod` p == 1
+prop_inv prime (Positive n0) = n /= 0 ==> (inv p n * n) `mod` p == 1
   where
     n = n0 `mod` p
+    p = unPrime prime
 
 prop_is_generator :: Integer -> Integer -> Property
 prop_is_generator p g = sort [modExp g i p | i <- [0..p-2]] === [1..p-1]
 
 prop_generator :: Prime Integer -> Property
-prop_generator (Prime p) = prop_is_generator p g
+prop_generator prime = prop_is_generator p g
   where
     g :: Integer
     g = generator p
 
--- | A prime number
-newtype Prime a = Prime a
-  deriving (Eq, Ord, Show)
+    p = unPrime prime
 
-primes :: Integral a => [Prime a]
-primes = sieve [2..]
-   where
-     sieve []     = []
-     sieve (p:xs) = Prime p : sieve [x | x <- xs, x `rem` p > 0]
-
-instance (Integral a, Arbitrary a) => Arbitrary (Prime a) where
+instance Arbitrary (Prime Integer) where
     arbitrary = do i <- arbitrary
-                   return $ primes Prelude.!! abs i
+                   return $ ps Prelude.!! abs i
+      where
+        ps :: [Prime Integer]
+        ps = primes
