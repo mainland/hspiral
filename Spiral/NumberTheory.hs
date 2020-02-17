@@ -36,7 +36,7 @@ import Test.QuickCheck
 
 -- | Compute prime factorization,
 primeFactorization :: Int -> [(Int, Int)]
-primeFactorization x = [(fromInteger p, n) | (p,n) <- factorise (fromIntegral x)]
+primeFactorization x = [(fromInteger p, fromIntegral n) | (p,n) <- factorise (fromIntegral x)]
 
 -- | Fast modular exponentiation
 modExp :: forall a b . (Integral a, Integral b) => a -> b -> a -> a
@@ -97,12 +97,12 @@ setGenerator p g = modifyIORef gGenerators $ \gs -> Map.insert p g gs
 generator' :: forall a . (Integral a, Random a) => a -> a
 generator' p = evalState (go (factorise (fromIntegral p-1))) (mkStdGen $ fromIntegral p `xor` 0xdeadbeef)
   where
-    go :: [(Integer, Int)] -> Rand a
+    go :: [(Integer, Word)] -> Rand a
     go fs = do
         gammas <- mapM f fs
         return $ product gammas `mod` p
 
-    f :: (Integer, Int) -> Rand a
+    f :: (Integer, Word) -> Rand a
     f (q, e) = do
         r <- rand
         -- Use mod instead of rem to properly handle negative r

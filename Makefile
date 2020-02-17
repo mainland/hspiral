@@ -5,8 +5,6 @@ TARGETS = test dftgen voronenko maple opcount opcounts search moddftgen
 .PHONY : all
 all : $(TARGETS)
 
-STACK_LTS=lts-12.26/8.4.4
-
 include mk/common.mk
 
 #

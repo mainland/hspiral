@@ -1,25 +1,22 @@
 # Building
 
-Building hspiral requires GHC 8.4.
+Building hspiral requires GHC 8.6.5.
 
 There are three ways to build `hspiral`:
 
-#### Building with `cabal`
+#### Building with `cabal` 3 or higher
 
 ```
-# cabal sandbox init
-# cabal install --only-dependencies --enable-tests
 # cabal configure --enable-tests
 # cabal build
 # cabal test
 ```
 
-If you don't want to run the tests, remove the `--enable-tests` flag from the
-command sequence above.
+If you don't want to run the tests, remove the `--enable-tests` flag from the command sequence above.
 
 #### Building with `stack`
 
-The `stack` build currently uses [LTS 12.26](https://www.stackage.org/lts-12.26).
+The `stack` build currently uses [LTS 14.27](https://www.stackage.org/lts-14.27).
 
 ```
 stack build
@@ -28,7 +25,7 @@ stack test
 
 #### Building with `make`
 
-When `make` is used, packages installed in the current cabal sandbox or by stack as part of LTS 9.21 will be used. If the stack packages are present, they are preferred. Note that using the stack package database requires that the version of GHC in your path is the same as the version of GHC included in the stack LTS. It also requires that stack has already built the packages this project requires, which can be accomplished by building once with `stack build`.
+When `make` is used, packages installed by stack will be used. Note that using the stack package database requires that the version of GHC in your path is the same as the version of GHC included in the stack LTS. It also requires that stack has already built the packages this project requires, which can be accomplished by building once with `stack build`.
 
 ```
 make
@@ -36,16 +33,14 @@ make
 
 ## Building the tests
 
-Building the tests requires that `libltdl` and FFTW 3 are installed. On Ubuntu,
-that can be accomplished as follows:
+Building the tests requires that `libltdl` and FFTW 3 are installed. On Ubuntu, that can be accomplished as follows:
 
 ```
 sudo apt-get install libltdl-dev
 sudo apt-get install libfftw3-dev
 ```
 
-Once you have created the cabal sandbox and installed SPL's dependencies, you
-can also type `make` to build the executables explicitly.
+Once you have created the cabal sandbox and installed SPL's dependencies, you can also type `make` to build the executables explicitly.
 
 ## Building on a Mac
 
@@ -101,25 +96,19 @@ Runs a small test suite.
 
 ### `opcount`
 
-The `opcount` binary generates operation counts and, optionally, C code, for a
-hard-coded SPL formula.
+The `opcount` binary generates operation counts and, optionally, C code, for a hard-coded SPL formula.
 
 ### `dftgen`
 
-The `dftgen` binary generates operation counts and, optionally, C code, for the
-forward DFT of the size it is given as an argument. It always uses the split
-radix decomposition.
+The `dftgen` binary generates operation counts and, optionally, C code, for the forward DFT of the size it is given as an argument. It always uses the split radix decomposition.
 
 ### `search`
 
-The `search` binary generates operation counts and, optionally, C code, for the
-forward DFT of the size it is given as an argument. It performs search to find
-the decomposition with the fewest operations.
+The `search` binary generates operation counts and, optionally, C code, for the forward DFT of the size it is given as an argument. It performs search to find the decomposition with the fewest operations.
 
 ### `voronenko`
 
-Generates code for example(s) from Voronenko's dissertation (right now just the
-one on p. 35).
+Generates code for example(s) from Voronenko's dissertation (right now just the one on p. 35).
 
 Should be run like this:
 

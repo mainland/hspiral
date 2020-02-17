@@ -3,14 +3,14 @@ version:       0.1
 cabal-version: >= 1.10
 license:       BSD3
 license-file:  LICENSE
-copyright:     (c) 2016-2019 Drexel University
+copyright:     (c) 2016-2020 Drexel University
 author:        Geoffrey Mainland <mainland@drexel.edu>
 maintainer:    Geoffrey Mainland <mainland@drexel.edu>
 stability:     alpha
 homepage:      https://lambda.cs.drexel.edu/gitlab/mainland/spl
 category:      Language
 synopsis:      SPL language.
-tested-with:   GHC==8.0.2
+tested-with:   GHC==8.6.5
 
 description:
   A Haskell implementation of the SPL language.
@@ -80,19 +80,19 @@ library
     Spiral.Util.Trace
 
   build-depends:
-    arithmoi               >= 0.5   && < 0.8,
-    base                   >= 4.9   && < 4.12,
+    arithmoi               >= 0.5   && < 0.11,
+    base                   >= 4.9   && < 4.13,
     bytestring             >= 0.9   && < 0.11,
-    containers             >= 0.5   && < 0.6,
-    cyclotomic             >= 0.4   && < 0.6,
+    containers             >= 0.5   && < 0.7,
+    cyclotomic             >= 0.4   && < 1.1,
     exception-mtl          >= 0.3   && < 0.5,
     exception-transformers >= 0.3   && < 0.5,
     language-c-quote       >= 0.12.2 && < 0.13,
-    logict                 >= 0.6   && < 0.7,
+    logict                 >= 0.6   && < 0.8,
     mainland-pretty        >= 0.7   && < 0.8,
     modular-arithmetic     >= 1.2.1.2 && < 1.3,
     mtl                    >= 2.0   && < 3,
-    primitive              >= 0.6   && < 0.7,
+    primitive              >= 0.6   && < 0.8,
     random                 >= 1.1   && < 1.2,
     ref-fd                 >= 0.3   && < 0.5,
     srcloc                 >= 0.5   && < 0.6,
@@ -100,7 +100,7 @@ library
     text                   >= 1.1   && < 1.3,
     transformers           >= 0.2   && < 0.6,
     vector                 >= 0.11  && < 0.13,
-    QuickCheck             >= 2.8   && < 2.12
+    QuickCheck             >= 2.8   && < 2.14
 
   ghc-options:
     -Wall -fno-warn-name-shadowing
@@ -119,7 +119,7 @@ executable dftgen
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.12,
+    base            >= 4.9 && < 4.13,
     mainland-pretty >= 0.7 && < 0.8
 
 executable opcount
@@ -130,8 +130,8 @@ executable opcount
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.12,
-    containers      >= 0.5 && < 0.6,
+    base            >= 4.9 && < 4.13,
+    containers      >= 0.5 && < 0.7,
     mainland-pretty >= 0.7 && < 0.8
 
 executable opcounts
@@ -142,8 +142,8 @@ executable opcounts
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.12,
-    containers      >= 0.5 && < 0.6,
+    base            >= 4.9 && < 4.13,
+    containers      >= 0.5 && < 0.7,
     mainland-pretty >= 0.7 && < 0.8
 
 executable search
@@ -154,8 +154,8 @@ executable search
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.12,
-    containers      >= 0.5 && < 0.6,
+    base            >= 4.9 && < 4.13,
+    containers      >= 0.5 && < 0.7,
     mainland-pretty >= 0.7 && < 0.8
 
 executable voronenko
@@ -166,7 +166,7 @@ executable voronenko
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.12,
+    base            >= 4.9 && < 4.13,
     mainland-pretty >= 0.7 && < 0.8,
     transformers    >= 0.2 && < 0.6
 
@@ -183,10 +183,10 @@ test-suite test
 
   build-depends:
     spl,
-    base                       >= 4.9   && < 4.12,
+    base                       >= 4.9   && < 4.13,
     bytestring                 >= 0.9   && < 0.11,
     modular-arithmetic         >= 1.2.1.2 && < 1.3,
-    libltdl                    >= 0.1.1 && < 0.2,
+    libltdl                    >= 0.1.1.2 && < 0.2,
     mainland-pretty            >= 0.7   && < 0.8,
     process                    >= 1.4   && < 1.7,
     test-framework             >= 0.8   && < 0.9,
@@ -197,7 +197,7 @@ test-suite test
     vector                     >= 0.11  && < 0.13,
     vector-fftw                >= 0.1   && < 0.2,
     HUnit                      >= 1.3   && < 1.7,
-    QuickCheck                 >= 2.8   && < 2.12
+    QuickCheck                 >= 2.8   && < 2.14
 
 source-repository head
   type:     git

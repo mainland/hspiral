@@ -40,35 +40,21 @@ GHCFLAGS += $(GHCFLAGS_OPT)
 endif
 
 #
-# Support cabal sandbox and stack package databases. We prefer stack.
+# Use stack package databases.
 #
-STACK_PKGDB=$(HOME)/.stack/snapshots/$(ARCH)-$(OS)/$(STACK_LTS)/pkgdb
-LOCAL_STACK_PKGDB=$(TOP)/.stack-work/install/$(ARCH)-$(OS)/$(STACK_LTS)/pkgdb
+STACK_PKGDB=$(shell stack path --snapshot-pkg-db)
+STACK_LOCAL_PKGDB=$(shell stack path --local-pkg-db)
 
-ifneq ($(wildcard $(STACK_PKGDB)/*.conf),)
 GHCFLAGS += \
-  -optP-include -optP$(wildcard $(TOP)/.stack-work/dist/$(ARCH)-$(OS)/Cabal-*/build/autogen/cabal_macros.h) \
 	-clear-package-db \
 	-global-package-db \
 	-package-db=$(STACK_PKGDB) \
-	-package-db=$(LOCAL_STACK_PKGDB)
+	-package-db=$(STACK_LOCAL_PKGDB)
 
 RUNGHCFLAGS += \
-  -optP-include -optP$(wildcard $(TOP)/.stack-work/dist/$(ARCH)-$(OS)/Cabal-*/build/autogen/cabal_macros.h) \
 	-clear-package-db \
 	-global-package-db \
 	-package-db --ghc-arg=$(STACK_PKGDB)
-else ifneq ($(wildcard $(TOP)/.cabal-sandbox/*-packages.conf.d),)
-GHCFLAGS += \
-  -optP-include -optP$(TOP)/dist/build/autogen/cabal_macros.h \
-	-no-user-package-db \
-	-package-db $(wildcard $(TOP)/.cabal-sandbox/*-packages.conf.d)
-
-RUNGHCFLAGS += \
-  -optP-include -optP$(TOP)/dist/build/autogen/cabal_macros.h \
-	-no-user-package-db \
-	-package-db --ghc-arg=$(wildcard $(TOP)/.cabal-sandbox/*-packages.conf.d)
-endif
 
 #
 # Print Makefile variables
