@@ -82,6 +82,7 @@ splTests :: Spec
 splTests = describe "SPL operations" $ do
     strideTest
     l82Test
+    reverseIdentityTest
     kroneckerTest
     directSumTest
 
@@ -114,6 +115,17 @@ l82Test = it "Stride matrix L^8_2" $
                 [0, 0, 0, 1, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 1, 0, 0],
                 [0, 0, 0, 0, 0, 0, 0, 1]]
+
+reverseIdentityTest :: Spec
+reverseIdentityTest = it "Reverse identity matrix J 5" $
+    toMatrix (Pi (J 5)) @?= a
+  where
+    a :: Matrix M Int
+    a = matrix [[0, 0, 0, 0, 1],
+                [0, 0, 0, 1, 0],
+                [0, 0, 1, 0, 0],
+                [0, 1, 0, 0, 0],
+                [1, 0, 0, 0, 0]]
 
 -- See:
 --   https://en.wikipedia.org/wiki/Kronecker_product

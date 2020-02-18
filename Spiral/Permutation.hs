@@ -108,7 +108,7 @@ toIdxMapping' (L mn n0) = f
 toIdxMapping' (J n0) = f
   where
     f :: a -> a
-    f i = n - i
+    f i = n - i - 1
       where
         n :: a
         n = fromIntegral n0
