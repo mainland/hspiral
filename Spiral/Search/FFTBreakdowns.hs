@@ -24,7 +24,6 @@ import Control.Applicative ((<|>))
 import Control.Monad (MonadPlus,
                       guard,
                       msum)
-import Data.Typeable (Typeable)
 import Math.NumberTheory.Primes.Testing (isPrime)
 
 import Spiral.Exp
@@ -35,13 +34,13 @@ import Spiral.NumberTheory (primeFactorization)
 import Spiral.RootOfUnity
 import Spiral.SPL
 
-bruteForce :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+bruteForce :: (RootOfUnity (Exp a), MonadPlus m)
            => Int
            -> Exp a
            -> m (SPL (Exp a))
 bruteForce n w = return $ (spl . toMatrix) (F n w)
 
-cooleyTukeyBreakdowns :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+cooleyTukeyBreakdowns :: (RootOfUnity (Exp a), MonadPlus m)
                       => Int
                       -> Exp a
                       -> m (SPL (Exp a))
@@ -52,7 +51,7 @@ cooleyTukeyBreakdowns n w =
     fs :: [(Int, Int)]
     fs = factors n
 
-splitRadixBreakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+splitRadixBreakdown :: (RootOfUnity (Exp a), MonadPlus m)
                     => Int
                     -> Exp a
                     -> m (SPL (Exp a))
@@ -60,7 +59,7 @@ splitRadixBreakdown n w = do
     guard (n `rem` 4 == 0)
     return $ splitRadix n w
 
-splitRadix8Breakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+splitRadix8Breakdown :: (RootOfUnity (Exp a), MonadPlus m)
                      => Int
                      -> Exp a
                      -> m (SPL (Exp a))
@@ -68,7 +67,7 @@ splitRadix8Breakdown n w = do
     guard (n `rem` 8 == 0)
     return $ splitRadix8 n w
 
-conjPairSplitRadixBreakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+conjPairSplitRadixBreakdown :: (RootOfUnity (Exp a), MonadPlus m)
                             => Int
                             -> Exp a
                             -> m (SPL (Exp a))
@@ -76,7 +75,7 @@ conjPairSplitRadixBreakdown n w = do
     guard (n `rem` 4 == 0)
     return $ conjPairSplitRadix n w
 
-improvedSplitRadixBreakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+improvedSplitRadixBreakdown :: forall a m . (Typed a, RootOfUnity (Exp a), MonadPlus m)
                             => Int
                             -> Exp a
                             -> m (SPL (Exp a))
@@ -89,14 +88,14 @@ improvedSplitRadixBreakdown n w = do
     tau :: Type a
     tau = typeOf (undefined :: a)
 
-goodThomasBreakdowns :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+goodThomasBreakdowns :: (RootOfUnity (Exp a), MonadPlus m)
                      => Int
                      -> Exp a
                      -> m (SPL (Exp a))
 goodThomasBreakdowns n w =
     msum [return $ goodThomas r s w | (r, s) <- coprimeFactors n]
 
-raderBreakdowns :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+raderBreakdowns :: (RootOfUnity (Exp a), MonadPlus m)
                 => Int
                 -> Exp a
                 -> m (SPL (Exp a))
