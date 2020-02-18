@@ -27,6 +27,8 @@ module Spiral.SPL (
     splExtent,
 
     toMatrix,
+    col,
+    row,
 
     (⊗),
     (×),
@@ -336,9 +338,9 @@ row e i = V.slice (i*n) n xs
 
 -- | Extract a column of a matrix
 col :: forall e . Matrix M e -> Int -> V.Vector e
-col e j = V.generate n f
+col e j = V.generate m f
   where
-    M (Z :. _m :. n) xs = manifest e
+    M (Z :. m :. n) xs = manifest e
 
     f :: Int -> e
     f i = xs V.! (i*n + j)

@@ -20,7 +20,8 @@ import Data.Complex
 import Data.Modular
 import Data.Proxy (Proxy(..))
 import Data.Typeable (Typeable)
-import qualified Data.Vector.Storable as V
+import qualified Data.Vector as V
+import qualified Data.Vector.Storable as VS
 import Data.Word (Word32)
 import GHC.TypeLits (KnownNat,
                      natVal)
@@ -83,6 +84,8 @@ splTests = describe "SPL operations" $ do
     strideTest
     l82Test
     reverseIdentityTest
+    colTest
+    rowTest
     kroneckerTest
     directSumTest
 
@@ -126,6 +129,30 @@ reverseIdentityTest = it "Reverse identity matrix J 5" $
                 [0, 0, 1, 0, 0],
                 [0, 1, 0, 0, 0],
                 [1, 0, 0, 0, 0]]
+
+colTest :: Spec
+colTest = it "Extract column" $
+    col a 0 @?= v
+  where
+    a :: Matrix M Int
+    a = matrix [[0, 1],
+                [2, 5],
+                [5, 1]]
+
+    v :: V.Vector Int
+    v = V.fromList [0, 2, 5]
+
+rowTest :: Spec
+rowTest = it "Extract row" $
+    row a 0 @?= v
+  where
+    a :: Matrix M Int
+    a = matrix [[0, 1],
+                [2, 5],
+                [5, 1]]
+
+    v :: V.Vector Int
+    v = V.fromList [0, 1]
 
 -- See:
 --   https://en.wikipedia.org/wiki/Kronecker_product
@@ -566,11 +593,11 @@ mkModularDFTCodegenTest proxy conf desc mkSPL n_max =
         len :: Int
         len = 2^n
 
-        e_i :: Int -> V.Vector (ℤ/p)
-        e_i i = V.generate len $ \j -> if i == j then 1 else 0
+        e_i :: Int -> VS.Vector (ℤ/p)
+        e_i i = VS.generate len $ \j -> if i == j then 1 else 0
 
-        res :: Int -> V.Vector (ℤ/p)
-        res i = V.generate len $ \j -> a^j
+        res :: Int -> VS.Vector (ℤ/p)
+        res i = VS.generate len $ \j -> a^j
           where
             a :: ℤ/p
             a = w^i
@@ -579,12 +606,12 @@ mkModularDFTCodegenTest proxy conf desc mkSPL n_max =
         w = omega len
 
 -- | Generate vectors of a given size with uniformly distributed elements.
-uniformVectorsOfSize :: (Arbitrary (Uniform01 a), V.Storable a)
+uniformVectorsOfSize :: (Arbitrary (Uniform01 a), VS.Storable a)
                      => Int
-                     -> Gen (V.Vector a)
+                     -> Gen (VS.Vector a)
 uniformVectorsOfSize n = do
     xs <- replicateM n arbitrary
-    return $ V.fromList (map unUniform01 xs)
+    return $ VS.fromList (map unUniform01 xs)
 
 -- | A uniform value i the range [0,1]
 newtype Uniform01 a = Uniform01 { unUniform01 :: a }
@@ -612,16 +639,16 @@ instance Arbitrary (Uniform01 Double) where
 
 -- | Return 'True' if the maximum pairwise difference between two vectors is
 -- less than epsilon.
-epsDiff :: forall a . (Show a, RealFloat a, V.Storable a)
-        => V.Vector (Complex a)
-        -> V.Vector (Complex a)
+epsDiff :: forall a . (Show a, RealFloat a, VS.Storable a)
+        => VS.Vector (Complex a)
+        -> VS.Vector (Complex a)
         -> Property
 epsDiff v1 v2 =
     counterexample ("Max delta: " ++ show maxDelta) $
     maxDelta < eps
   where
     maxDelta :: a
-    maxDelta = V.maximum $ V.zipWith (\x y -> magnitude (x - y)) v1 v2
+    maxDelta = VS.maximum $ VS.zipWith (\x y -> magnitude (x - y)) v1 v2
 
     eps :: a
     eps = 1e-12
