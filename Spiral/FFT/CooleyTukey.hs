@@ -127,12 +127,12 @@ improvedSplitRadix n w = f n w
         p = n `quot` 4
 
     fs n w | n `mod` 4 /= 0 =
-        F n w
+        diag [1/s n k | k <- [0..n-1]] × F n w
 
     fs n w =
         (sigma4 ⊗ I p) ×
         (I (2*p) ⊕ diag [w^k * s p k / s (4*p) k | k <- [0..p-1]] ⊕ diag [w^^(-k) * s p k / s (4*p) k | k <- [0..p-1]]) ×
-        (fs (2*p) (w^2) ⊕ fs2 p (w^4) ⊕ fs2 p (w^4)×Pi (CS p 1)) ×
+        (fs2 (2*p) (w^2) ⊕ fs p (w^4) ⊕ fs p (w^4)×Pi (CS p 1)) ×
         (I (2*p) ⊕ Pi (L (2*p) 2)) ×
         Pi (L (4*p) 2)
       where
@@ -140,7 +140,7 @@ improvedSplitRadix n w = f n w
         p = n `quot` 4
 
     fs2 n w | n `mod` 4 /= 0 =
-        F n w
+        diag [1/s (2*n) k | k <- [0..n-1]] × F n w
 
     fs2 n w =
         (F2 ⊗ I (2*p)) ×
@@ -155,13 +155,13 @@ improvedSplitRadix n w = f n w
         p = n `quot` 4
 
     fs4 n w | n `mod` 4 /= 0 =
-        F n w
+        diag [1/s (4*n) k | k <- [0..n-1]] × F n w
 
     fs4 n w =
         diag [s (4*p) k / s (4*4*p) k | k <- [0..(4*p)-1]] ×
         (sigma4 ⊗ I p) ×
         (I (2*p) ⊕ diag [w^k * s p k / s (4*p) k | k <- [0..p-1]] ⊕ diag [w^^(-k) * s p k / s (4*p) k | k <- [0..p-1]]) ×
-        (fs (2*p) (w^2) ⊕ fs2 p (w^4) ⊕ fs2 p (w^4)×Pi (CS p 1)) ×
+        (fs2 (2*p) (w^2) ⊕ fs p (w^4) ⊕ fs p (w^4)×Pi (CS p 1)) ×
         (I (2*p) ⊕ Pi (L (2*p) 2)) ×
         Pi (L (4*p) 2)
       where
