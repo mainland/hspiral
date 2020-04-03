@@ -23,6 +23,7 @@ module Spiral.SPL (
 
     diag,
     circ,
+    skew,
     toep,
     permute,
     backpermute,
@@ -106,6 +107,9 @@ data SPL a where
     -- | Circulant matrix given first column
     Circ :: V.Vector e -> SPL e
 
+    -- | Skew-Circulant matrix given first column
+    Skew :: V.Vector e -> SPL e
+
     -- | Toeplitz matrix
     Toep :: V.Vector e -> SPL e
 
@@ -152,6 +156,10 @@ diag = Diag . V.fromList
 circ :: [a] -> SPL a
 circ = Circ . V.fromList
 
+-- | Create a skew circulant matrix from the first column
+skew :: [a] -> SPL a
+skew = Skew . V.fromList
+
 -- | Create a Toeplitz matrix
 toep :: [a] -> SPL a
 toep = Toep . V.fromList
@@ -193,6 +201,10 @@ extent (Prod a b) = ix2 m q
     Z :. _p :. q  = extent b
 
 extent (Circ xs) = ix2 n n
+  where
+    n = length xs
+
+extent (Skew xs) = ix2 n n
   where
     n = length xs
 
@@ -245,6 +257,13 @@ toMatrix (Circ xs) =
     n = length xs
 
     f (Z :. i :. j) = xs V.! ((i-j) `mod` n)
+
+toMatrix (Skew xs) =
+    manifest $ A.fromFunction (ix2 n n) f
+  where
+    n = length xs
+
+    f (Z :. i :. j) = xs V.! ((i+j) `mod` n)
 
 toMatrix (Toep xs) =
     manifest $ A.fromFunction (ix2 n n) f
@@ -300,6 +319,7 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (DSum a b)  = infixop p DSOp a b
     pprPrec p (Prod a b)  = infixop p POp a b
     pprPrec _ (Circ xs)   = text "circ" <> pprArgs (V.toList xs)
+    pprPrec _ (Skew xs)   = text "skew" <> pprArgs (V.toList xs)
     pprPrec _ (Toep xs)   = text "toep" <> pprArgs (V.toList xs)
     pprPrec _ (Re a)      = text "Re" <> parens (ppr a)
     pprPrec _ F2          = text "F_2"

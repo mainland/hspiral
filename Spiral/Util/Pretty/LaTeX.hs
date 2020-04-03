@@ -323,6 +323,7 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
   pprPrec p (DSum a b)  = infixop p DSOp a b
   pprPrec _ (Prod a b)  = pprPrec 10 a <> pprPrec 10 b
   pprPrec _ (Circ xs)   = operatorname "circ" <> pprArgs (V.toList xs)
+  pprPrec _ (Skew xs)   = operatorname "skew" <> pprArgs (V.toList xs)
   pprPrec _ (Toep xs)   = operatorname "toep" <> pprArgs (V.toList xs)
   pprPrec _ (Re a)      = comm0 "Re" <> autoParens (ppr a)
   pprPrec _ F2          = operatorname "F" !: "2"
