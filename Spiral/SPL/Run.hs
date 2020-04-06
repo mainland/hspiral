@@ -123,26 +123,33 @@ runSPL e@(KDiag n k) x = do
       forShapeP (ix1 n) $ \eix ->
           write y eix (k * indexS t eix)
 
-runSPL e@(Kron (I m) a) x | n' == n = do
+runSPL e@(Kron (I m) a) x = do
     t <- gather x
     computeTransform e $ \y -> do
       comment $ ppr e
       forP 0 m $ \i ->
-        slice y (i*e_n) 1 n .<-. runSPL a (fromGather (slice t (i*e_n) 1 n))
+        slice y (i*e_n) 1 n .<-. runSPL a (fromGather (slice t (i*e_n') 1 n'))
   where
     Z :. n :. n' = extent a
 
-    e_n :: Exp Int
-    e_n = fromIntegral n
+    e_n, e_n' :: Exp Int
+    e_n  = fromIntegral n
+    e_n' = fromIntegral n'
 
-runSPL e@(Kron a (I n)) x | m' == m = do
+runSPL e@(Kron a (I n)) x = do
     t <- gather x
     computeTransform e $ \y -> do
       comment $ ppr e
       forP 0 n $ \i ->
-        slice y i n m .<-. runSPL a (fromGather (slice t i n m))
+        slice y i n m .<-. runSPL a (fromGather (slice t i n m'))
   where
     Z :. m :. m' = extent a
+
+runSPL (Kron a b) x =
+    runSPL ((I m ⊗ b) × (a ⊗ I n')) x
+  where
+    Z :. m :. _  = extent a
+    Z :. _ :. n' = extent b
 
 runSPL e@(DSum a b) x | m' == m && n' == n = do
     t <- gather x
