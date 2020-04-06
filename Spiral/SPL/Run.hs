@@ -151,12 +151,12 @@ runSPL (Kron a b) x =
     Z :. m :. _  = extent a
     Z :. _ :. n' = extent b
 
-runSPL e@(DSum a b) x | m' == m && n' == n = do
+runSPL e@(DSum a b) x = do
     t <- gather x
     computeTransform e $ \y -> do
       comment $ ppr e
-      slice y 0 1 m                .<-. runSPL a  (fromGather (slice t 0 1 m))
-      slice y (fromIntegral m) 1 n .<-. runSPL b  (fromGather (slice t (fromIntegral m) 1 n))
+      slice y 0 1 m                .<-. runSPL a  (fromGather (slice t 0 1 m'))
+      slice y (fromIntegral m) 1 n .<-. runSPL b  (fromGather (slice t (fromIntegral m') 1 n'))
   where
     Z :. m :. m' = extent a
     Z :. n :. n' = extent b
