@@ -30,6 +30,7 @@ import Test.Hspec
 import Spiral.Array (M,
                      Matrix)
 import qualified Spiral.Array as A
+import qualified Spiral.Array.Operators.Matrix as A
 import Spiral.SPL
 
 splTests :: Spec
@@ -41,6 +42,7 @@ splTests = describe "SPL operations" $ do
     rowTest
     kroneckerTest
     directSumTest
+    transposeTest
 
 -- See:
 --   https://en.wikipedia.org/wiki/Kronecker_product
@@ -138,3 +140,33 @@ directSumTest = it "Direct sum (⊕)" $
                   [2, 3, 1, 0, 0],
                   [0, 0, 0, 1, 6],
                   [0, 0, 0, 0, 1]]
+
+-- | Test group to verify matrix transposition of different matrix shapes
+transposeTest :: Spec
+transposeTest = describe "Matrix transpose (manifest)" $ do
+    it "Tall transpose" $
+        A.manifest (A.transpose tall) @?= tall_t
+    it "Wide transpose" $
+        A.manifest (A.transpose wide) @?= wide_t
+    it "Square transpose" $
+        A.manifest (A.transpose square) @?= square_t
+    it "Permutation" $
+        toMatrix (transpose $ permute (L 16 2)) @?= toMatrix (backpermute (L 16 2) :: SPL Double)
+    it "Double transpose" $
+        toMatrix (transpose $ transpose $ matrix square) @?= square
+  where
+    tall, tall_t, wide, wide_t, square, square_t :: Matrix M Int
+    tall = A.matrix [[0, 1],
+                     [2, 3],
+                     [4, 5]]
+    tall_t = A.matrix [[0, 2, 4],
+                       [1, 3, 5]]
+    wide = A.matrix [[2, 1, 0],
+                     [3, 5, 6]]
+    wide_t = A.matrix [[2, 3],
+                       [1, 5],
+                       [0, 6]]
+    square = A.matrix [[1, 2],
+                       [3, 4]]
+    square_t = A.matrix [[1, 3],
+                         [2, 4]]

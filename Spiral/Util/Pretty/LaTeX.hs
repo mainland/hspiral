@@ -315,6 +315,7 @@ pprArgs = autoParens . commasep . map ppr
 instance (Num e, Pretty e) => Pretty (SPL e) where
   pprPrec p m@E{}       = pprPrec p (toMatrix m)
   pprPrec _ (I n)       = operatorname "I" !: ppr n
+  pprPrec _ (T e)       = pprPrec 10 e ^: comm0 "intercal"
   pprPrec p (Pi pi)     = pprPrec p pi
   pprPrec _ (Rot alpha) = operatorname "R" !: ppr alpha
   pprPrec _ (Diag xs)   = operatorname "diag" <> pprArgs (V.toList xs)

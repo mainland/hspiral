@@ -19,6 +19,7 @@ module Spiral.Array.Operators.Matrix (
     (#>),
     mXvP,
 
+    transpose,
     mXm,
     kronecker,
     directSum
@@ -115,6 +116,16 @@ infixr 8 #>
      -> Vector r2 a -- ^ The vector @x@
      -> Vector D  a
 (#>) = mXv
+
+-- | Transpose a matrix
+transpose :: forall e r . IArray r DIM2 e
+          => Array r DIM2 e
+          -> Array D DIM2 e
+transpose a = D (ix2 n m) f
+  where
+    Z :. m :. n = extent a
+
+    f (Z :. i :. j) = index a (Z :. j :. i)
 
 -- | Compute the matrix-vector product, @y = A x@.
 mXvP :: forall r1 r2 r3 a m .
