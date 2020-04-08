@@ -11,11 +11,12 @@
 module Spiral.FFT.Rader (
     rader,
 
-    raderII
+    raderII,
+    raderIII
   ) where
 
 import qualified Spiral.Array as A
-import Spiral.Array.Operators.Matrix
+import qualified Spiral.Array.Operators.Matrix as A
 import Spiral.NumberTheory
 import Spiral.RootOfUnity
 import Spiral.SPL
@@ -43,7 +44,7 @@ rader p w = permute (R p a) × (one ⊕ f_pm1 (1/u)) × d_p × (one ⊕ f_pm1 u)
     deltas :: [a]
     deltas = A.toList $
         fmap (/ (fromIntegral p-1)) $
-        toMatrix (f_pm1 u) #> A.fromList [w^modExp a i p | i <- [0..p-2]]
+        toMatrix (f_pm1 u) A.#> A.fromList [w^modExp a i p | i <- [0..p-2]]
 
 -- | Variant II of Rader's Algorithm that explicitly factors out pre-additions
 -- | Taken from Tolimieri's Algorithms for DFT and Convolution (Chapter 9)
@@ -72,3 +73,41 @@ raderII p w = permute (R p a) × fundamental_factor × backpermute (R p a)
     b_mat = fromLists [[1,                   1],
                        [-fromIntegral (p-1), 1]]
             ⊕ I (p-2)
+
+-- | Variant III of Rader's Algorithm that explicitly factors out pre-additions
+-- | Taken from Tolimieri's Algorithms for DFT and Convolution (Chapter 9)
+raderIII :: forall a . (RootOfUnity a, Show a, Eq a) => Int -> a -> SPL a
+raderIII p w = permute (R p a) × fundamental_factor × backpermute (R p a)
+ where
+   a :: Int
+   a  = generator p
+
+   one :: SPL a
+   one = fromLists [[1]]
+
+   pm1_2 :: Int
+   pm1_2 = (p - 1) `div` 2
+
+   n_epm1, epm1t :: SPL a
+   n_epm1 = fromLists $ replicate (p-1) [-1]
+   epm1t  = fromLists [replicate (p-1) 1]
+
+   omegas :: [a]
+   omegas = [w^modExp a i p | i <- [0..p-2]]
+
+   yp :: SPL a
+   yp = matrix $ toMatrix (fp' × circulant × fp')
+
+   fp, fp' :: SPL a
+   fp  = (F2 ⊗ I pm1_2)
+   fp' = (DFT' 2 ⊗ I pm1_2)
+
+   fundamental_factor :: SPL a
+   fundamental_factor = (one ⊕ fp) × (one ⊕ yp) × (one ⊕ fp) × a_mat
+
+   circulant :: SPL a
+   circulant = skew omegas
+
+   a_mat :: SPL a
+   a_mat = block one    epm1t
+                 n_epm1 (I (p-1))
