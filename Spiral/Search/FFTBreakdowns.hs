@@ -29,7 +29,7 @@ import Math.NumberTheory.Primes.Testing (isPrime)
 import Spiral.Exp
 import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas (goodThomas)
-import Spiral.FFT.Rader (rader, raderII, raderIII)
+import Spiral.FFT.Rader (rader, raderII, raderIII, raderIV)
 import Spiral.NumberTheory (primeFactorization)
 import Spiral.RootOfUnity
 import Spiral.SPL hiding ((<|>))
@@ -101,7 +101,7 @@ raderBreakdowns :: (RootOfUnity (Exp a), MonadPlus m)
                 -> m (SPL (Exp a))
 raderBreakdowns n w = do
     guard (isPrime (fromIntegral n) && n > 2)
-    msum $ map return $ [rader n w, raderII n w, raderIII n w]
+    msum $ map return $ [rader n w, raderII n w, raderIII n w, raderIV n w]
 
 -- | Return all possible ways to factor a number into two factors, neither of
 -- which is one.
