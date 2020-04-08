@@ -13,7 +13,9 @@ module Spiral.FFT.Rader (
 
     raderII,
     raderIII,
-    raderIV
+    raderIV,
+
+    raderLuIII
   ) where
 
 import qualified Spiral.Array as A
@@ -150,3 +152,36 @@ raderIV p w = permute (R p a) × fundamental_factor × backpermute (R p a)
                       | i == 0 && j <= pm1_2 = 1
                       | j == 0 && i <= pm1_2 = -2
                       | otherwise            = 0
+
+-- | Rader variant that is built off of RaderIV
+-- | Taken from FFT Algorithms for Prime Transform Sizes and their
+-- | Implementations on VAX, IBM3090VF, and IBM RS/6000
+-- | Variant III in that paper
+raderLuIII :: forall a . (RootOfUnity a, Show a) => Int -> a -> SPL a
+raderLuIII p w = permute (R p a) × (one ⊕ fp) × yp1 × (one ⊕ fp) × backpermute (R p a)
+ where
+   a :: Int
+   a  = generator p
+
+   one :: SPL a
+   one = fromLists [[1]]
+
+   pm1_2 :: Int
+   pm1_2 = (p - 1) `div` 2
+
+   omegas :: [a]
+   omegas = [w^modExp a i p | i <- [0..p-2]]
+
+   yp :: SPL a
+   yp = matrix $ toMatrix (fp' × circulant × fp')
+
+   yp1 :: SPL a
+   yp1 = block one (fromLists [replicate pm1_2 1 ++ replicate pm1_2 0])
+              (fromLists (replicate pm1_2 [1] ++ replicate pm1_2 [0])) yp
+
+   fp, fp' :: SPL a
+   fp  = (F2 ⊗ I pm1_2)
+   fp' = (DFT' 2 ⊗ I pm1_2)
+
+   circulant :: SPL a
+   circulant = skew omegas
