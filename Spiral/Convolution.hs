@@ -17,19 +17,28 @@ import Spiral.SPL
 
 import Spiral.Convolution.Core
 import Spiral.Convolution.Standard
+import Spiral.Convolution.ToomCook
 
 data LinearConvolution a where
 
   -- | Standard Linear Convolution
   Standard :: (Num a) => Int -> LinearConvolution a
 
+  -- | Toom-Cook Linear Convolution
+  ToomCook :: (Fractional a) => Int -> LinearConvolution a
+
 deriving instance Show e => Show (LinearConvolution e)
 
 instance Bilinear LinearConvolution where
 
   getA (Standard n) = standardLinearA n
+  getA (ToomCook n) = toomCookA n
+
   getB (Standard n) = standardLinearB n
+  getB (ToomCook n) = toomCookB n
+
   getC (Standard n) = standardLinearC n
+  getC (ToomCook n) = toomCookC n
 
 instance Convolution LinearConvolution where
   toLinearA = error "Already a linear convolution. Did you mean to convert a cyclic?"
@@ -41,3 +50,4 @@ instance Convolution LinearConvolution where
   toCyclicC = transpose . getB
 
   getSize (Standard n) = n
+  getSize (ToomCook n) = n

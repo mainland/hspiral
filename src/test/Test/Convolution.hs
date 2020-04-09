@@ -24,8 +24,9 @@ import Spiral.Exp
 import Spiral.SPL
 
 linearConvolutionTests :: Spec
-linearConvolutionTests = describe "Linear Convolution" $
+linearConvolutionTests = describe "Linear Convolution" $ do
   sequence_ [linearConvolutionTest (Standard i) i | i <- [1..16::Int]]
+  sequence_ [linearConvolutionTest (ToomCook i) i | i <- [1..16::Int]]
 
 linearConvolutionTest :: LinearConvolution (Exp (Complex Double)) -> Int -> Spec
 linearConvolutionTest lin n =
