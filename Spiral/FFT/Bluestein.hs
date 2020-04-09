@@ -8,7 +8,8 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.FFT.Bluestein (
-    bluestein
+    bluestein,
+    bluestein'
   ) where
 
 import qualified Spiral.Array as A
@@ -38,6 +39,31 @@ bluestein n m w = ws × t × ws
     cs = [w^^(-j^2) | j <- [0..n-1]] ++
          replicate (m - (2*n-1)) 0 ++
          [w^^(-k^2) | k <- [n-1,n-2..1]]
+
+-- | Matrix exchanged Bluestein; This format could be extended to general
+-- | convolution, instead of just two FFTs to do convolution
+bluestein' :: forall a . (RootOfUnity a, Show a) => Int -> Int -> a -> SPL a
+bluestein' n m w = ws × t × ws
+ where
+   ws :: SPL a
+   ws = diag [w^(k^2) | k <- [0..n-1]]
+
+   t :: SPL a
+   t = ones n m × c × ones m n
+
+   j :: SPL a
+   j = permute $ J m
+
+   c :: SPL a
+   c = j × DFT m × diag deltas × DFT m
+
+   deltas :: [a]
+   deltas = A.toList $ toMatrix (DFT' m × j) #> A.fromList cs
+
+   cs :: [a]
+   cs = [w^^(-j^2) | j <- [0..n-1]] ++
+        replicate (m - (2*n-1)) 0 ++
+        [w^^(-k^2) | k <- [n-1,n-2..1]]
 
 -- | The nxm matrix whose diagonal elements are 1 and off-diagonal elements are
 -- 0.

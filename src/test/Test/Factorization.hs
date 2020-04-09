@@ -74,8 +74,9 @@ complexFactorizationTests = do
         mapM_ (raderTest p "RaderIII" raderIII) [7, 17, 23]
         mapM_ (raderTest p "RaderIV" raderIV) [7, 17, 23]
         mapM_ (raderTest p "raderLuIII" raderLuIII) [7, 17, 23]
-    describe "Bluestein" $
+    describe "Bluestein" $ do
         mapM_ (bluesteinTest p "Bluestein" bluestein) [(3, 6), (4, 8), (4, 9), (9, 18)]
+        mapM_ (bluesteinTest p "Bluestein'" bluestein') [(3, 6), (4, 8), (4, 9), (9, 18)]
     describe "DIT" $
         sequence_ [ditTest p n | n <- [1..7]]
     describe "DIF" $
