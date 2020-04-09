@@ -47,6 +47,7 @@ library
     Spiral.Backend.C.Monad
     Spiral.Backend.C.Util
     Spiral.Config
+    Spiral.Convolution.Core
     Spiral.Driver
     Spiral.Driver.Opts
     Spiral.Exp
@@ -96,9 +97,11 @@ library
     matrix                 >= 0.3   && < 0.4,
     modular-arithmetic     >= 1.2.1.2 && < 1.3,
     mtl                    >= 2.0   && < 3,
+    poly                   >= 0.3.1.0 && < 4,
     primitive              >= 0.6   && < 0.8,
     random                 >= 1.1   && < 1.2,
     ref-fd                 >= 0.3   && < 0.5,
+    semirings              >= 0.4.2 && < 0.5,
     srcloc                 >= 0.5   && < 0.6,
     symbol                 >= 0.2.4 && < 0.3,
     text                   >= 1.1   && < 1.3,
