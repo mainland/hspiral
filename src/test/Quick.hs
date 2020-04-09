@@ -20,6 +20,7 @@ import Test.Hspec
 import Spiral.NumberTheory
 
 import Test.Codegen
+import Test.Convolution
 import Test.Factorization
 import Test.Opcount
 import Test.SPL
@@ -33,6 +34,7 @@ main = do
 spec :: Spec
 spec = do
     splTests
+    linearConvolutionTests
     describe "Factorization" $ do
         factorizationTests
         describe "Opcount-optimized DFT" $

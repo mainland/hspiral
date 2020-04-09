@@ -28,10 +28,12 @@ GHCFLAGS += \
 	-package mainland-pretty \
 	-package modular-arithmetic \
 	-package mtl \
+	-package poly \
 	-package primitive \
 	-package process \
 	-package random \
 	-package ref-fd \
+	-package semirings \
 	-package srcloc \
 	-package symbol \
 	-package temporary \

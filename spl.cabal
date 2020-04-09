@@ -47,6 +47,7 @@ library
     Spiral.Backend.C.Monad
     Spiral.Backend.C.Util
     Spiral.Config
+    Spiral.Convolution
     Spiral.Convolution.Core
     Spiral.Convolution.Standard
     Spiral.Driver
@@ -199,6 +200,7 @@ test-suite full
 
   other-modules:
     Test.Codegen
+    Test.Convolution
     Test.FFTW
     Test.Factorization
     Test.Gen
@@ -238,6 +240,7 @@ test-suite quick
 
   other-modules:
     Test.Codegen
+    Test.Convolution
     Test.FFTW
     Test.Factorization
     Test.Gen
