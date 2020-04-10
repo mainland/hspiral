@@ -10,15 +10,22 @@
 module Spiral.Convolution (
   module Spiral.Convolution.Core,
 
-  LinearConvolution(..)
+  LinearConvolution(..),
+  CyclicConvolution(..)
   ) where
 
+import Spiral.RootOfUnity
 import Spiral.SPL
 
 import Spiral.Convolution.Core
+
+-- Linear convolution algorithms
 import Spiral.Convolution.Standard
 import Spiral.Convolution.Tensor
 import Spiral.Convolution.ToomCook
+
+-- Cyclic convolution algorithms
+import Spiral.Convolution.ConvolutionTheorem
 
 data LinearConvolution a where
 
@@ -74,3 +81,53 @@ instance Convolution LinearConvolution where
   getSize (ToomCook n)  = n
   getSize (Tensor ns _) = product ns
   getSize (Lift n _ _)  = n
+
+data CyclicConvolution a where
+  -- | Cyclic Convolution based on Convolution Theorem (given a size n)
+  ConvolutionTheorem :: (RootOfUnity a) => Int -> CyclicConvolution a
+
+deriving instance Show e => Show (CyclicConvolution e)
+
+instance Bilinear CyclicConvolution where
+  getA (ConvolutionTheorem n) = convolutionA n
+
+  getB (ConvolutionTheorem n) = convolutionB n
+
+  getC (ConvolutionTheorem n) = convolutionC n
+
+instance Convolution CyclicConvolution where
+  toLinearA a = (getA a ⊕ I 1) × ex
+    where
+      m = getSize a
+      n = div (m+2) 2
+      ex = fromFunction (ix2 (2*n-1) n) f
+        where
+          f (Z :. i :. j) | i == j                     = 1
+                          | i == (2*n-2) && j == (n-1) = 1
+                          | otherwise                  = 0
+
+  toLinearB b = (getB b ⊕ I 1) × ex
+    where
+      m = getSize b
+      n = div (m+2) 2
+      ex = fromFunction (ix2 (2*n-1) n) f
+        where
+          f (Z :. i :. j) | i == j                     = 1
+                          | i == (2*n-2) && j == (n-1) = 1
+                          | otherwise                  = 0
+
+  toLinearC c = rx × (getC c ⊕ I 1)
+    where
+      m = getSize c
+      n = div (m+2) 2
+      rx = fromFunction (ix2 (2*n-1) (m+1)) f
+        where
+          f (Z :. i :. j) | i == j           = 1
+                          | i == 0 && j == m = -1
+                          | otherwise        = 0
+
+  toCyclicA = error "Already a cyclic convolution. Did you mean to convert a linear?"
+  toCyclicB = error "Already a cyclic convolution. Did you mean to convert a linear?"
+  toCyclicC = error "Already a cyclic convolution. Did you mean to convert a linear?"
+
+  getSize (ConvolutionTheorem n)  = n

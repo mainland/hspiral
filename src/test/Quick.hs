@@ -34,7 +34,7 @@ main = do
 spec :: Spec
 spec = do
     splTests
-    linearConvolutionTests
+    convolutionTests
     describe "Factorization" $ do
         factorizationTests
         describe "Opcount-optimized DFT" $

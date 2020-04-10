@@ -12,7 +12,9 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Test.Convolution (
-    linearConvolutionTests
+    convolutionTests,
+    linearConvolutionTests,
+    cyclicConvolutionTests
   ) where
 
 import Data.Complex
@@ -22,6 +24,11 @@ import Test.Hspec
 import Spiral.Convolution
 import Spiral.Exp
 import Spiral.SPL
+
+convolutionTests :: Spec
+convolutionTests = describe "Convolution" $ do
+    linearConvolutionTests
+    cyclicConvolutionTests
 
 linearConvolutionTests :: Spec
 linearConvolutionTests = describe "Linear Convolution" $ do
@@ -45,3 +52,17 @@ linearConvolutionTest lin n =
       -- expected_result :: Matrix M (Exp (Complex Double))
       expected_result = toMatrix $ transpose $ fromLists
           [replicate i 0 ++ vector ++ replicate (l - n - i) 0 | i <- [0..n-1]]
+
+cyclicConvolutionTests :: Spec
+cyclicConvolutionTests = describe "Cyclic Convolution" $
+  sequence_ [cyclicConvolutionTest (ConvolutionTheorem i) | i <- [3..8::Int]]
+
+cyclicConvolutionTest :: CyclicConvolution (Exp (Complex Double)) -> Spec
+cyclicConvolutionTest cyc = it (show cyc) $
+    toMatrix (convolve cyc vector) @?= toMatrix (circ vector)
+  where
+    n :: Int
+    n = getSize cyc
+
+    vector :: [Exp (Complex Double)]
+    vector = [fromIntegral i | i <- [1..n]]
