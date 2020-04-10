@@ -30,6 +30,7 @@ linearConvolutionTests = describe "Linear Convolution" $ do
   linearConvolutionTest (Tensor [2,2] [Standard 2, ToomCook 2]) 4
   linearConvolutionTest (Tensor [3,5] [Standard 3, ToomCook 5]) 15
   linearConvolutionTest (Tensor [2,2,2,2] [ToomCook 2, ToomCook 2, ToomCook 2, ToomCook 2]) 16
+  sequence_ [linearConvolutionTest (Lift 5 i (Standard i)) 5 | i <- [6..10::Int]]
 
 linearConvolutionTest :: LinearConvolution (Exp (Complex Double)) -> Int -> Spec
 linearConvolutionTest lin n =
