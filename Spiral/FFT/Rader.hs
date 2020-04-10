@@ -11,6 +11,7 @@
 module Spiral.FFT.Rader (
     rader,
 
+    raderI,
     raderII,
     raderIII,
     raderIV,
@@ -20,6 +21,7 @@ module Spiral.FFT.Rader (
 
 import qualified Spiral.Array as A
 import qualified Spiral.Array.Operators.Matrix as A
+import Spiral.Convolution
 import Spiral.NumberTheory
 import Spiral.RootOfUnity
 import Spiral.SPL
@@ -48,6 +50,35 @@ rader p w = permute (R p a) × (one ⊕ f_pm1 (1/u)) × d_p × (one ⊕ f_pm1 u)
     deltas = A.toList $
         fmap (/ (fromIntegral p-1)) $
         toMatrix (f_pm1 u) A.#> A.fromList [w^modExp a i p | i <- [0..p-2]]
+
+-- | Variant I of Rader's Algorithm that explicitly factors out pre-additions
+-- | Taken from Tolimieri's Algorithms for DFT and Convolution (Chapter 9)
+raderI :: forall a . (RootOfUnity a, Show a, Eq a) => Int -> a -> CyclicConvolution a -> SPL a
+raderI p w cyc = permute (R p a) × fundamental_factor × backpermute (R p a')
+  where
+    a, a' :: Int
+    a  = generator p
+    a' = inv p a
+
+    one :: SPL a
+    one = fromLists [[1]]
+
+    n_epm1, epm1t :: SPL a
+    n_epm1 = fromLists $ replicate (p-1) [-1]
+    epm1t  = fromLists [replicate (p-1) 1]
+
+    omegas :: [a]
+    omegas = [w^modExp a i p | i <- [0..p-2]]
+
+    fundamental_factor :: SPL a
+    fundamental_factor = (one ⊕ circulant) × a_mat
+
+    circulant :: SPL a
+    circulant = bilinear omegas (getC cyc) (getB cyc) (getA cyc)
+
+    a_mat :: SPL a
+    a_mat = block one    epm1t
+                  n_epm1 (I (p-1))
 
 -- | Variant II of Rader's Algorithm that explicitly factors out pre-additions
 -- | Taken from Tolimieri's Algorithms for DFT and Convolution (Chapter 9)

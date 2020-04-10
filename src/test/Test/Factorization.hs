@@ -39,6 +39,7 @@ import Test.Hspec
 import Spiral.Array (M,
                      Matrix)
 import qualified Spiral.Array as A
+import Spiral.Convolution
 import Spiral.Driver
 import Spiral.Exp
 import Spiral.FFT.Bluestein
@@ -70,6 +71,7 @@ complexFactorizationTests = do
         goodThomasTest p 5 7
     describe "Rader" $ do
         mapM_ (raderTest p "Rader" rader) [7, 23]
+        mapM_ (raderTest p "RaderI" (\n w -> raderI n w (ConvolutionTheorem (n-1)))) [7, 17, 23]
         mapM_ (raderTest p "RaderII" raderII) [7, 17, 23]
         mapM_ (raderTest p "RaderIII" raderIII) [7, 17, 23]
         mapM_ (raderTest p "RaderIV" raderIV) [7, 17, 23]

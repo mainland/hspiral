@@ -26,10 +26,11 @@ import Control.Monad (MonadPlus,
                       msum)
 import Math.NumberTheory.Primes.Testing (isPrime)
 
+import Spiral.Convolution
 import Spiral.Exp
 import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas (goodThomas)
-import Spiral.FFT.Rader (rader, raderII, raderIII, raderIV, raderLuIII)
+import Spiral.FFT.Rader (rader, raderI, raderII, raderIII, raderIV, raderLuIII)
 import Spiral.NumberTheory (coprimeFactors,
                             factors)
 import Spiral.RootOfUnity
@@ -96,10 +97,15 @@ goodThomasBreakdowns :: (RootOfUnity (Exp a), MonadPlus m)
 goodThomasBreakdowns n w =
     msum [return $ goodThomas r s w | (r, s) <- coprimeFactors n]
 
-raderBreakdowns :: (RootOfUnity (Exp a), MonadPlus m)
+raderBreakdowns :: forall a m . (RootOfUnity (Exp a), MonadPlus m)
                 => Int
                 -> Exp a
                 -> m (SPL (Exp a))
 raderBreakdowns n w = do
     guard (isPrime (fromIntegral n) && n > 2)
     msum $ map return $ [rader n w, raderII n w, raderIII n w, raderIV n w, raderLuIII n w]
+      ++
+      [raderI n w cyc | cyc <- getCycs (n-1)]
+  where
+    getCycs :: Int -> [CyclicConvolution (Exp a)]
+    getCycs x = [ConvolutionTheorem x]
