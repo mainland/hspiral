@@ -27,6 +27,9 @@ linearConvolutionTests :: Spec
 linearConvolutionTests = describe "Linear Convolution" $ do
   sequence_ [linearConvolutionTest (Standard i) i | i <- [1..16::Int]]
   sequence_ [linearConvolutionTest (ToomCook i) i | i <- [1..16::Int]]
+  linearConvolutionTest (Tensor [2,2] [Standard 2, ToomCook 2]) 4
+  linearConvolutionTest (Tensor [3,5] [Standard 3, ToomCook 5]) 15
+  linearConvolutionTest (Tensor [2,2,2,2] [ToomCook 2, ToomCook 2, ToomCook 2, ToomCook 2]) 16
 
 linearConvolutionTest :: LinearConvolution (Exp (Complex Double)) -> Int -> Spec
 linearConvolutionTest lin n =

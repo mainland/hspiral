@@ -50,6 +50,7 @@ library
     Spiral.Convolution
     Spiral.Convolution.Core
     Spiral.Convolution.Standard
+    Spiral.Convolution.Tensor
     Spiral.Convolution.ToomCook
     Spiral.Driver
     Spiral.Driver.Opts

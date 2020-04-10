@@ -17,6 +17,7 @@ import Spiral.SPL
 
 import Spiral.Convolution.Core
 import Spiral.Convolution.Standard
+import Spiral.Convolution.Tensor
 import Spiral.Convolution.ToomCook
 
 data LinearConvolution a where
@@ -27,18 +28,24 @@ data LinearConvolution a where
   -- | Toom-Cook Linear Convolution
   ToomCook :: (Fractional a) => Int -> LinearConvolution a
 
+  -- | Tensor Product of Linear Convolutions
+  Tensor :: [Int] -> [LinearConvolution a] -> LinearConvolution a
+
 deriving instance Show e => Show (LinearConvolution e)
 
 instance Bilinear LinearConvolution where
 
-  getA (Standard n) = standardLinearA n
-  getA (ToomCook n) = toomCookA n
+  getA (Standard n)  = standardLinearA n
+  getA (ToomCook n)  = toomCookA n
+  getA (Tensor _ ls) = tensorA (map getA ls)
 
-  getB (Standard n) = standardLinearB n
-  getB (ToomCook n) = toomCookB n
+  getB (Standard n)  = standardLinearB n
+  getB (ToomCook n)  = toomCookB n
+  getB (Tensor _ ls) = tensorB (map getB ls)
 
-  getC (Standard n) = standardLinearC n
-  getC (ToomCook n) = toomCookC n
+  getC (Standard n)   = standardLinearC n
+  getC (ToomCook n)   = toomCookC n
+  getC (Tensor ns ls) = tensorC ns (map getC ls)
 
 instance Convolution LinearConvolution where
   toLinearA = error "Already a linear convolution. Did you mean to convert a cyclic?"
@@ -49,5 +56,6 @@ instance Convolution LinearConvolution where
   toCyclicB p lin = (transpose $ getC lin) × (transpose $ modMatrix p (2*((degree p)-1)))
   toCyclicC = transpose . getB
 
-  getSize (Standard n) = n
-  getSize (ToomCook n) = n
+  getSize (Standard n)  = n
+  getSize (ToomCook n)  = n
+  getSize (Tensor ns _) = product ns
