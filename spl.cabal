@@ -53,6 +53,7 @@ library
     Spiral.Convolution.Standard
     Spiral.Convolution.Tensor
     Spiral.Convolution.ToomCook
+    Spiral.Convolution.Winograd
     Spiral.Driver
     Spiral.Driver.Opts
     Spiral.Exp

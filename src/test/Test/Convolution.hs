@@ -54,8 +54,12 @@ linearConvolutionTest lin n =
           [replicate i 0 ++ vector ++ replicate (l - n - i) 0 | i <- [0..n-1]]
 
 cyclicConvolutionTests :: Spec
-cyclicConvolutionTests = describe "Cyclic Convolution" $
+cyclicConvolutionTests = describe "Cyclic Convolution" $ do
   sequence_ [cyclicConvolutionTest (ConvolutionTheorem i) | i <- [3..8::Int]]
+  cyclicConvolutionTest (Winograd 2 [Standard 1, Standard 1])
+  cyclicConvolutionTest (Winograd 3 [Standard 1, Standard 2])
+  cyclicConvolutionTest (Winograd 3 [Standard 1, Lift 2 4 (Standard 4)])
+  cyclicConvolutionTest (Winograd 3 [Standard 1, Lift 2 3 (Standard 3)])
 
 cyclicConvolutionTest :: CyclicConvolution (Exp (Complex Double)) -> Spec
 cyclicConvolutionTest cyc = it (show cyc) $

@@ -26,6 +26,7 @@ import Spiral.Convolution.ToomCook
 
 -- Cyclic convolution algorithms
 import Spiral.Convolution.ConvolutionTheorem
+import Spiral.Convolution.Winograd
 
 data LinearConvolution a where
 
@@ -86,14 +87,21 @@ data CyclicConvolution a where
   -- | Cyclic Convolution based on Convolution Theorem (given a size n)
   ConvolutionTheorem :: (RootOfUnity a) => Int -> CyclicConvolution a
 
+  -- | Cyclic Convolution by Winograd, given a size n and linear convolution
+  -- | options for the convoltuons that will be needed
+  Winograd :: (RootOfUnity a, Eq a) => Int -> [LinearConvolution a] -> CyclicConvolution a
+
 deriving instance Show e => Show (CyclicConvolution e)
 
 instance Bilinear CyclicConvolution where
   getA (ConvolutionTheorem n) = convolutionA n
+  getA (Winograd n lins) = winogradA n lins
 
   getB (ConvolutionTheorem n) = convolutionB n
+  getB (Winograd n lins) = winogradB n lins
 
   getC (ConvolutionTheorem n) = convolutionC n
+  getC (Winograd n lins) = winogradC n lins
 
 instance Convolution CyclicConvolution where
   toLinearA a = (getA a ⊕ I 1) × ex
@@ -131,3 +139,4 @@ instance Convolution CyclicConvolution where
   toCyclicC = error "Already a cyclic convolution. Did you mean to convert a linear?"
 
   getSize (ConvolutionTheorem n)  = n
+  getSize (Winograd n _)          = n
