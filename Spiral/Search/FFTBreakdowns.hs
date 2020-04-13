@@ -27,6 +27,7 @@ import Control.Monad (MonadPlus,
 import Math.NumberTheory.Primes.Testing (isPrime)
 
 import Spiral.Convolution
+import Spiral.Convolution.Winograd (cyclotomic)
 import Spiral.Exp
 import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas (goodThomas)
@@ -109,3 +110,13 @@ raderBreakdowns n w = do
   where
     getCycs :: Int -> [CyclicConvolution (Exp a)]
     getCycs x = [ConvolutionTheorem x]
+                ++
+                [Winograd x opt | opt <- linearOptions [degree (cyclotomic i :: Polynomial Rational) | i <- filter (\i -> x `rem` i == 0) [1..x]]]
+
+    linearOptions :: [Int]
+                  -> [[LinearConvolution (Exp a)]]
+    linearOptions []     = [[]]
+    linearOptions (x:xs) = [opt : res | opt <- ls x, res <- linearOptions xs]
+
+    ls :: Int -> [LinearConvolution (Exp a)]
+    ls x = [Standard x, ToomCook x]
