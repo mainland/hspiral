@@ -27,6 +27,7 @@ import Spiral.Convolution.ToomCook
 -- Cyclic convolution algorithms
 import Spiral.Convolution.AgarwalCooley
 import Spiral.Convolution.ConvolutionTheorem
+import Spiral.Convolution.SplitNesting
 import Spiral.Convolution.Winograd
 
 data LinearConvolution a where
@@ -96,20 +97,35 @@ data CyclicConvolution a where
   -- | uses the PFA to construct a cyclic convolution of the product of the factors
   AgarwalCooley :: (RootOfUnity a, Eq a) => Int -> Int -> CyclicConvolution a -> CyclicConvolution a -> CyclicConvolution a
 
+  -- | Similar to AgarwalCooley, however, must be constructed with Winograd options
+  SplitNesting :: (RootOfUnity a, Eq a) => [Int] -> [CyclicConvolution a] -> CyclicConvolution a
+
 deriving instance Show e => Show (CyclicConvolution e)
 
 instance Bilinear CyclicConvolution where
   getA (ConvolutionTheorem n) = convolutionA n
   getA (Winograd n lins) = winogradA n lins
   getA (AgarwalCooley r s cr cs) = agarwalCooleyA r s (getA cr) (getA cs)
+  getA (SplitNesting ns ws) = splitNestingA ns (map (coreWinogradA . lins)  ws)
+    where
+      lins (Winograd _ ls) = ls
+      lins _               = error "Ill-formatted split nesting convolution"
 
   getB (ConvolutionTheorem n) = convolutionB n
   getB (Winograd n lins) = winogradB n lins
   getB (AgarwalCooley r s cr cs) = agarwalCooleyB r s (getB cr) (getB cs)
+  getB (SplitNesting ns ws) = splitNestingB ns (map (\(n,ls) -> coreWinogradB n ls) $ map lins ws)
+    where
+      lins (Winograd n ls) = (n,ls)
+      lins _               = error "Ill-formatted split nesting convolution"
 
   getC (ConvolutionTheorem n) = convolutionC n
   getC (Winograd n lins) = winogradC n lins
   getC (AgarwalCooley r s cr cs) = agarwalCooleyC r s (getC cr) (getC cs)
+  getC (SplitNesting ns ws) = splitNestingC ns (map (coreWinogradC . lins) ws)
+    where
+      lins (Winograd _ ls) = ls
+      lins _               = error "Ill-formatted split nesting convolution"
 
 instance Convolution CyclicConvolution where
   toLinearA a = (getA a ⊕ I 1) × ex
@@ -149,3 +165,4 @@ instance Convolution CyclicConvolution where
   getSize (ConvolutionTheorem n)  = n
   getSize (Winograd n _)          = n
   getSize (AgarwalCooley r s _ _) = r * s
+  getSize (SplitNesting ns _)     = product ns

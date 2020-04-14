@@ -62,7 +62,9 @@ cyclicConvolutionTests = describe "Cyclic Convolution" $ do
   cyclicConvolutionTest (Winograd 3 [Standard 1, Lift 2 3 (Standard 3)])
   cyclicConvolutionTest (AgarwalCooley 2 3 (ConvolutionTheorem 2) (Winograd 3 [Standard 1, Standard 2]))
   cyclicConvolutionTest (AgarwalCooley 4 3 (ConvolutionTheorem 4) (Winograd 3 [Standard 1, Standard 2]))
-
+  cyclicConvolutionTest (SplitNesting [2, 3] [(Winograd 2 [Standard 1, Standard 1]), (Winograd 3 [Standard 1, Standard 2])])
+  cyclicConvolutionTest (SplitNesting [3, 2] [(Winograd 3 [Standard 1, Standard 2]), (Winograd 2 [Standard 1, Standard 1])])
+ 
 cyclicConvolutionTest :: CyclicConvolution (Exp (Complex Double)) -> Spec
 cyclicConvolutionTest cyc = it (show cyc) $
     toMatrix (convolve cyc vector) @?= toMatrix (circ vector)

@@ -51,6 +51,7 @@ library
     Spiral.Convolution.AgarwalCooley
     Spiral.Convolution.ConvolutionTheorem
     Spiral.Convolution.Core
+    Spiral.Convolution.SplitNesting
     Spiral.Convolution.Standard
     Spiral.Convolution.Tensor
     Spiral.Convolution.ToomCook

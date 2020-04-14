@@ -109,19 +109,28 @@ raderBreakdowns n w = do
     msum $ map return $ [rader n w, raderII n w, raderIII n w, raderIV n w, raderLuIII n w]
       ++
       [raderI n w cyc | cyc <- getCycs (n-1)]
+
+-- | Gets the cyclic convolutions for a given size
+getCycs :: forall a . (RootOfUnity (Exp a))
+        => Int
+        -> [CyclicConvolution (Exp a)]
+getCycs 1 = [ConvolutionTheorem 1]
+getCycs x = if (length (primeFactorization x) == 1)
+            then [ConvolutionTheorem x]
+                 ++
+                 getWinograd x
+            else [ConvolutionTheorem x]
+                 ++
+                 [AgarwalCooley r s wr ws | (r, s) <- cofactors, wr <- getCycs r, ws <- getCycs s]
+                 ++
+                 [SplitNesting ns cycs | ns <- factors, cycs <- map reverse $ foldl' cartProd [[]] $ map (\nsub -> getWinograd nsub) ns]
   where
-    getCycs :: Int -> [CyclicConvolution (Exp a)]
-    getCycs 1 = [ConvolutionTheorem 1]
-    getCycs x = if (isPrime (fromIntegral x))
-                then [ConvolutionTheorem x]
-                     ++
-                     [Winograd x opt | opt <- linearOptions [degree (cyclotomic i :: Polynomial Rational) | i <- filter (\i -> x `rem` i == 0) [1..x]]]
-                else [ConvolutionTheorem x]
-                     ++
-                     [AgarwalCooley r s wr ws | (r, s) <- factors, wr <- getCycs r, ws <- getCycs s]
-      where
-        factors :: [(Int, Int)]
-        factors = coprimeFactors x
+    cofactors :: [(Int, Int)]
+    cofactors = coprimeFactors x
+    factors = nub $ permutations $ map (\(p,k) -> p^k) $ primeFactorization x
+    cartProd xs ys = [y : x | x <- xs, y <- ys]
+
+    getWinograd x = [Winograd x opt | opt <- linearOptions [degree (cyclotomic i :: Polynomial Rational) | i <- filter (\i -> x `rem` i == 0) [1..x]]]
 
     linearOptions :: [Int]
                   -> [[LinearConvolution (Exp a)]]
