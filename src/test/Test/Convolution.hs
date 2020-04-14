@@ -60,6 +60,8 @@ cyclicConvolutionTests = describe "Cyclic Convolution" $ do
   cyclicConvolutionTest (Winograd 3 [Standard 1, Standard 2])
   cyclicConvolutionTest (Winograd 3 [Standard 1, Lift 2 4 (Standard 4)])
   cyclicConvolutionTest (Winograd 3 [Standard 1, Lift 2 3 (Standard 3)])
+  cyclicConvolutionTest (AgarwalCooley 2 3 (ConvolutionTheorem 2) (Winograd 3 [Standard 1, Standard 2]))
+  cyclicConvolutionTest (AgarwalCooley 4 3 (ConvolutionTheorem 4) (Winograd 3 [Standard 1, Standard 2]))
 
 cyclicConvolutionTest :: CyclicConvolution (Exp (Complex Double)) -> Spec
 cyclicConvolutionTest cyc = it (show cyc) $

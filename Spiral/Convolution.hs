@@ -25,6 +25,7 @@ import Spiral.Convolution.Tensor
 import Spiral.Convolution.ToomCook
 
 -- Cyclic convolution algorithms
+import Spiral.Convolution.AgarwalCooley
 import Spiral.Convolution.ConvolutionTheorem
 import Spiral.Convolution.Winograd
 
@@ -91,17 +92,24 @@ data CyclicConvolution a where
   -- | options for the convoltuons that will be needed
   Winograd :: (RootOfUnity a, Eq a) => Int -> [LinearConvolution a] -> CyclicConvolution a
 
+  -- | Given any coprime factors and cyclic convolutions of those sizes,
+  -- | uses the PFA to construct a cyclic convolution of the product of the factors
+  AgarwalCooley :: (RootOfUnity a, Eq a) => Int -> Int -> CyclicConvolution a -> CyclicConvolution a -> CyclicConvolution a
+
 deriving instance Show e => Show (CyclicConvolution e)
 
 instance Bilinear CyclicConvolution where
   getA (ConvolutionTheorem n) = convolutionA n
   getA (Winograd n lins) = winogradA n lins
+  getA (AgarwalCooley r s cr cs) = agarwalCooleyA r s (getA cr) (getA cs)
 
   getB (ConvolutionTheorem n) = convolutionB n
   getB (Winograd n lins) = winogradB n lins
+  getB (AgarwalCooley r s cr cs) = agarwalCooleyB r s (getB cr) (getB cs)
 
   getC (ConvolutionTheorem n) = convolutionC n
   getC (Winograd n lins) = winogradC n lins
+  getC (AgarwalCooley r s cr cs) = agarwalCooleyC r s (getC cr) (getC cs)
 
 instance Convolution CyclicConvolution where
   toLinearA a = (getA a ⊕ I 1) × ex
@@ -140,3 +148,4 @@ instance Convolution CyclicConvolution where
 
   getSize (ConvolutionTheorem n)  = n
   getSize (Winograd n _)          = n
+  getSize (AgarwalCooley r s _ _) = r * s

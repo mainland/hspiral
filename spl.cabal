@@ -48,6 +48,7 @@ library
     Spiral.Backend.C.Util
     Spiral.Config
     Spiral.Convolution
+    Spiral.Convolution.AgarwalCooley
     Spiral.Convolution.ConvolutionTheorem
     Spiral.Convolution.Core
     Spiral.Convolution.Standard

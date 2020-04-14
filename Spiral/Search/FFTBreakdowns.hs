@@ -117,6 +117,11 @@ raderBreakdowns n w = do
                      ++
                      [Winograd x opt | opt <- linearOptions [degree (cyclotomic i :: Polynomial Rational) | i <- filter (\i -> x `rem` i == 0) [1..x]]]
                 else [ConvolutionTheorem x]
+                     ++
+                     [AgarwalCooley r s wr ws | (r, s) <- factors, wr <- getCycs r, ws <- getCycs s]
+      where
+        factors :: [(Int, Int)]
+        factors = coprimeFactors x
 
     linearOptions :: [Int]
                   -> [[LinearConvolution (Exp a)]]
