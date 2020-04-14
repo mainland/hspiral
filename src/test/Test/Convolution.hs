@@ -38,6 +38,7 @@ linearConvolutionTests = describe "Linear Convolution" $ do
   linearConvolutionTest (Tensor [3,5] [Standard 3, ToomCook 5]) 15
   linearConvolutionTest (Tensor [2,2,2,2] [ToomCook 2, ToomCook 2, ToomCook 2, ToomCook 2]) 16
   sequence_ [linearConvolutionTest (Lift 5 i (Standard i)) 5 | i <- [6..10::Int]]
+  sequence_ [linearConvolutionTest (FromCyclic i (ConvolutionTheorem (2*i - 2))) i | i <- [2..8::Int]]
 
 linearConvolutionTest :: LinearConvolution (Exp (Complex Double)) -> Int -> Spec
 linearConvolutionTest lin n =
@@ -64,7 +65,7 @@ cyclicConvolutionTests = describe "Cyclic Convolution" $ do
   cyclicConvolutionTest (AgarwalCooley 4 3 (ConvolutionTheorem 4) (Winograd 3 [Standard 1, Standard 2]))
   cyclicConvolutionTest (SplitNesting [2, 3] [(Winograd 2 [Standard 1, Standard 1]), (Winograd 3 [Standard 1, Standard 2])])
   cyclicConvolutionTest (SplitNesting [3, 2] [(Winograd 3 [Standard 1, Standard 2]), (Winograd 2 [Standard 1, Standard 1])])
- 
+
 cyclicConvolutionTest :: CyclicConvolution (Exp (Complex Double)) -> Spec
 cyclicConvolutionTest cyc = it (show cyc) $
     toMatrix (convolve cyc vector) @?= toMatrix (circ vector)
