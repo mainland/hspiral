@@ -17,7 +17,8 @@ module Spiral.Search.FFTBreakdowns (
     conjPairSplitRadixBreakdown,
     improvedSplitRadixBreakdown,
     goodThomasBreakdowns,
-    raderBreakdowns
+    raderBreakdowns,
+    winogradSmallBreakdowns
   ) where
 
 import Control.Applicative ((<|>))
@@ -33,6 +34,7 @@ import Spiral.Exp
 import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas (goodThomas)
 import Spiral.FFT.Rader (rader, raderI, raderII, raderIII, raderIV, raderLuIII)
+import Spiral.FFT.Winograd (winogradSmall)
 import Spiral.NumberTheory (coprimeFactors,
                             factors,
                             primeFactorization)
@@ -109,6 +111,14 @@ raderBreakdowns n w = do
     msum $ map return $ [rader n w, raderII n w, raderIII n w, raderIV n w, raderLuIII n w]
       ++
       [raderI n w cyc | cyc <- getCycs (n-1)]
+
+winogradSmallBreakdowns :: forall a m . (RootOfUnity (Exp a), MonadPlus m)
+                   => Int
+                   -> Exp a
+                   -> m (SPL (Exp a))
+winogradSmallBreakdowns n w = do
+    guard (isPrime (fromIntegral n) && n > 2)
+    msum $ map return $ [winogradSmall n w cyc | cyc <- getCycs (n-1)]
 
 -- | Gets the cyclic convolutions for a given size
 getCycs :: forall a . (RootOfUnity (Exp a))

@@ -63,6 +63,7 @@ library
     Spiral.FFT.CooleyTukey
     Spiral.FFT.GoodThomas
     Spiral.FFT.Rader
+    Spiral.FFT.Winograd
     Spiral.Globals
     Spiral.Monad
     Spiral.NumberTheory

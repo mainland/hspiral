@@ -21,6 +21,7 @@ module Test.Factorization (
     goodThomasTest,
     raderTest,
     bluesteinTest,
+    winogradSmallTest,
     ditTest,
     difTest,
     splitRadixTest,
@@ -46,6 +47,7 @@ import Spiral.FFT.Bluestein
 import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas
 import Spiral.FFT.Rader
+import Spiral.FFT.Winograd
 import Spiral.RootOfUnity
 import Spiral.SPL
 import Spiral.Search.OpCount
@@ -79,6 +81,11 @@ complexFactorizationTests = do
     describe "Bluestein" $ do
         mapM_ (bluesteinTest p "Bluestein" bluestein) [(3, 6), (4, 8), (4, 9), (9, 18)]
         mapM_ (bluesteinTest p "Bluestein'" bluestein') [(3, 6), (4, 8), (4, 9), (9, 18)]
+    describe "Winograd Small" $ do
+        winogradSmallTest 3 (ConvolutionTheorem 2)
+        winogradSmallTest 5 (ConvolutionTheorem 4)
+        winogradSmallTest 7 (SplitNesting [3, 2] [(Winograd 3 [Standard 1, Standard 2]), (Winograd 2 [Standard 1, Standard 1])])
+        winogradSmallTest 7 (AgarwalCooley 3 2 (Winograd 3 [Standard 1, Lift 2 6 (Tensor [3,2] [Standard 3,Standard 2])]) (Winograd 2 [Standard 1,Standard 1]))
     describe "DIT" $
         sequence_ [ditTest p n | n <- [1..7]]
     describe "DIF" $
@@ -209,6 +216,16 @@ bluesteinTest _ desc bluestein (n, m) = it (desc ++ "(" ++ show n ++ "," ++ show
   where
     w :: Exp p
     w = omega (2*n)
+
+winogradSmallTest :: Int
+                  -> CyclicConvolution (Exp (Complex Double))
+                  -> Spec
+winogradSmallTest n cyc =
+    it ("WinogradSmall(" ++ show n ++ "--" ++ show cyc ++ ")") $
+    toMatrix (winogradSmall n w cyc) @?= toMatrix (F n w)
+  where
+    w :: Exp (Complex Double)
+    w = omega n
 
 -- DIT test
 ditTest :: forall p . RootOfUnity (Exp p)

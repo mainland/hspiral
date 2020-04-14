@@ -150,6 +150,7 @@ breakdown n w =
     splitRadix8Breakdown n w <|>
     improvedSplitRadixBreakdown n w <|>
     goodThomasBreakdowns n w <|>
+    winogradSmallBreakdowns n w <|>
     raderBreakdowns n w
 
 -- | Cache the given DFT transform if its metric improves on the previously
