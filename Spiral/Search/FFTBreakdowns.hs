@@ -24,6 +24,7 @@ import Control.Applicative ((<|>))
 import Control.Monad (MonadPlus,
                       guard,
                       msum)
+import Data.List
 import Math.NumberTheory.Primes.Testing (isPrime)
 
 import Spiral.Convolution
@@ -33,7 +34,8 @@ import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas (goodThomas)
 import Spiral.FFT.Rader (rader, raderI, raderII, raderIII, raderIV, raderLuIII)
 import Spiral.NumberTheory (coprimeFactors,
-                            factors)
+                            factors,
+                            primeFactorization)
 import Spiral.RootOfUnity
 import Spiral.SPL hiding ((<|>))
 
@@ -109,9 +111,12 @@ raderBreakdowns n w = do
       [raderI n w cyc | cyc <- getCycs (n-1)]
   where
     getCycs :: Int -> [CyclicConvolution (Exp a)]
-    getCycs x = [ConvolutionTheorem x]
-                ++
-                [Winograd x opt | opt <- linearOptions [degree (cyclotomic i :: Polynomial Rational) | i <- filter (\i -> x `rem` i == 0) [1..x]]]
+    getCycs 1 = [ConvolutionTheorem 1]
+    getCycs x = if (isPrime (fromIntegral x))
+                then [ConvolutionTheorem x]
+                     ++
+                     [Winograd x opt | opt <- linearOptions [degree (cyclotomic i :: Polynomial Rational) | i <- filter (\i -> x `rem` i == 0) [1..x]]]
+                else [ConvolutionTheorem x]
 
     linearOptions :: [Int]
                   -> [[LinearConvolution (Exp a)]]
@@ -119,4 +124,21 @@ raderBreakdowns n w = do
     linearOptions (x:xs) = [opt : res | opt <- ls x, res <- linearOptions xs]
 
     ls :: Int -> [LinearConvolution (Exp a)]
-    ls x = [Standard x, ToomCook x]
+    ls 1 = [Standard 1]
+    ls x = if (isPrime (fromIntegral x))
+           then [Standard x, ToomCook x]
+           else [Standard x, ToomCook x]
+                ++
+                [Tensor (reverse ns) os | ns <- (nub . permutations $ fs x), os <- linearOpts ns]
+      where
+        fs :: Int -> [Int]
+        fs n = sort $ concat [replicate i p | (p, i) <- primeFactorization n]
+
+        linearOpts :: [Int] -> [[LinearConvolution (Exp a)]]
+        linearOpts xs = f' xs [[]]
+          where
+            f' :: [Int] -> [[LinearConvolution (Exp a)]] -> [[LinearConvolution (Exp a)]]
+            f' []     ss = ss
+            f' (x:xs) ss = f' xs $ concat [xSelector x s | s <- ss]
+              where
+                xSelector x s = [o : s | o <- ls x]
