@@ -18,7 +18,8 @@ module Spiral.Search.FFTBreakdowns (
     improvedSplitRadixBreakdown,
     goodThomasBreakdowns,
     raderBreakdowns,
-    winogradSmallBreakdowns
+    winogradSmallBreakdowns,
+    winogradTwoBreakdowns,
   ) where
 
 import Control.Applicative ((<|>))
@@ -26,6 +27,7 @@ import Control.Monad (MonadPlus,
                       guard,
                       msum)
 import Data.List
+import Data.Typeable (Typeable)
 import Math.NumberTheory.Primes.Testing (isPrime)
 
 import Spiral.Convolution
@@ -34,7 +36,7 @@ import Spiral.Exp
 import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas (goodThomas)
 import Spiral.FFT.Rader (rader, raderI, raderII, raderIII, raderIV, raderLuIII)
-import Spiral.FFT.Winograd (winogradSmall)
+import Spiral.FFT.Winograd
 import Spiral.NumberTheory (coprimeFactors,
                             factors,
                             primeFactorization)
@@ -119,6 +121,33 @@ winogradSmallBreakdowns :: forall a m . (RootOfUnity (Exp a), MonadPlus m)
 winogradSmallBreakdowns n w = do
     guard (isPrime (fromIntegral n) && n > 2)
     msum $ map return $ [winogradSmall n w cyc | cyc <- getCycs (n-1)]
+
+winogradTwoBreakdowns :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+                      => Int
+                      -> Exp a
+                      -> m (SPL (Exp a))
+winogradTwoBreakdowns n w = do
+    let pfs = primeFactorization n
+    let (p, k) = head pfs
+    guard (length pfs == 1 && p == 2 && k > 1)
+    msum $ map return $ [winogradDIT r s w | (r,s) <- fs]
+                        ++
+                        [winogradDIF r s w | (r,s) <- fs]
+                        ++
+                        [winogradSplitRadix n w, winogradConjPairSplitRadix n w]
+                        ++
+                        if k > 2 then [winogradSplitRadix8 n w] else []
+                        ++
+                        case tau of
+                          ComplexT{} -> [winogradImprovedSplitRadix n w]
+                          _          -> [winogradSplitRadix n w]
+  where
+    fs :: [(Int, Int)]
+    fs = factors n
+
+    tau :: Type a
+    tau = typeOf (undefined :: a)
+
 
 -- | Gets the cyclic convolutions for a given size
 getCycs :: forall a . (RootOfUnity (Exp a))

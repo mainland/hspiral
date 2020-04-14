@@ -48,6 +48,7 @@ import Spiral.FFT.CooleyTukey
 import Spiral.FFT.GoodThomas
 import Spiral.FFT.Rader
 import Spiral.FFT.Winograd
+import Spiral.NumberTheory (factors)
 import Spiral.RootOfUnity
 import Spiral.SPL
 import Spiral.Search.OpCount
@@ -86,6 +87,8 @@ complexFactorizationTests = do
         winogradSmallTest 5 (ConvolutionTheorem 4)
         winogradSmallTest 7 (SplitNesting [3, 2] [(Winograd 3 [Standard 1, Standard 2]), (Winograd 2 [Standard 1, Standard 1])])
         winogradSmallTest 7 (AgarwalCooley 3 2 (Winograd 3 [Standard 1, Lift 2 6 (Tensor [3,2] [Standard 3,Standard 2])]) (Winograd 2 [Standard 1,Standard 1]))
+    describe "Winograd 2^n" $
+        mapM_ winogradTwoTest [2^i | i <- [1..5::Int]]
     describe "DIT" $
         sequence_ [ditTest p n | n <- [1..7]]
     describe "DIF" $
@@ -223,6 +226,25 @@ winogradSmallTest :: Int
 winogradSmallTest n cyc =
     it ("WinogradSmall(" ++ show n ++ "--" ++ show cyc ++ ")") $
     toMatrix (winogradSmall n w cyc) @?= toMatrix (F n w)
+  where
+    w :: Exp (Complex Double)
+    w = omega n
+
+winogradTwoTest :: Int -> Spec
+winogradTwoTest n@2 = describe ("Winograd N=" ++ show n) $ do
+    sequence_ [it ("DIF(2,1): w^" ++ show i) $ toMatrix (winogradDIF 2 1 (w^i)) @?= toMatrix (F n (w^i)) | i <- [1..n-1], rem i 2 /= 0]
+    sequence_ [it ("DIT(2,1): w^" ++ show i) $ toMatrix (winogradDIT 2 1 (w^i)) @?= toMatrix (F n (w^i)) | i <- [1..n-1], rem i 2 /= 0]
+  where
+    w :: Exp (Complex Double)
+    w = omega n
+
+winogradTwoTest n = describe ("Winograd N=" ++ show n) $ do
+    sequence_ [it ("DIF(" ++ show r ++ "," ++ show s ++ "): w^" ++ show i) $ toMatrix (winogradDIF r s (w^i)) @?= toMatrix (F n (w^i)) | i <- [1,n-1], rem i 2 /= 0, (r,s) <- factors n]
+    sequence_ [it ("DIT(" ++ show r ++ "," ++ show s ++ "): w^" ++ show i) $ toMatrix (winogradDIT r s (w^i)) @?= toMatrix (F n (w^i)) | i <- [1,n-1], rem i 2 /= 0, (r,s) <- factors n]
+    sequence_ [it ("SplitRadix: w^" ++ show i) $ toMatrix (winogradSplitRadix n (w^i)) @?= toMatrix (F n (w^i)) | i <- [1,n-1], rem i 2 /= 0]
+    sequence_ [it ("ConjPairSplitRadix: w^" ++ show i) $ toMatrix (winogradConjPairSplitRadix n (w^i)) @?= toMatrix (F n (w^i)) | i <- [1,n-1], rem i 2 /= 0]
+    sequence_ [it ("SplitRadix8: w^" ++ show i) $ toMatrix (winogradSplitRadix8 n (w^i)) @?= toMatrix (F n (w^i)) | i <- [1,n-1], n >= 8, rem i 2 /= 0]
+    sequence_ [it ("ImprovedSplitRadix: w^" ++ show i) $ toMatrix (winogradImprovedSplitRadix n (w^i)) @?= toMatrix (F n (w^i)) | i <- [1,n-1], rem i 2 /= 0]
   where
     w :: Exp (Complex Double)
     w = omega n
