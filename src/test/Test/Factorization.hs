@@ -51,6 +51,7 @@ import Spiral.FFT.Winograd
 import Spiral.NumberTheory (factors)
 import Spiral.RootOfUnity
 import Spiral.SPL
+import Spiral.Search.FFTBreakdowns (getCycs)
 import Spiral.Search.OpCount
 
 factorizationTests :: Spec
@@ -87,6 +88,8 @@ complexFactorizationTests = do
         winogradSmallTest 5 (ConvolutionTheorem 4)
         winogradSmallTest 7 (SplitNesting [3, 2] [(Winograd 3 [Standard 1, Standard 2]), (Winograd 2 [Standard 1, Standard 1])])
         winogradSmallTest 7 (AgarwalCooley 3 2 (Winograd 3 [Standard 1, Lift 2 6 (Tensor [3,2] [Standard 3,Standard 2])]) (Winograd 2 [Standard 1,Standard 1]))
+    describe "Winograd Large" $
+        mapM_ winogradLargeTest [(2,3), (5, 2), (2,7), (3,4), (4,3), (5,4), (3,8), (5,8), (8,3), (3,5), (5,3)]
     describe "Winograd 2^n" $
         mapM_ winogradTwoTest [2^i | i <- [1..5::Int]]
     describe "DIT" $
@@ -227,6 +230,18 @@ winogradSmallTest n cyc =
     it ("WinogradSmall(" ++ show n ++ "--" ++ show cyc ++ ")") $
     toMatrix (winogradSmall n w cyc) @?= toMatrix (F n w)
   where
+    w :: Exp (Complex Double)
+    w = omega n
+
+winogradLargeTest :: (Int, Int) -> Spec
+winogradLargeTest (r, s) = it ("WinogradLarge(" ++ show r ++ ", " ++ show s ++ ")") $
+    sequence_ [toMatrix (winogradLarge r s w cr cc) @?= toMatrix (F n w)
+                | cr <- take 2 $ getWinogradTriple r s w getCycs
+                , cc <- take 2 $ getWinogradTriple s r w getCycs]
+  where
+    n :: Int
+    n = r*s
+
     w :: Exp (Complex Double)
     w = omega n
 

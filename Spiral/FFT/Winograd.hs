@@ -16,6 +16,12 @@ module Spiral.FFT.Winograd (
   winogradConjPairSplitRadix,
   winogradSplitRadix8,
   winogradImprovedSplitRadix,
+
+  -- Composite Algorithms
+  winogradLarge,
+
+  getWinogradTriple,
+  getWinogradTriple',
   ) where
 
 import Spiral.Convolution
@@ -28,6 +34,62 @@ default (Int)
 -- | A 1x1 matrix of just a 1
 one :: (RootOfUnity a, Show a) => SPL a
 one = I 1
+
+getWinogradTriple :: forall a . (RootOfUnity a, Show a, Eq a)
+                  => Int
+                  -> Int
+                  -> a
+                  -> (Int -> [CyclicConvolution a])
+                  -> [(SPL a, SPL a, SPL a)]
+getWinogradTriple x y w cycGen =
+     if (length pfs == 1)         -- Dealing with a prime (or prime power)
+     then if p == 2               -- Dealing with powers of 2
+          then let (_, v) = euclid x y
+                   em     = v * y
+                   allF2s = [biWinogradDIT, biWinogradDIF]
+                   allF4s = [biWinogradSplitRadix, biWinogradConjPairSplitRadix]
+                   allF8s = biWinogradSplitRadix8 : allF4s
+                   w2     = w ^^ em
+               in if k == 1
+                  then map (\f -> f 2 1 w2) allF2s
+                  else if k == 2
+                       then (map (\f -> f x w2) allF4s) ++ (concat [map (\f -> f r s w2) allF2s | (r, s) <- factors x]) -- Powers of 2
+                       else (map (\f -> f x w2) allF8s) ++ (concat [map (\f -> f r s w2) allF2s | (r, s) <- factors x])
+          else if k == 1
+               then [biWinogradSmall x c | c <- cycGen (x-1)] -- Odd primes
+               else []
+     else [biWinogradLarge r s cr cs | (r,s) <- coprimeFactors x, cr <- getWinogradTriple r s w cycGen, cs <- getWinogradTriple s r w cycGen] -- Recursive options, composite case
+  where
+    pfs = primeFactorization x
+    (p, k) = head $ pfs
+
+getWinogradTriple' :: forall a . (RootOfUnity a, Show a, Eq a, Floating a)
+                   => Int
+                   -> Int
+                   -> a
+                   -> (Int -> [CyclicConvolution a])
+                   -> [(SPL a, SPL a, SPL a)]
+getWinogradTriple' x y w cycGen =
+     if (length pfs == 1)         -- Dealing with a prime (or prime power)
+     then if p == 2               -- Dealing with powers of 2
+          then let (_, v) = euclid x y
+                   em     = v * y
+                   allF2s = [biWinogradDIT, biWinogradDIF]
+                   allF4s = [biWinogradSplitRadix, biWinogradConjPairSplitRadix, biWinogradImprovedSplitRadix]
+                   allF8s = biWinogradSplitRadix8 : allF4s
+                   w2     = w ^^ em
+               in if k == 1
+                  then map (\f -> f 2 1 w2) allF2s
+                  else if k == 2
+                       then (map (\f -> f x w2) allF4s) ++ (concat [map (\f -> f r s w2) allF2s | (r, s) <- factors x]) -- Powers of 2
+                       else (map (\f -> f x w2) allF8s) ++ (concat [map (\f -> f r s w2) allF2s | (r, s) <- factors x])
+          else if k == 1
+               then [biWinogradSmall x c | c <- cycGen (x-1)] -- Odd primes
+               else []
+     else [biWinogradLarge r s cr cs | (r,s) <- coprimeFactors x, cr <- getWinogradTriple' r s w cycGen, cs <- getWinogradTriple' s r w cycGen] -- Recursive options, composite case
+  where
+    pfs = primeFactorization x
+    (p, k) = head $ pfs
 
 -- | The bilinear factorization of a prime FFT
 -- | per Selesnick+Burrus in their automation of prime FFT paper
@@ -313,3 +375,42 @@ biWinogradImprovedSplitRadix n w = (c, b, a)
         where
           p :: Int
           p = n `quot` 4
+
+biWinogradLarge :: forall a . (RootOfUnity a, Show a, Eq a)
+                => Int
+                -> Int
+                -> (SPL a, SPL a, SPL a)
+                -> (SPL a, SPL a, SPL a)
+                -> (SPL a, SPL a, SPL a)
+biWinogradLarge p1 p2 (c1, b1, a1) (c2, b2, a2) = (_Q' × (c1 ⊗ c2), (b1 ⊗ b2) × _Q, (a1 ⊗ a2) × _Q)
+  where
+    (u1, v1) = euclid p1 p2
+    em     = p2 * v1
+    en     = p1 * u1
+
+    pi :: Permutation
+    pi = CRT p1 p2 em en
+
+    _Q :: SPL a
+    _Q = Pi pi
+
+    _Q' :: SPL a
+    _Q' = Pi (invert pi)
+
+winogradLarge :: forall a . (RootOfUnity a, Show a, Eq a)
+              => Int
+              -> Int
+              -> a
+              -> (SPL a, SPL a, SPL a)
+              -> (SPL a, SPL a, SPL a)
+              -> SPL a
+winogradLarge p1 p2 w t1 t2 = bilinear omegas c b a
+  where
+    p :: Int
+    p = p1 * p2
+
+    omegas :: [a]
+    omegas = [w^i | i <- [0..p-1]]
+
+    c, b, a :: SPL a
+    (c, b, a) = biWinogradLarge p1 p2 t1 t2

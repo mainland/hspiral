@@ -20,6 +20,9 @@ module Spiral.Search.FFTBreakdowns (
     raderBreakdowns,
     winogradSmallBreakdowns,
     winogradTwoBreakdowns,
+    winogradLargeBreakdowns,
+
+    getCycs,
   ) where
 
 import Control.Applicative ((<|>))
@@ -148,6 +151,17 @@ winogradTwoBreakdowns n w = do
     tau :: Type a
     tau = typeOf (undefined :: a)
 
+winogradLargeBreakdowns :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+                        => Int
+                        -> Exp a
+                        -> m (SPL (Exp a))
+winogradLargeBreakdowns n w = do
+    case tau of
+      ComplexT{} -> msum $ map return [winogradLarge r s w cr cs | (r, s) <- coprimeFactors n, cr <- getWinogradTriple' r s w getCycs, cs <- getWinogradTriple' s r w getCycs]
+      _          -> msum $ map return [winogradLarge r s w cr cs | (r, s) <- coprimeFactors n, cr <- getWinogradTriple r s w getCycs, cs <- getWinogradTriple s r w getCycs]
+  where
+    tau :: Type a
+    tau = typeOf (undefined :: a)
 
 -- | Gets the cyclic convolutions for a given size
 getCycs :: forall a . (RootOfUnity (Exp a))

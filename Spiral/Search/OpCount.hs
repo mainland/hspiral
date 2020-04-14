@@ -152,6 +152,7 @@ breakdown n w =
     goodThomasBreakdowns n w <|>
     winogradSmallBreakdowns n w <|>
     winogradTwoBreakdowns n w <|>
+    winogradLargeBreakdowns n w <|>
     raderBreakdowns n w
 
 -- | Cache the given DFT transform if its metric improves on the previously
