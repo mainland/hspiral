@@ -21,7 +21,8 @@ module Spiral.Search.FFTBreakdowns (
     winogradSmallBreakdowns,
     winogradTwoBreakdowns,
     winogradLargeBreakdowns,
-
+    winogradSquareBreakdowns,
+    winogradPowerBreakdowns,
     getCycs,
   ) where
 
@@ -162,6 +163,30 @@ winogradLargeBreakdowns n w = do
   where
     tau :: Type a
     tau = typeOf (undefined :: a)
+
+winogradPowerBreakdowns :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+                        => Int
+                        -> Exp a
+                        -> m (SPL (Exp a))
+winogradPowerBreakdowns n w = do
+    guard (length (primeFactorization n) == 1 && (p == 3) && (k == 2))
+    msum $ map return $ [winogradPower p k w cP cS | cP <- getCycs p', cS <- getCycs s]
+  where
+    p, k, p', s :: Int
+    (p, k) = head $ primeFactorization n
+    p' = (p-1)
+    s  = p*p'
+
+winogradSquareBreakdowns :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadPlus m)
+                         => Int
+                         -> Exp a
+                         -> m (SPL (Exp a))
+winogradSquareBreakdowns n w = do
+    guard (length (primeFactorization n) == 1 && (p > 2) && (k == 2))
+    msum $ map return $ winogradSquare p k w getCycs
+  where
+    p, k :: Int
+    (p, k) = head $ primeFactorization n
 
 -- | Gets the cyclic convolutions for a given size
 getCycs :: forall a . (RootOfUnity (Exp a))

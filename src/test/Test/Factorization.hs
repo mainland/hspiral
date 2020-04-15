@@ -92,6 +92,10 @@ complexFactorizationTests = do
         mapM_ winogradLargeTest [(2,3), (5, 2), (2,7), (3,4), (4,3), (5,4), (3,8), (5,8), (8,3), (3,5), (5,3)]
     describe "Winograd 2^n" $
         mapM_ winogradTwoTest [2^i | i <- [1..5::Int]]
+    describe "Winograd Power" $ do
+        winogradPowerTest 3 2
+        winogradSquareTest 3
+        winogradSquareTest 5
     describe "DIT" $
         sequence_ [ditTest p n | n <- [1..7]]
     describe "DIF" $
@@ -236,8 +240,8 @@ winogradSmallTest n cyc =
 winogradLargeTest :: (Int, Int) -> Spec
 winogradLargeTest (r, s) = it ("WinogradLarge(" ++ show r ++ ", " ++ show s ++ ")") $
     sequence_ [toMatrix (winogradLarge r s w cr cc) @?= toMatrix (F n w)
-                | cr <- take 2 $ getWinogradTriple r s w getCycs
-                , cc <- take 2 $ getWinogradTriple s r w getCycs]
+                | cr <- take 2 $ getWinogradTriple' r s w getCycs
+                , cc <- take 2 $ getWinogradTriple' s r w getCycs]
   where
     n :: Int
     n = r*s
@@ -261,6 +265,39 @@ winogradTwoTest n = describe ("Winograd N=" ++ show n) $ do
     sequence_ [it ("SplitRadix8: w^" ++ show i) $ toMatrix (winogradSplitRadix8 n (w^i)) @?= toMatrix (F n (w^i)) | i <- [1,n-1], n >= 8, rem i 2 /= 0]
     sequence_ [it ("ImprovedSplitRadix: w^" ++ show i) $ toMatrix (winogradImprovedSplitRadix n (w^i)) @?= toMatrix (F n (w^i)) | i <- [1,n-1], rem i 2 /= 0]
   where
+    w :: Exp (Complex Double)
+    w = omega n
+
+winogradPowerTest :: Int -> Int -> Spec
+winogradPowerTest p k = describe ("WinogradPower(" ++ show p ++ "^" ++ show k ++ ")") $
+    sequence_
+    [it ("w^" ++ show i ++ " -- p': " ++ show cP ++ " -- s: " ++ show cS) $
+        toMatrix (winogradPower p k (w^^i) cP cS) @?= toMatrix (F n (w^^i))
+        | i  <- [1,8],
+          cP <- take 2 $ getCycs p',
+          cS <- take 2 $ getCycs s]
+  where
+    n, p', s :: Int
+    n  = p^k
+    p' = (p-1)
+    s  = p * p'
+
+    w :: Exp (Complex Double)
+    w = omega n
+
+winogradSquareTest :: Int -> Spec
+winogradSquareTest p = describe ("WinogradSquare(" ++ show p ++ "^2)") $
+    sequence_
+    [it ("w^" ++ show i) $ toMatrix f @?= toMatrix (F n (w^^i))
+        | i  <- [1,p],
+          f  <- take 1 $ winogradSquare p k (w^^i) getCycs]
+  where
+    n, p', s, k :: Int
+    k  = 2
+    n  = p^k
+    p' = (p-1)
+    s  = p * p'
+
     w :: Exp (Complex Double)
     w = omega n
 

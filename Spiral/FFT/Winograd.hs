@@ -20,20 +20,35 @@ module Spiral.FFT.Winograd (
   -- Composite Algorithms
   winogradLarge,
 
+  -- Odd prime powers
+  winogradSquare,
+  winogradPower,
+
   getWinogradTriple,
   getWinogradTriple',
   ) where
 
+import Spiral.Array.Base (toLists)
 import Spiral.Convolution
 import Spiral.NumberTheory
 import Spiral.RootOfUnity
 import Spiral.SPL
+
+import qualified Data.Set as Set
 
 default (Int)
 
 -- | A 1x1 matrix of just a 1
 one :: (RootOfUnity a, Show a) => SPL a
 one = I 1
+
+-- | More efficient nub function for creating a list of unique values
+nub' :: (Ord a) => [a] -> [a]
+nub' = func Set.empty
+  where
+    func _ [] = []
+    func set (x:xs) | Set.member x set = func set xs
+                    | otherwise = x : func (Set.insert x set) xs
 
 getWinogradTriple :: forall a . (RootOfUnity a, Show a, Eq a)
                   => Int
@@ -57,7 +72,7 @@ getWinogradTriple x y w cycGen =
                        else (map (\f -> f x w2) allF8s) ++ (concat [map (\f -> f r s w2) allF2s | (r, s) <- factors x])
           else if k == 1
                then [biWinogradSmall x c | c <- cycGen (x-1)] -- Odd primes
-               else []
+               else [biWinogradPower p k cP cS | p == 3, k == 2, cP <- cycGen (p-1), cS <- cycGen ((p-1)*p)] -- Size 9 for now
      else [biWinogradLarge r s cr cs | (r,s) <- coprimeFactors x, cr <- getWinogradTriple r s w cycGen, cs <- getWinogradTriple s r w cycGen] -- Recursive options, composite case
   where
     pfs = primeFactorization x
@@ -85,7 +100,7 @@ getWinogradTriple' x y w cycGen =
                        else (map (\f -> f x w2) allF8s) ++ (concat [map (\f -> f r s w2) allF2s | (r, s) <- factors x])
           else if k == 1
                then [biWinogradSmall x c | c <- cycGen (x-1)] -- Odd primes
-               else []
+               else [biWinogradPower p k cP cS | p == 3, k == 2, cP <- cycGen (p-1), cS <- cycGen ((p-1)*p)] -- Size 9 for now
      else [biWinogradLarge r s cr cs | (r,s) <- coprimeFactors x, cr <- getWinogradTriple' r s w cycGen, cs <- getWinogradTriple' s r w cycGen] -- Recursive options, composite case
   where
     pfs = primeFactorization x
@@ -414,3 +429,207 @@ winogradLarge p1 p2 w t1 t2 = bilinear omegas c b a
 
     c, b, a :: SPL a
     (c, b, a) = biWinogradLarge p1 p2 t1 t2
+
+-- | Winograd format for odd prime powers
+winogradPower :: forall a . (RootOfUnity a, Show a, Eq a)
+              => Int
+              -> Int
+              -> a
+              -> CyclicConvolution a
+              -> CyclicConvolution a
+              -> SPL a
+winogradPower p k w convP convS = bilinear omegas c b a
+  where
+    omegas    = [w^i | i <- [0..(p^k)-1]]
+
+    c, b, a :: SPL a
+    (c, b, a) = biWinogradPower p k convP convS
+
+block' :: [[SPL a]] -> SPL a
+block' xss = foldr1 (<->) [foldr1 (<|>) xs | xs <- xss]
+
+biWinogradPower :: forall a . (RootOfUnity a, Show a, Eq a)
+                => Int
+                -> Int
+                -> CyclicConvolution a
+                -> CyclicConvolution a
+                -> (SPL a, SPL a, SPL a)
+biWinogradPower p k convP convS = if (not (p == 3 && k == 2))
+                                  then error "Winograd Prime Power currently only works for 3^2"
+                                  else (_G' × c', b' × _Gw, a' × _G)
+  where
+    n_, g_, g_' :: Integer
+    n_  = ((toInteger p) ^ k)
+    g_  = gen 2
+    g_' = inv n_ g_
+
+    n, p', s :: Int
+    n  = (p ^ k)
+    p' = (p - 1)
+    s  = (p * p')
+
+    gen :: Integer -> Integer
+    gen z = if length lis == s then z else gen (z+1)
+      where
+        lis = nub' [(z^k) `mod` n_ | k <- [0..(s-1)]]
+
+    d0, d1, d2, d0' :: [Integer]
+    d0  = [(g_^k) `mod` n_ | k <- [0..(s-1)]]
+    d0' = [(g_'^k) `mod` n_ | k <- [0..(s-1)]]
+    d1  = [(toInteger p) * (toInteger k) `mod` n_ | k <- [1..(p')]]
+    d1' = [(toInteger p) * (g_'^k) `mod` n_ | k <- [0..(p'-1)]]
+    d2  = [0]
+
+    r, c :: Int -> a -> SPL a
+    r l v = fromFunction (ix2 1 l) (\_ -> v)
+    c l v = fromFunction (ix2 l 1) (\_ -> v)
+
+    e, et :: Int -> a -> SPL a
+    e  n val = fromFunction (ix2 n 1) f
+      where
+        f (Z :. x :. _) | x == 0    = val
+                        | otherwise = 0
+    et n val = fromFunction (ix2 1 n) f
+      where
+        f (Z :. _ :. y) | y == 0    = val
+                        | otherwise = 0
+
+    d, d' :: [(Int, Int)]
+    d = zip [0..(n-1)] $ map fromInteger (d2 ++ d1 ++ d0)
+    d' = zip [0..(n-1)] $ map fromInteger (d2 ++ d1' ++ d0')
+
+    -- | TODO: Transform these prime power permutations into something more
+    -- | visually compact instead of arbitrary matrices
+    _G, _G', _Gw :: SPL a
+    _G = fromFunction (ix2 n n) f
+      where
+        f (Z :. i :. j) | (i, j) `elem` d' = 1
+                        | otherwise        = 0
+    _G' = transpose _Gw
+    _Gw = fromFunction (ix2 n n) f
+      where
+        f (Z :. i :. j) | (i, j) `elem` d = 1
+                        | otherwise       = 0
+
+    -- | The commented out versions are the alternate variants of the expansion
+    -- | and recombination matrices. If switching to these, the cycS must use
+    -- | p' p split nesting instead of p p'
+    _Ex, _Rx :: Int -> Bool -> SPL a -- The expansion and recombination matrices
+    _Ex m' False = I p
+                    ⊕ block' [[I p' ⊗ (et (m' `div` p') 1)],
+                              [I m']]
+    _Ex m' True  = I p
+                    ⊕ block' [[block' [[I p', c p' 0 ⊗ r (m' - p') 0]]],
+                              [I m']]
+    _Rx m' False = one ⊕ block' [[c p' 0 ⊗ r p' 0,            I p',            c p' 0 ⊗ r m' 0],
+                                 [I p' ⊗ (e (m' `div` p') 1), c m' 0 ⊗ r p' 0, I m'           ]]
+    _Rx m' True = one ⊕ block' [[c p' 0 ⊗ r p' 0,                        I p',            c p' 0 ⊗ r m' 0],
+                                [block' [[I p'],
+                                         [c (m' - p') 0 ⊗ r p' 0]], c m' 0 ⊗ r p' 0, I m'           ]]
+
+    _U, _Ut, _V :: Int -> Int -> SPL a
+    _U  n' m' = block' [[one,           block' [[(et n' 1), (et m' 1)]]],
+                        [e (n' + m') 0, I (n' + m')               ]]
+    _Ut n' m' = transpose (_U n' m')
+    _V  n' m' = block' [[one,                 et (2 * n' + m') 0],
+                        [block' [[e n' (-1)],
+                                 [e n' (-1)],
+                                 [e m' (-1)]], I (2 * n' + m')   ]]
+
+    -- | This function checks for different convolution forms dynamically
+    -- | to switch between different expansion and reduction forms
+    check_a :: SPL a -> Bool
+    check_a a = and [if even i then e == 1 else e == (-1) | (i, e) <- zip ([0..] :: [Int]) ((toLists $ toMatrix a) !! 1)]
+
+    aP, bP, cP, aS, bS, cS :: SPL a
+    (cP, bP, aP) = (getC convP, getB convP, getA convP)
+    (cS, bS, aS) = (getC convS, getB convS, getA convS)
+
+    c', b', a' :: SPL a
+    (c', b', a') = let check          = check_a aS
+                       (Z :. m' :. _) = extent aS
+                       (Z :. n' :. _) = extent aP
+                   in ((one ⊕ cP ⊕ cS) × (_Ut n' m') × (_Rx m' check),
+                       (_V n' m') × (one ⊕ bP ⊕ bP ⊕ bS) × (one ⊕ (block' [[(I p')], [(I p')]]) ⊕ I s),
+                       (_Ex m' check) × (_U n' m') × (one ⊕ aP ⊕ aS))
+
+-- | Winograd format for odd prime powers
+winogradSquare :: forall a . (RootOfUnity a, Show a, Eq a)
+               => Int
+               -> Int
+               -> a
+               -> (Int -> [CyclicConvolution a])
+               -> [SPL a]
+winogradSquare p k w cycGen = [bilinear omegas c b a | (c, b, a) <- biWinogradSquare p k cycGen]
+  where
+   omegas = [w^i | i <- [0..(p^k)-1]]
+
+biWinogradSquare :: forall a . (RootOfUnity a, Show a, Eq a)
+                 => Int
+                 -> Int
+                 -> (Int -> [CyclicConvolution a])
+                 -> [(SPL a, SPL a, SPL a)]
+biWinogradSquare p k cycGen =
+    [(c' c1 c2 c3, b' b1 b2 b3, a' a1 a2 a3) | (c1, b1, a1) <- w3, (c2, b2, a2) <- w3, (c3, b3, a3) <- c6]
+  where
+    n, p', s :: Int
+    n = p ^ k
+    p' = p - 1
+    s = p' * p
+
+    n_, g_, g_' :: Integer
+    p_  = toInteger p
+    n_  = ((toInteger p) ^ k)
+    g_  = gen 2
+    g_' = inv n_ g_
+
+    gen :: Integer -> Integer
+    gen z = if length lis == s then z else gen (z+1)
+      where
+        lis = nub' [(z^k) `mod` n_ | k <- [0..(s-1)]]
+
+    d0, d2, d0' :: [Integer]
+    d0  = [(g_^k) `mod` n_ | k <- [0..(s-1)]]
+    d0' = [(g_'^k) `mod` n_ | k <- [0..(s-1)]]
+    d1a  = [(toInteger p) * (toInteger k) `mod` n_ | k <- [1..(p')]]
+    d1b  = map (\x -> x - 1) [((toInteger p) * (g_^k) `div` p_) `mod` p_ | k <- [0..(p'-1)]]
+    d2  = [0]
+
+    dx, dw, dy, dp :: [(Int, Int)]
+    dx = zip [0..] (map fromIntegral $ d2 ++ d1a ++ d0')
+    dw = zip [0..] (map fromIntegral $ d2 ++ d1a ++ d0)
+    dy = zip (map fromIntegral $ d2 ++ d1a ++ d0) [0..]
+    dp = zip [0..] (map fromIntegral d1b)
+
+    _Pp, _Px, _Pw, _Py :: SPL a
+    _Pp = fromFunction (ix2 p' p') f
+      where
+        f (Z :. i :. j) | (i, j) `elem` dp = 1
+                        | otherwise        = 0
+    _Px = fromFunction (ix2 n n) f
+      where
+        f (Z :. i :. j) | (i, j) `elem` dx = 1
+                        | otherwise        = 0
+    _Py = fromFunction (ix2 n n) f
+      where
+        f (Z :. i :. j) | (i, j) `elem` dy = 1
+                        | otherwise        = 0
+    _Pw = fromFunction (ix2 n n) f
+      where
+        f (Z :. i :. j) | (i, j) `elem` dw = 1
+                        | otherwise        = 0
+
+    w3, c6 :: [(SPL a, SPL a, SPL a)]
+    w3 = map (biWinogradSmall p) $ cycGen p'
+    c6 = map (\c -> (getC c, getB c, getA c)) $ cycGen s
+
+    a', b', c' :: SPL a -> SPL a -> SPL a -> SPL a
+    a' a1 a2 a3 = (a1 ⊕ a2 ⊕ a3) × (block' [[((fromLists [replicate p 1]) ⊗ I p)], [(_Px)]])
+    b' b1 b2 b3 = (b1 ⊕ b2 ⊕ b3) × (block' [[(I p)], [(I p)]] ⊕ I s) × _Pw
+    c' c1 c2 c3 = _Py ×
+                  (I p ⊕ block' [[((fromLists (replicate p [1])) ⊗ I p'), (I s)]]) ×
+                  (I (p + p') ⊕ c3) ×
+                  (c1 ⊕ (_Pp × block' [[(fromLists $ replicate p' [0]), (I p')]] × c2) ⊕ i3)
+      where
+        i3  = let (Z :. _ :. j) = extent c3
+              in I j
