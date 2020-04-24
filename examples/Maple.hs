@@ -11,7 +11,7 @@ import Spiral
 import Spiral.Exp
 import Spiral.FFT.CooleyTukey
 import Spiral.SPL
-import Spiral.Util.MaplePretty
+import Spiral.Util.Pretty.Maple
 
 main :: IO ()
 main = defaultMain $ \args -> do
@@ -22,5 +22,5 @@ main = defaultMain $ \args -> do
         dft_n = dit n
     --liftIO $ check dft_n
     liftIO $ putDocLn $ text "with(LinearAlgebra);"
-    liftIO $ putDocLn $ text "A :=" <+> pprm (DFT n :: SPL (Exp (Complex Double))) <> semi
-    liftIO $ putDocLn $ text "B :=" <+> pprm dft_n <> semi
+    liftIO $ putDocLn $ text "A :=" <+> ppr (DFT n :: SPL (Exp (Complex Double))) <> semi
+    liftIO $ putDocLn $ text "B :=" <+> ppr dft_n <> semi
