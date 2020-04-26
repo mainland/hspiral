@@ -60,7 +60,7 @@ the following properties:
 -}
 
 module Data.Complex.Cyclotomic
-    ( Cyclotomic
+    ( Cyclotomic(..)
     , i
     , e
     , sqrtInteger
