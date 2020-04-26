@@ -16,7 +16,6 @@ GHCFLAGS += \
 	-package base \
 	-package bytestring \
 	-package containers \
-	-package cyclotomic \
 	-package exception-mtl \
 	-package exception-transformers \
 	-package language-c-quote \
@@ -45,6 +44,7 @@ GHCFLAGS += \
 # Source locations
 #
 SRC = \
+	Data/Complex/Cyclotomic.hs \
 	Data/FlagSet.hs \
 	Data/Heterogeneous.hs \
 	Data/Modular/Instances.hs \
