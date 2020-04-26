@@ -473,16 +473,24 @@ isRat _                = False
 isGaussianRat :: Cyclotomic -> Bool
 isGaussianRat c = isRat (real c) && isRat (imag c)
 
--- | Export as an inexact complex number.
-toComplex :: RealFloat a => Cyclotomic -> Complex a
-toComplex c = sum [fromRational r * en^p | (p,r) <- M.toList (coeffs c)]
+-- | Original implementation of toComplex
+origToComplex :: RealFloat a => Cyclotomic -> Complex a
+origToComplex c = sum [fromRational r * en^p | (p,r) <- M.toList (coeffs c)]
     where en = exp (0 :+ 2*pi/n)
           n = fromIntegral (order c)
+
+-- | Export as an inexact complex number.
+-- This function avoids some error that origToComplex introduces.
+toComplex :: RealFloat a => Cyclotomic -> Complex a
+toComplex x = re :+ im
+  where
+    Just re = fromRational . toRational <$> (toReal (real x) :: Maybe Double)
+    Just im = fromRational . toRational <$> (toReal (imag x) :: Maybe Double)
 
 -- | Export as an inexact real number if possible.
 toReal :: RealFloat a => Cyclotomic -> Maybe a
 toReal c
-    | isReal c   = Just $ realPart (toComplex c)
+    | isReal c   = Just $ realPart (origToComplex c)
     | otherwise  = Nothing
 
 -- | Return an exact rational number if possible.

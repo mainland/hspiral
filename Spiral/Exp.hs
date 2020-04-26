@@ -56,7 +56,7 @@ module Spiral.Exp (
   ) where
 
 import Data.Complex
-import Data.Complex.Cyclotomic hiding (toComplex)
+import Data.Complex.Cyclotomic
 import Data.Modular
 import Data.Modular.Instances ()
 import Data.Monoid ((<>))
@@ -274,15 +274,6 @@ pprComplex p (r :+ i)    = parensIf (p > addPrec) $
 -- | Convert a 'Complex Double' to a 'Const (Complex Double)'
 fromComplex :: RealFloatConst a => Complex a -> Const (Complex a)
 fromComplex (r :+ i) = ComplexC (toConst r) (toConst i)
-
--- | Convert a 'Cyclotomic' value to a 'Double Complex' value.
--- 'Data.Complex.Cyclotomic.toComplex' introduces some error that this function
--- avoids. Ugh!
-toComplex :: RealFloat a => Cyclotomic -> Complex a
-toComplex x = r :+ i
-  where
-    Just r = (fromRational . toRational) <$> (toReal (real x) :: Maybe Double)
-    Just i = (fromRational . toRational) <$> (toReal (imag x) :: Maybe Double)
 
 -- | Convert a constant into the most general value that can be used for exact
 -- comparison.
