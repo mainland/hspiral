@@ -17,7 +17,7 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.Exp (
-    Var,
+    Var(..),
     Const(..),
     Exp(..),
     Unop(..),
