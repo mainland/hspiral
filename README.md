@@ -115,3 +115,23 @@ Should be run like this:
 ```
 ./voronenko -fmax-unroll=2 -fuse-complex
 ```
+
+# Jupyter and `ihaskell`
+
+To get Jupyter support, run the following commands:
+
+```
+virtualenv -p python3 env
+source env/bin/activate
+pip install -r requirements.txt
+stack install ihaskell-hatex
+ihaskell install --stack
+```
+
+You can then start jupyter:
+
+```
+stack exec jupyter -- notebook --no-browser
+```
+
+You may need to install some prerequisites. See the [IHaskell web site](https://github.com/gibiansky/IHaskell) for details.
