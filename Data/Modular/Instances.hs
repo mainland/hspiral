@@ -44,7 +44,9 @@ instance KnownNat p => Fractional (ℤ/p) where
 instance KnownNat p => RootOfUnity (ℤ/p) where
     omega n0
         | (p-1) `mod` n == 0 = g^((p-1) `div` n)
-        | otherwise          = error "Cannot compute primitive root of unity"
+        | otherwise          = error $ "Cannot compute primitive " ++
+                                       show n ++ "th root of unity in ℤ/" ++
+                                       show p
       where
         p :: Integer
         p = natVal (Proxy :: Proxy p)
