@@ -202,6 +202,7 @@ test-suite test
     base                       >= 4.9   && < 4.13,
     bytestring                 >= 0.9   && < 0.11,
     hspec                      >= 2.5   && < 2.8,
+    hspec-core                 >= 2.5   && < 2.8,
     libltdl                    >= 0.1.1.2 && < 0.2,
     mainland-pretty            >= 0.7   && < 0.8,
     modular-arithmetic         >= 1.2.1.2 && < 1.3,

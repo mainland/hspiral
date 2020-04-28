@@ -11,8 +11,8 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Test.Gen (
-    genComplexTransform,
-    genModularTransform,
+    withComplexTransform,
+    withModularTransform,
 
     withLibltdl,
     withDL
@@ -51,28 +51,30 @@ import Spiral.Exp
 import Spiral.SPL
 import Spiral.SPL.Run
 
-genComplexTransform :: Config
-                    -> String
-                    -> SPL (Exp (Complex Double))
-                    -> IO (V.Vector (Complex Double) -> V.Vector (Complex Double))
-genComplexTransform conf name e =
+withComplexTransform :: Config
+                     -> String
+                     -> SPL (Exp (Complex Double))
+                     -> ((V.Vector (Complex Double) -> V.Vector (Complex Double)) -> IO a)
+                     -> IO a
+withComplexTransform conf name e k =
     withCompiledTransform conf name (Re e) $ \fptr ->
-      return $ mkTransform (dynComplexTransform fptr)
+    k $ mkTransform (dynComplexTransform fptr)
+
+withModularTransform :: KnownNat p
+                     => Config
+                     -> String
+                     -> SPL (Exp (ℤ/p))
+                     -> ((V.Vector (ℤ/p)-> V.Vector (ℤ/p)) -> IO a)
+                     -> IO a
+withModularTransform conf name e k =
+    withCompiledTransform conf name e $ \fptr ->
+    k $ mkTransform (dynModularTransform fptr)
 
 foreign import ccall "dynamic"
     dynComplexTransform :: FunPtr (Ptr (Complex Double) -> Ptr (Complex Double) -> IO ())
                         -> Ptr (Complex Double)
                         -> Ptr (Complex Double)
                         -> IO ()
-
-genModularTransform :: KnownNat p
-                    => Config
-                    -> String
-                    -> SPL (Exp (ℤ/p))
-                    -> IO (V.Vector (ℤ/p) -> V.Vector (ℤ/p))
-genModularTransform conf name e =
-    withCompiledTransform conf name e $ \fptr ->
-      return $ mkTransform (dynModularTransform fptr)
 
 foreign import ccall "dynamic"
     dynModularTransform :: FunPtr (Ptr (ℤ/p) -> Ptr (ℤ/p) -> IO ())
@@ -107,10 +109,7 @@ withCompiledTransform conf fname e k = do
         c <- C.evalCg $ C.cgProgram t
         when True $ writeOutput dotc (toList c)
     callProcess "gcc" ["-o", dotso, "-fPIC", "-shared", dotc]
-    dlInit
-    dlSetSearchPath ["."]
-    h <- dlOpen (Just dotso)
-    dlSym h fname >>= k
+    withLibltdl ["."] $ withDL dotso $ \h -> dlSym h fname >>= k
   where
     dotc, dotso :: FilePath
     dotc  = fname ++ ".c"

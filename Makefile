@@ -19,6 +19,7 @@ GHCFLAGS += \
 	-package exception-mtl \
 	-package exception-transformers \
 	-package hspec \
+	-package hspec-core \
 	-package language-c-quote \
 	-package libltdl \
 	-package logict \
