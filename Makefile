@@ -16,8 +16,10 @@ GHCFLAGS += \
 	-package base \
 	-package bytestring \
 	-package containers \
+	-package directory \
 	-package exception-mtl \
 	-package exception-transformers \
+	-package filepath \
 	-package hspec \
 	-package hspec-core \
 	-package language-c-quote \
@@ -32,6 +34,7 @@ GHCFLAGS += \
 	-package ref-fd \
 	-package srcloc \
 	-package symbol \
+	-package temporary \
 	-package text \
 	-package transformers \
 	-package vector \

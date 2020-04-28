@@ -35,12 +35,16 @@ import Foreign.Ptr (FunPtr,
                     Ptr)
 import Foreign.Storable (Storable)
 import GHC.TypeLits (KnownNat)
+import System.Directory (getTemporaryDirectory)
+import System.FilePath ((</>))
 import System.IO (IOMode(..),
                   hClose,
                   openFile)
+import System.IO.Temp (withTempDirectory)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (callProcess)
-import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland (prettyLazyText,
+                                  prettyPragmaLazyText)
 import Text.PrettyPrint.Mainland.Class
 
 import qualified Spiral.Backend.C as C
@@ -104,16 +108,17 @@ withCompiledTransform :: (Typed a, Num (Exp a))
                       -> (FunPtr b -> IO c)
                       -> IO c
 withCompiledTransform conf fname e k = do
-    runSpiralWith conf $ do
-        t <- toProgram fname e
-        c <- C.evalCg $ C.cgProgram t
-        when True $ writeOutput dotc (toList c)
-    callProcess "gcc" ["-o", dotso, "-fPIC", "-shared", dotc]
-    withLibltdl ["."] $ withDL dotso $ \h -> dlSym h fname >>= k
-  where
-    dotc, dotso :: FilePath
-    dotc  = fname ++ ".c"
-    dotso = fname ++ ".so"
+    temp <- getTemporaryDirectory
+    withTempDirectory temp "spiral" $ \path -> do
+        let dotc, dotso :: FilePath
+            dotc  = path </> fname ++ ".c"
+            dotso = path </> fname ++ ".so"
+        runSpiralWith conf $ do
+            t <- toProgram fname e
+            c <- C.evalCg $ C.cgProgram t
+            when True $ writeOutput dotc (toList c)
+        callProcess "gcc" ["-o", dotso, "-fPIC", "-shared", dotc]
+        withLibltdl ["."] $ withDL dotso $ \h -> dlSym h fname >>= k
 
 withLibltdl :: SearchPath -> IO a -> IO a
 withLibltdl path k = bracket_ dlInit dlExit (dlSetSearchPath path >> k)
