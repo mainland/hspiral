@@ -61,7 +61,7 @@ defaultMainWith config k = defaultMainWith' [] config $ \_ args -> k args
 
 defaultMainWith' :: [OptDescr o] -> Config -> ([o] -> [String] -> Spiral a) -> IO a
 defaultMainWith' opts config k = do
-    args             <- getArgs
+    args                 <- getArgs
     (config', fs, args') <- parseOpts' args opts
     if mode config' == Help
       then usage' opts >>= hPutStrLn stderr >> exitFailure
