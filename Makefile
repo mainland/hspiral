@@ -18,6 +18,7 @@ GHCFLAGS += \
 	-package containers \
 	-package exception-mtl \
 	-package exception-transformers \
+	-package hspec \
 	-package language-c-quote \
 	-package libltdl \
 	-package logict \
@@ -30,9 +31,6 @@ GHCFLAGS += \
 	-package ref-fd \
 	-package srcloc \
 	-package symbol \
-	-package test-framework \
-	-package test-framework-hunit \
-	-package test-framework-quickcheck2 \
 	-package text \
 	-package transformers \
 	-package vector \
