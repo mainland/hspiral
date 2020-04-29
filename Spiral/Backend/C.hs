@@ -215,12 +215,12 @@ cgExp (BinopE op e1 e2) = do
     go op ModPT{} _ _ =
         faildoc $ text "Cannot compile" <+> ppr op <+> text "for modular arithmetic"
 
-    go Add _  ce1 ce2 = return $ ce1 + ce2
-    go Sub _  ce1 ce2 = return $ ce1 - ce2
-    go Mul _  ce1 ce2 = return $ ce1 * ce2
+    go Add  _ ce1 ce2 = return $ ce1 + ce2
+    go Sub  _ ce1 ce2 = return $ ce1 - ce2
+    go Mul  _ ce1 ce2 = return $ ce1 * ce2
     go Quot _ ce1 ce2 = return $ ce1 `quot` ce2
-    go Rem _  ce1 ce2 = return $ ce1 `rem` ce2
-    go Div _  _   _   = fail "Can't happen"
+    go Rem  _ ce1 ce2 = return $ ce1 `rem` ce2
+    go FDiv _ _   _   = fail "Can't happen"
 
 cgExp (IdxE v es) = do
     cv  <- lookupVar v

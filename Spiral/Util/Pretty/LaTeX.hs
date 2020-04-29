@@ -270,7 +270,7 @@ instance Pretty Binop where
   ppr Mul  = comm0 "cdot"
   ppr Quot = comm0 "quot"
   ppr Rem  = operatorname "rem"
-  ppr Div  = "/"
+  ppr FDiv = "/"
 
 instance Pretty BBinop where
   ppr Eq = "="

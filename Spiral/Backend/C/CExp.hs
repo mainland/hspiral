@@ -135,7 +135,7 @@ instance LiftNum CExp where
     liftNum2 Mul  _ ce1 ce2 = CExp [cexp|$ce1 * $ce2|]
     liftNum2 Quot _ ce1 ce2 = CExp [cexp|$ce1 / $ce2|]
     liftNum2 Rem  _ ce1 ce2 = CExp [cexp|$ce1 % $ce2|]
-    liftNum2 Div  _ ce1 ce2 = CExp [cexp|$ce1 / $ce2|]
+    liftNum2 FDiv _ ce1 ce2 = CExp [cexp|$ce1 / $ce2|]
 
 instance Num CExp where
     (+) = liftNum2 Add (+)

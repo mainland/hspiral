@@ -239,7 +239,7 @@ instance Pretty (Const a) where
     pprPrec _ (DoubleC x)   = ppr x
     pprPrec p (RationalC x)
       | denominator x == 1  = ppr (numerator x)
-      | otherwise           = infixop p Div (numerator x) (denominator x)
+      | otherwise           = infixop p FDiv (numerator x) (denominator x)
 
     pprPrec p x@ComplexC{} = pprComplex p (fromConst x)
 
@@ -489,7 +489,7 @@ data Binop = Add
            | Mul
            | Quot
            | Rem
-           | Div
+           | FDiv
   deriving (Eq, Ord, Show, Enum)
 
 -- | Boolean binary operators
@@ -525,7 +525,7 @@ instance HasFixity Binop where
     fixity Mul  = infixl_ 9
     fixity Quot = infixl_ 9
     fixity Rem  = infixl_ 9
-    fixity Div  = infixl_ 9
+    fixity FDiv = infixl_ 9
 
 instance HasFixity BBinop where
     fixity Eq = infix_ 4
@@ -559,7 +559,7 @@ instance Pretty Binop where
     ppr Mul  = text "*"
     ppr Quot = text "`quot`"
     ppr Rem  = text "`rem`"
-    ppr Div  = text "/"
+    ppr FDiv = text "/"
 
 instance Pretty BBinop where
     ppr Eq = text "=="
@@ -1088,13 +1088,13 @@ class LiftFrac b where
     liftFrac2 :: Binop -> (forall a . Fractional a => a -> a -> a) -> b -> b -> b
 
 instance (Fractional a, ToConst a, Fractional (Const a)) => LiftFrac (Const a) where
-    liftFrac2 Div _ c1 (W n k x) | isOne c1 = mkW (-k % n) (1/x)
+    liftFrac2 FDiv _ c1 (W n k x) | isOne c1 = mkW (-k % n) (1/x)
 
-    liftFrac2 Div _ (W n k x) (W n' k' y) = mkW (k % n - k' % n') (x/y)
+    liftFrac2 FDiv _ (W n k x) (W n' k' y) = mkW (k % n - k' % n') (x/y)
 
-    liftFrac2 Div _ (PiC x) (RationalC y) = PiC (x / y)
+    liftFrac2 FDiv _ (PiC x) (RationalC y) = PiC (x / y)
 
-    liftFrac2 Div _ c1 c2 | isOne c2 =
+    liftFrac2 FDiv _ c1 c2 | isOne c2 =
         c1
 
     liftFrac2 _op f (RationalC x) (RationalC y) = RationalC (f x y)
@@ -1110,63 +1110,63 @@ instance (Fractional a, ToConst a, Fractional (Const a)) => LiftFrac (Const a) w
 instance (LiftFrac (Const a), Num (Exp a)) => LiftFrac (Exp a) where
     liftFrac2 op f (ConstE c1) (ConstE c2) = ConstE $ liftFrac2 op f c1 c2
 
-    liftFrac2 Div _ e1 e2 | isOne e2 =
+    liftFrac2 FDiv _ e1 e2 | isOne e2 =
         e1
 
     liftFrac2 op _ e1 e2 = BinopE op e1 e2
 
 instance Fractional (Const Rational) where
-    (/) = liftFrac2 Div (/)
+    (/) = liftFrac2 FDiv (/)
 
     fromRational = RationalC
 
 instance Fractional (Const Float) where
-    (/) = liftFrac2 Div (/)
+    (/) = liftFrac2 FDiv (/)
 
     fromRational = RationalC
 
 instance Fractional (Const Double) where
-    (/) = liftFrac2 Div (/)
+    (/) = liftFrac2 FDiv (/)
 
     fromRational = RationalC
 
 instance Fractional (Const (Complex Float)) where
-    (/) = liftFrac2 Div (/)
+    (/) = liftFrac2 FDiv (/)
 
     fromRational = RationalC
 
 instance Fractional (Const (Complex Double)) where
-    (/) = liftFrac2 Div (/)
+    (/) = liftFrac2 FDiv (/)
 
     fromRational = RationalC
 
 instance KnownNat p => Fractional (Const (ℤ/p)) where
-    (/) = liftFrac2 Div (/)
+    (/) = liftFrac2 FDiv (/)
 
     fromRational = ModularC . fromRational
 
 instance Fractional (Exp Float) where
-    (/) = liftFrac2 Div (/)
+    (/) = liftFrac2 FDiv (/)
 
     fromRational = ConstE . fromRational
 
 instance Fractional (Exp Double) where
-    (/) = liftFrac2 Div (/)
+    (/) = liftFrac2 FDiv (/)
 
     fromRational = ConstE . fromRational
 
 instance Fractional (Exp (Complex Float)) where
-    (/) = liftFrac2 Div (/)
+    (/) = liftFrac2 FDiv (/)
 
     fromRational = ConstE . fromRational
 
 instance Fractional (Exp (Complex Double)) where
-    (/) = liftFrac2 Div (/)
+    (/) = liftFrac2 FDiv (/)
 
     fromRational = ConstE . fromRational
 
 instance KnownNat p => Fractional (Exp (ℤ/p)) where
-    (/) = liftFrac2 Div (/)
+    (/) = liftFrac2 FDiv (/)
 
     fromRational = ConstE . fromRational
 
