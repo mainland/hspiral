@@ -220,6 +220,10 @@ cgExp (BinopE op e1 e2) = do
     go Mul  _ ce1 ce2 = return $ ce1 * ce2
     go Quot _ ce1 ce2 = return $ ce1 `quot` ce2
     go Rem  _ ce1 ce2 = return $ ce1 `rem` ce2
+    go Div  _ ce1 ce2 = do warning $ text "Saw div; consider quot"
+                           return $ ce1 `div` ce2
+    go Mod  _ ce1 ce2 = do warning $ text "Saw mod; consider rem"
+                           return $ ce1 `mod` ce2
     go FDiv _ _   _   = fail "Can't happen"
 
 cgExp (IdxE v es) = do

@@ -489,6 +489,8 @@ data Binop = Add
            | Mul
            | Quot
            | Rem
+           | Div
+           | Mod
            | FDiv
   deriving (Eq, Ord, Show, Enum)
 
@@ -525,6 +527,8 @@ instance HasFixity Binop where
     fixity Mul  = infixl_ 9
     fixity Quot = infixl_ 9
     fixity Rem  = infixl_ 9
+    fixity Div  = infixl_ 9
+    fixity Mod  = infixl_ 9
     fixity FDiv = infixl_ 9
 
 instance HasFixity BBinop where
@@ -559,6 +563,8 @@ instance Pretty Binop where
     ppr Mul  = text "*"
     ppr Quot = text "`quot`"
     ppr Rem  = text "`rem`"
+    ppr Div  = text "`div`"
+    ppr Mod  = text "`mod`"
     ppr FDiv = text "/"
 
 instance Pretty BBinop where
@@ -1038,8 +1044,12 @@ instance Real (Const Int) where
 instance Integral (Const Int) where
     quot = liftIntegral2 Quot quot
     rem  = liftIntegral2 Rem rem
+    div  = liftIntegral2 Div div
+    mod  = liftIntegral2 Mod mod
 
     x `quotRem` y = (x `quot` y, x `rem` y)
+
+    x `divMod` y = (x `div` y, x `mod` y)
 
     toInteger (IntC i)    = fromIntegral i
     toInteger RationalC{} = error "can't happen"
@@ -1070,8 +1080,12 @@ instance Real (Exp Int) where
 instance Integral (Exp Int) where
     quot = liftIntegral2 Quot quot
     rem  = liftIntegral2 Rem rem
+    div  = liftIntegral2 Div div
+    mod  = liftIntegral2 Mod mod
 
     x `quotRem` y = (x `quot` y, x `rem` y)
+
+    x `divMod` y = (x `div` y, x `mod` y)
 
     toInteger (ConstE (IntC i)) = fromIntegral i
     toInteger _                 = error "Integral Exp: toInteger not implemented"

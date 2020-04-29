@@ -184,8 +184,10 @@ instance Pretty Binop where
     ppr Add  = char '+'
     ppr Sub  = char '-'
     ppr Mul  = char '*'
-    ppr Quot = text "`div`"
-    ppr Rem  = text "`mod`"
+    ppr Quot = text "`quot`"
+    ppr Rem  = text "`rem`"
+    ppr Div  = text "`div`"
+    ppr Mod  = text "`mod`"
     ppr FDiv = char '/'
 
 instance Pretty BBinop where
