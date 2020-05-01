@@ -209,7 +209,7 @@ factorizationTests = describe "Factorization" $ do
     describe "Split Radix" $ sequence_ [splitRadixTest n | n <- [1..3]]
     describe "Split Radix 8" $ sequence_ [splitRadix8Test n | n <- [1..2]]
     describe "Conjugate Pair Split Radix" $ sequence_ [conjPairSplitRadixTest n | n <- [1..3]]
-    xdescribe "Improved Split Radix" $ sequence_ [improvedSplitRadixTest n | n <- [1..3]]
+    describe "Improved Split Radix" $ sequence_ [improvedSplitRadixTest n | n <- [1..3]]
     searchTests
     modularDFTTests
 
@@ -510,7 +510,7 @@ splitRadixCodegenTests conf =
 
 improvedSplitRadixCodegenTests :: Config -> Spec
 improvedSplitRadixCodegenTests conf =
-    xdescribe "Generated improved split radix DFT" $
+    describe "Generated improved split radix DFT" $
     mkCodegenTests conf "Improved split radix DFT of size" (runSearch () f . Re . DFT)
   where
     f :: (Typeable a, Typed a, MonadSpiral m)
