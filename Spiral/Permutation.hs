@@ -116,7 +116,7 @@ toIdxMapping' (J n0) = f
 toIdxMapping' (CS n0 k0) = f
   where
     f :: a -> a
-    f i = (i + k) `mod` n
+    f i = (i + k + n) `rem` n
       where
         n, k :: a
         n = fromIntegral n0
