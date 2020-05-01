@@ -20,6 +20,8 @@ module Spiral.Backend.C.Monad (
     Cg,
     evalCg,
 
+    warning,
+
     tell,
     collect,
     collectDefinitions,
@@ -87,6 +89,9 @@ import qualified Data.Sequence as Seq
 import Language.C.Pretty ()
 import qualified Language.C.Quote as C
 import Language.C.Quote.C
+import System.IO (hPutStrLn,
+                  stderr)
+import System.IO.Unsafe (unsafePerformIO)
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
@@ -140,6 +145,13 @@ evalCg :: Monad m => Cg m () -> m (Seq C.Definition)
 evalCg m = do
     s <- execStateT (unCg m) defaultCgState
     return $ (codeDefs . code) s <> (codeFunDefs . code) s
+
+-- | Display a compiler warning
+warning :: Monad m => Doc -> Cg m ()
+warning doc =
+    return $!
+        unsafePerformIO $
+        hPutStrLn stderr (pretty 80 doc)
 
 -- | Add generated code.
 tell :: Monad m => Code -> Cg m ()
