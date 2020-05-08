@@ -194,8 +194,13 @@ test-suite test
     src/test
 
   other-modules:
+    Test.Codegen
     Test.FFTW
+    Test.Factorization
     Test.Gen
+    Test.Instances
+    Test.Opcount
+    Test.SPL
 
   build-depends:
     spl,

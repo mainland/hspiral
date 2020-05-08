@@ -105,8 +105,13 @@ SRC = \
 	Spiral/Util/Uniq.hs
 
 TESTSRC = \
+  src/test/Test/Codegen.hs \
   src/test/Test/FFTW.hs \
-  src/test/Test/Gen.hs
+  src/test/Test/Factorization.hs \
+  src/test/Test/Gen.hs \
+  src/test/Test/Instances.hs \
+  src/test/Test/Opcount.hs \
+  src/test/Test/SPL.hs
 
 #
 # all, clean, and distclean targets
