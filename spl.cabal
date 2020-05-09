@@ -108,7 +108,7 @@ library
     QuickCheck             >= 2.8   && < 2.14
 
   ghc-options:
-    -Wall -fno-warn-name-shadowing
+    -Wall -fno-warn-name-shadowing -O2
 
   if impl(ghc >= 8.0)
     ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances
@@ -221,6 +221,9 @@ test-suite test
     vector-fftw                >= 0.1   && < 0.2,
     HUnit                      >= 1.3   && < 1.7,
     QuickCheck                 >= 2.8   && < 2.14
+
+  ghc-options:
+    -Wall -fno-warn-name-shadowing -O2
 
 source-repository head
   type:     git
