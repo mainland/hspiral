@@ -58,8 +58,7 @@ import Test.Gen
 import Test.Instances ()
 
 codegenTests :: Config -> Spec
-codegenTests conf =
-    describe "Code Generation Tests" $ do
+codegenTests conf = do
     ditCodegenTests conf [2^i | i <- [1..9::Int]]
     difCodegenTests conf [2^i | i <- [1..9::Int]]
     splitRadixCodegenTests conf [2^i | i <- [1..9::Int]]

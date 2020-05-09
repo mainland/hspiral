@@ -15,6 +15,8 @@ module Main (main) where
 
 import Test.Hspec
 
+import qualified Data.FlagSet as FS
+import Spiral.Config
 import Spiral.NumberTheory
 
 import Test.Codegen
@@ -33,4 +35,20 @@ spec = do
     splTests
     factorizationTests
     opCountTests
-    codegenTests mempty
+    describe "Code Generation Tests (default flags)" $
+        codegenTests mempty
+    describe "Code Generation Tests (full-unrolling)" $
+        codegenTests fullUnrollConfig
+  where
+    fullUnrollConfig :: Config
+    fullUnrollConfig = mempty { dynFlags  = FS.fromList fs
+                              , maxUnroll = 4096
+                              }
+      where
+      fs :: [DynFlag]
+      fs = [ StoreIntermediate
+           , SplitComplex
+           , CSE
+           , Rewrite
+           , DifRewrite
+           ]
