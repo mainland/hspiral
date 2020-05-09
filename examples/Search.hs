@@ -3,12 +3,11 @@
 
 module Main (main) where
 
-import Control.Monad ((>=>))
 import Control.Monad.IO.Class (liftIO)
 import Data.Complex (Complex)
 import Data.Foldable (toList)
-import Data.Maybe (fromMaybe)
-import System.Console.GetOpt
+import Data.List (nub,
+                  sort)
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 import Text.Read (readMaybe)
@@ -24,63 +23,38 @@ import Spiral.SPL
 import Spiral.SPL.Run
 import Spiral.Util.Uniq
 
-data SearchConfig = SearchConfig
-    { -- | Start of search range
-      rangeStart :: Maybe Int
+parseSizesArg :: Monad m => String -> m [Int]
+parseSizesArg = fmap concat . mapM parseRange . splitOn (== ',')
 
-    , -- | End of search range
-      rangeEnd :: Maybe Int
-    }
-  deriving (Eq, Ord, Show)
+parseRange :: Monad m => String -> m [Int]
+parseRange s =
+    case splitOn (== '-') s of
+      [x]   -> do start <- parseInt x
+                  return [start]
+      [x,y] -> do start <- parseInt x
+                  end   <- parseInt y
+                  return [start..end]
+      _     -> fail $ "Cannot parse range: " ++ s
 
-instance Semigroup SearchConfig where
-    x <> y = SearchConfig
-        { rangeStart = rangeStart x `rightBiased` rangeStart y
-        , rangeEnd   = rangeEnd x `rightBiased` rangeEnd y
-      }
-      where
-        rightBiased :: Maybe a -> Maybe a -> Maybe a
-        rightBiased Nothing Nothing = Nothing
-        rightBiased (Just x) Nothing = Just x
-        rightBiased _ (Just x) = Just x
+parseInt :: Monad m => String -> m Int
+parseInt s = case readMaybe s of
+                 Nothing -> fail $ "Cannot parse integer: " ++ s
+                 Just n  -> return n
 
-instance Monoid SearchConfig where
-    mempty = SearchConfig
-        { rangeStart = Nothing
-        , rangeEnd   = Nothing
-        }
-
-    mappend = (<>)
-
-searchOpts :: forall m . Monad m => [OptDescr (SearchConfig -> m SearchConfig)]
-searchOpts =
-    [ Option [] ["start"] (ReqArg start "INT") "Set start of range"
-    , Option [] ["end"]   (ReqArg end "INT")   "Set end of range"
-    ]
-  where
-    start :: String -> SearchConfig -> m SearchConfig
-    start s config =
-        case readMaybe s of
-            Nothing -> fail $ "Illegal start range " ++ s
-            Just n  -> return config { rangeStart = Just n }
-
-    end :: String -> SearchConfig -> m SearchConfig
-    end s config =
-        case readMaybe s of
-            Nothing -> fail $ "Illegal end range " ++ s
-            Just n  -> return config { rangeEnd = Just n }
+splitOn :: (Char -> Bool) -> String -> [String]
+splitOn p s = case dropWhile p s of
+                  "" -> []
+                  s' -> w : splitOn p s''
+                        where (w, s'') = break p s'
 
 main :: IO ()
 main =
-    defaultMainWith' searchOpts mempty $ \opts _args -> do
-    config <- combineOpts opts
+    defaultMainWith mempty $ \args -> do
+    sizes <- nub . sort . concat <$> mapM parseSizesArg args
     useComplexType <- asksConfig $ testDynFlag UseComplex
     liftIO $ putDocLn $ text "\"size\",\"totalops\",\"mulops\",\"addops\""
-    mapM_ (search useComplexType) [fromMaybe 2 (rangeStart config)..fromMaybe 64 (rangeEnd config)]
+    mapM_ (search useComplexType) sizes
   where
-    combineOpts :: (Monoid a, Monad m) => [a -> m a] -> m a
-    combineOpts opts = foldl (>=>) return opts mempty
-
     search :: Bool -> Int -> Spiral ()
     search True  n = searchOpCount (DFT n :: SPL (Exp (Complex Double))) >>= go n
     search False n = searchOpCount (Re (DFT n) :: SPL (Exp Double)) >>= go n
