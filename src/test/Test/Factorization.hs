@@ -48,7 +48,7 @@ import Spiral.SPL
 import Spiral.Search.OpCount
 
 factorizationTests :: Spec
-factorizationTests = describe "Factorization" $ do
+factorizationTests = do
     f2Test
     f4Test
     f8Test
@@ -86,8 +86,6 @@ complexFactorizationTests = do
         sequence_ [conjPairSplitRadixTest p n | n <- [1..3]]
     describe "Improved Split Radix" $
         sequence_ [improvedSplitRadixTest p n | n <- [1..3]]
-    describe "Opcount-optimized DFT" $
-        sequence_ [opcountSearchTest (2^i) | i <- [1..6::Int]]
   where
     p :: Proxy (Complex Double)
     p = Proxy

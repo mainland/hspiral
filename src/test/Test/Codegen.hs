@@ -57,13 +57,14 @@ import qualified Test.FFTW as FFTW
 import Test.Gen
 import Test.Instances ()
 
-codegenTests :: Config -> Spec
-codegenTests conf = do
-    ditCodegenTests conf [2^i | i <- [1..9::Int]]
-    difCodegenTests conf [2^i | i <- [1..9::Int]]
-    splitRadixCodegenTests conf [2^i | i <- [1..9::Int]]
-    improvedSplitRadixCodegenTests conf [2^i | i <- [1..9::Int]]
-    searchCodegenTests conf [2^i | i <- [1..9::Int]]
+codegenTests :: Config
+             -> [Int]
+             -> Spec
+codegenTests conf sizes = do
+    ditCodegenTests conf sizes
+    difCodegenTests conf sizes
+    splitRadixCodegenTests conf sizes
+    improvedSplitRadixCodegenTests conf sizes
     modCodegenTests conf
 
 ditCodegenTests :: Config -> [Int] -> Spec

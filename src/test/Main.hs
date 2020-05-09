@@ -13,6 +13,8 @@
 
 module Main (main) where
 
+import Data.List (nub,
+                  sort)
 import Test.Hspec
 
 import qualified Data.FlagSet as FS
@@ -33,13 +35,24 @@ main = do
 spec :: Spec
 spec = do
     splTests
-    factorizationTests
+    describe "Factorization" $ do
+        factorizationTests
+        describe "Opcount-optimized DFT" $
+            mapM_ opcountSearchTest allSizes
     opCountTests
-    describe "Code Generation Tests (default flags)" $
-        codegenTests mempty
-    describe "Code Generation Tests (full-unrolling)" $
-        codegenTests fullUnrollConfig
+    describe "Code Generation Tests (default flags)" $ do
+        codegenTests mempty pow2Sizes
+        searchCodegenTests mempty allSizes
+    describe "Code Generation Tests (full-unrolling)" $ do
+        codegenTests fullUnrollConfig pow2Sizes
+        searchCodegenTests fullUnrollConfig allSizes
   where
+    allSizes :: [Int]
+    allSizes = nub . sort $ [2..32] ++ pow2Sizes
+
+    pow2Sizes :: [Int]
+    pow2Sizes = [2^i | i <- [1..9::Int]]
+
     fullUnrollConfig :: Config
     fullUnrollConfig = mempty { dynFlags  = FS.fromList fs
                               , maxUnroll = 4096
