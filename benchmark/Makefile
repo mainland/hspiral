@@ -2,6 +2,10 @@ CFLAGS = -I. -march=native -mtune=native -Ofast -fno-tree-vectorize
 
 LDFLAGS = -lfftw3
 
+SEARCH = ../search
+
+SEARCH_FLAGS = -fmax-unroll=4096 2-64
+
 OPCOUNTS = ../opcounts
 
 OPCOUNTS_FLAGS = -fmax-unroll=4096
@@ -41,6 +45,9 @@ hspiral/fft%.c :
 
 benchmark : src/main.c $(SPIRAL_SRC) $(HSPIRAL_SRC) $(FFTW3_SRC)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+data/search-opcount.csv : $(SEARCH)
+	$(SEARCH) $(SEARCH_FLAGS) >$@
 
 data/opcount.csv : $(OPCOUNTS)
 	$(OPCOUNTS) $(OPCOUNTS_FLAGS) >$@
