@@ -40,6 +40,8 @@ spec = do
         describe "Opcount-optimized DFT" $
             mapM_ opcountSearchTest allSizes
     opCountTests
+    describe "Opcount regressions" $
+        opcountRegressionTests 32
     describe "Code Generation Tests (default flags)" $ do
         codegenTests mempty pow2Sizes
         searchCodegenTests mempty allSizes

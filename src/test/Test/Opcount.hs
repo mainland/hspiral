@@ -14,13 +14,16 @@
 module Test.Opcount (
     opCountTests,
     splitRadixOpcountTests,
-    difOpcountTests
+    difOpcountTests,
+    opcountRegressionTests
   ) where
 
 import Control.Monad (mzero)
 import Data.Complex
 import Data.Typeable (Typeable)
-import Test.HUnit ((@?=))
+import Test.HUnit (Assertion,
+                   (@?=),
+                   assertEqual)
 import Test.Hspec
 
 import qualified Data.FlagSet as FS
@@ -36,6 +39,7 @@ import Spiral.SPL
 import Spiral.SPL.Run
 import Spiral.Search
 import Spiral.Search.FFTBreakdowns
+import Spiral.Search.OpCount
 
 import Test.Instances ()
 
@@ -120,3 +124,46 @@ withOpcountFlags fs =
     localConfig $ \env -> env { dynFlags  = FS.fromList fs
                               , maxUnroll = 256
                               }
+
+opcountRegressionTests :: Int -> Spec
+opcountRegressionTests max_size = do
+    text <- runIO $ readFile rEGRESSION_FILE
+    let opcounts = (map parseCSV . drop 1 . lines) text
+    mapM_ test [(n,totalOps,mulOps,addOps) | [n,totalOps,mulOps,addOps] <- opcounts, n <= max_size]
+  where
+    rEGRESSION_FILE :: FilePath
+    rEGRESSION_FILE = "benchmark/data/search-opcount.csv"
+
+    parseCSV :: String -> [Int]
+    parseCSV = map read . splitOn (== ',')
+
+    test :: (Int,Int,Int,Int) -> Spec
+    test (n, allOps0, mulOps0, addOps0) = it ("Regression(" ++ show n ++ ")") $ do
+        ops <- runSpiralWith config $ do
+               e    <- searchOpCount (Re (DFT n) :: SPL (Exp Double))
+               prog <- toProgram "dft" e
+               countProgramOps prog
+        return $ checkOps (allOps ops, mulOps ops, addOps ops) (allOps0, mulOps0, addOps0)
+
+    checkOps :: (Int, Int, Int) -> (Int, Int, Int) -> Assertion
+    checkOps ops@(total, _, _) ops'@(total', _, _)
+      | total < total' = assertEqual "IMPROVED!" ops' ops
+      | otherwise      = ops @?= ops'
+
+    config :: Config
+    config = mempty { dynFlags  = FS.fromList fs
+                    , maxUnroll = 256
+                    }
+
+    fs :: [DynFlag]
+    fs = [ StoreIntermediate
+         , SplitComplex
+         , CSE
+         , Rewrite
+         ]
+
+splitOn :: (Char -> Bool) -> String -> [String]
+splitOn p s = case dropWhile p s of
+                  "" -> []
+                  s' -> w : splitOn p s''
+                        where (w, s'') = break p s'
