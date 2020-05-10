@@ -27,6 +27,7 @@ import Control.Monad.Reader (MonadReader(..),
 import Data.IORef (IORef)
 
 import Spiral.Config
+import Spiral.Globals
 import Spiral.Monad
 import Spiral.Util.Trace
 import Spiral.Util.Uniq
@@ -52,7 +53,8 @@ runSpiral :: Spiral a -> IO a
 runSpiral m = defaultSpiralEnv >>= runReaderT (unSpiral m)
 
 runSpiralWith :: Config -> Spiral a -> IO a
-runSpiralWith conf m =
+runSpiralWith conf m = do
+    setThreeMults $ testDynFlag ThreeMults conf
     defaultSpiralEnv >>= runReaderT (unSpiral (localConfig (const conf) m))
 
 instance PrimMonad Spiral where
