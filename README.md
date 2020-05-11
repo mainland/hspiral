@@ -42,6 +42,10 @@ sudo apt-get install libfftw3-dev
 
 Once you have created the cabal sandbox and installed SPL's dependencies, you can also type `make` to build the executables explicitly.
 
+### Running the test suite
+
+There are two test suites: the full test suite, and the quick test suite. They can be run from stack using the commands `stack test spl:test:full` and `stack test spl:test:quick`, respectively.
+
 ## Building on a Mac
 
 I installed the `fftw-3` port from MacPorts and then built a sandbox as follows:
