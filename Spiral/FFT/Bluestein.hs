@@ -11,7 +11,7 @@ module Spiral.FFT.Bluestein (
     bluestein
   ) where
 
-import Spiral.Array hiding ((!!))
+import qualified Spiral.Array as A
 import Spiral.Array.Operators.IndexSpace
 import Spiral.RootOfUnity
 import Spiral.SPL hiding (R)
@@ -32,7 +32,7 @@ bluestein n m w = ws × t × ws
     c = DFT' m × diag deltas × DFT m
 
     deltas :: [a]
-    deltas = toList $ toMatrix (DFT m) `mv` fromList cs
+    deltas = A.toList $ toMatrix (DFT m) `mv` A.fromList cs
 
     cs :: [a]
     cs = [w^^(-j^2) | j <- [0..n-1]] ++
@@ -42,7 +42,7 @@ bluestein n m w = ws × t × ws
 -- | The nxm matrix whose diagonal elements are 1 and off-diagonal elements are
 -- 0.
 ones :: Num a => Int -> Int -> SPL a
-ones n m = spl $ fromFunction (ix2 n m) f
+ones n m = fromFunction (ix2 n m) f
   where
     f (Z :. i :. j) | i == j    = 1
                     | otherwise = 0

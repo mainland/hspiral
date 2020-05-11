@@ -34,7 +34,11 @@ import Text.LaTeX.Base.Class (comm0,
 import Text.LaTeX.Packages.AMSFonts
 import Text.LaTeX.Packages.AMSMath
 
-import Spiral.Array
+import Spiral.Array (IArray,
+                     Matrix,
+                     (!))
+import qualified Spiral.Array as A
+import Spiral.Array.Shape
 import Spiral.Exp
 import Spiral.SPL
 import Spiral.Util.Name (Name(..))
@@ -203,7 +207,7 @@ instance Pretty Var where
 instance (Pretty e, IArray r DIM2 e) => Pretty (Matrix r e) where
   ppr mat = bmatrix Nothing $ M.matrix m n f
     where
-      Z :. m :. n = extent mat
+      Z :. m :. n = A.extent mat
 
       f :: (Int, Int) -> LaTeX
       f (i, j) = ppr (mat ! (i-1, j-1))

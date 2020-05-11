@@ -38,7 +38,7 @@ bruteForce :: (RootOfUnity (Exp a), MonadPlus m)
            => Int
            -> Exp a
            -> m (SPL (Exp a))
-bruteForce n w = return $ (spl . toMatrix) (F n w)
+bruteForce n w = return $ (matrix . toMatrix) (F n w)
 
 cooleyTukeyBreakdowns :: (RootOfUnity (Exp a), MonadPlus m)
                       => Int

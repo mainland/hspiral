@@ -53,12 +53,12 @@ printOpcount desc f n = do
   liftIO $ printf "%s,%d,%d,%d\n" desc n (mulOps ops) (addOps ops)
 
 radix2DifBreakdown :: Typeable a => SPL (Exp a) -> S () Spiral (SPL (Exp a))
-radix2DifBreakdown e@(F 2 _) = return $ spl $ toMatrix e
+radix2DifBreakdown e@(F 2 _) = return $ matrix $ toMatrix e
 radix2DifBreakdown (F n w)   = return $ cooleyTukeyDIF 2 (n `div` 2) w
 radix2DifBreakdown _         = mzero
 
 radix2DitBreakdown :: Typeable a => SPL (Exp a) -> S () Spiral (SPL (Exp a))
-radix2DitBreakdown e@(F 2 _) = return $ spl $ toMatrix e
+radix2DitBreakdown e@(F 2 _) = return $ matrix $ toMatrix e
 radix2DitBreakdown (F n w)   = return $ cooleyTukeyDIT 2 (n `div` 2) w
 radix2DitBreakdown _         = mzero
 

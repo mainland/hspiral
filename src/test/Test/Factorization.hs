@@ -36,7 +36,9 @@ import Data.Proxy (Proxy(..))
 import Test.HUnit ((@?=))
 import Test.Hspec
 
-import Spiral.Array
+import Spiral.Array (M,
+                     Matrix)
+import qualified Spiral.Array as A
 import Spiral.Driver
 import Spiral.Exp
 import Spiral.FFT.Bluestein
@@ -95,18 +97,18 @@ f2Test :: Spec
 f2Test = it "F_2" $ toMatrix (dit 2) @?= f2
   where
     f2 :: Matrix M (Exp (Complex Double))
-    f2 = matrix [[1,  1],
-                 [1, -1]]
+    f2 = A.matrix [[1,  1],
+                   [1, -1]]
 
 -- $F_4$ calculated per "SPL: A Language and Compiler for DSP Algorithms"
 f4Test :: Spec
 f4Test = it "F_4" $ toMatrix (dit 4) @?= f4
   where
     f4 :: Matrix M (Exp (Complex Double))
-    f4 = matrix [[1,  1,  1,  1],
-                 [1, -i, -1,  i],
-                 [1, -1,  1, -1],
-                 [1,  i, -1, -i]]
+    f4 = A.matrix [[1,  1,  1,  1],
+                   [1, -i, -1,  i],
+                   [1, -1,  1, -1],
+                   [1,  i, -1, -i]]
       where
         i :: Exp (Complex Double)
         i = complexE (0 :+ 1)
@@ -118,14 +120,14 @@ f8Test :: Spec
 f8Test = it "F_8" $ toMatrix (dit 8) @?= f8
   where
     f8 :: Matrix M (Exp (Complex Double))
-    f8 = matrix [[1,  1,  1,  1, 1, 1, 1, 1],
-                 [1,  w, -i,  -i*w, -1, -w, i, i*w],
-                 [1, -i, -1, i, 1, -i, -1, i],
-                 [1, -i*w, i, w, -1, i*w, -i, -w],
-                 [1, -1, 1, -1, 1, -1, 1, -1],
-                 [1, -w, -i, i*w, -1, w, i, -i*w],
-                 [1, i, -1, -i, 1, i, -1, -i],
-                 [1, i*w, i, -w, -1, -i*w, -i, w]]
+    f8 = A.matrix [[1,  1,  1,  1, 1, 1, 1, 1],
+                   [1,  w, -i,  -i*w, -1, -w, i, i*w],
+                   [1, -i, -1, i, 1, -i, -1, i],
+                   [1, -i*w, i, w, -1, i*w, -i, -w],
+                   [1, -1, 1, -1, 1, -1, 1, -1],
+                   [1, -w, -i, i*w, -1, w, i, -i*w],
+                   [1, i, -1, -i, 1, i, -1, -i],
+                   [1, i*w, i, -w, -1, -i*w, -i, w]]
       where
         i = complexE (0 :+ 1)
 

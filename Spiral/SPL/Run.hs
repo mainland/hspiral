@@ -25,7 +25,16 @@ import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
-import Spiral.Array
+import qualified Spiral.Array as A
+import Spiral.Array (Computable,
+                     DS,
+                     MArray,
+                     SArray,
+                     Vector,
+                     computeP,
+                     forShapeP,
+                     indexS,
+                     write)
 import Spiral.Array.Operators.IndexSpace
 import Spiral.Array.Operators.Permute
 import Spiral.Array.Repr.Complex
@@ -33,6 +42,7 @@ import Spiral.Array.Repr.Compute
 import Spiral.Array.Repr.Concrete
 import Spiral.Array.Repr.Slice
 import Spiral.Array.Repr.Transform
+import Spiral.Array.Shape
 import Spiral.Exp
 import Spiral.Monad
 import Spiral.Program.Monad
@@ -54,7 +64,7 @@ toProgram f a = do
      y = C (ix1 m) "Y"
 
      m, n :: Int
-     Z :. m :. n = splExtent a
+     Z :. m :. n = extent a
 
 infix 4 .<-.
 (.<-.) :: forall r1 r2 m a . (MonadSpiral m, MArray r1 DIM1 a, Computable r2 DIM1 a)
@@ -100,7 +110,7 @@ runSPL e@(Diag v) x = do
             write y (Z :. ei) (v V.! i * indexS x (Z :. ei))
 
     go x y _ = do
-        d <- cacheArray (fromFunction (ix1 n) f)
+        d <- cacheArray (A.fromFunction (ix1 n) f)
         forShapeP (ix1 n) $ \eix ->
             write y eix (indexS d eix * indexS x eix)
       where
@@ -120,7 +130,7 @@ runSPL e@(Kron (I m) a) x | n' == n = do
       forP 0 m $ \i ->
         slice y (i*e_n) 1 n .<-. runSPL a (fromGather (slice t (i*e_n) 1 n))
   where
-    Z :. n :. n' = splExtent a
+    Z :. n :. n' = extent a
 
     e_n :: Exp Int
     e_n = fromIntegral n
@@ -132,7 +142,7 @@ runSPL e@(Kron a (I n)) x | m' == m = do
       forP 0 n $ \i ->
         slice y i n m .<-. runSPL a (fromGather (slice t i n m))
   where
-    Z :. m :. m' = splExtent a
+    Z :. m :. m' = extent a
 
 runSPL e@(DSum a b) x | m' == m && n' == n = do
     t <- gather x
@@ -141,8 +151,8 @@ runSPL e@(DSum a b) x | m' == m && n' == n = do
       slice y 0 1 m                .<-. runSPL a  (fromGather (slice t 0 1 m))
       slice y (fromIntegral m) 1 n .<-. runSPL b  (fromGather (slice t (fromIntegral m) 1 n))
   where
-    Z :. m :. m' = splExtent a
-    Z :. n :. n' = splExtent b
+    Z :. m :. m' = extent a
+    Z :. n :. n' = extent b
 
 runSPL e@(Prod a b) x = do
     when (n' /= n) $
@@ -151,8 +161,8 @@ runSPL e@(Prod a b) x = do
     t <- runSPL b x
     runSPL a t
   where
-    Z :. _m :.  n = splExtent a
-    Z :. n' :. _p = splExtent b
+    Z :. _m :.  n = extent a
+    Z :. n' :. _p = extent b
 
 runSPL (Re a) x = do
     t <- gather x
@@ -180,4 +190,4 @@ computeTransform :: MonadSpiral m
 computeTransform a k =
     return $ fromScatter $ fromCompute (ix1 m) k
   where
-    Z :. m :. _n = splExtent a
+    Z :. m :. _n = extent a

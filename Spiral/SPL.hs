@@ -17,14 +17,17 @@ module Spiral.SPL (
     module Spiral.Permutation,
 
     SPL(..),
-    spl,
+    matrix,
+    fromLists,
+    fromFunction,
+
     diag,
     circ,
     toep,
     permute,
     backpermute,
 
-    splExtent,
+    extent,
 
     toMatrix,
     col,
@@ -33,6 +36,15 @@ module Spiral.SPL (
     (⊗),
     (×),
     (⊕),
+
+    Z(..),
+    (:.)(..),
+
+    DIM0,
+    DIM1,
+    DIM2,
+    ix1,
+    ix2
   ) where
 
 import Data.Complex
@@ -42,8 +54,14 @@ import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
-import Spiral.Array
+import qualified Spiral.Array as A
+import Spiral.Array (IArray,
+                     M,
+                     Matrix,
+                     (!),
+                     manifest)
 import Spiral.Array.Repr.Complex
+import Spiral.Array.Shape
 import Spiral.Exp
 import Spiral.Permutation
 import Spiral.RootOfUnity
@@ -112,11 +130,19 @@ data SPL a where
 deriving instance Show e => Show (SPL e)
 deriving instance Typeable e => Typeable (SPL e)
 
--- | Embed any 'Array' as an SPL term.
-spl :: IArray r DIM2 e
-    => Array r DIM2 e
-    -> SPL e
-spl = E . ShowArray
+-- | Embed any 'Matrix' as an SPL term.
+matrix :: IArray r DIM2 e
+       => Array r DIM2 e
+       -> SPL e
+matrix = E . ShowArray
+
+-- | Embed a matrix created from a list of lists of values.
+fromLists :: [[e]] -> SPL e
+fromLists = matrix . A.fromLists
+
+-- | Embed a matrix created from a function mapping indices to elements.
+fromFunction :: DIM2 -> (DIM2 -> e) -> SPL e
+fromFunction sh = matrix . A.fromFunction sh
 
 -- | Create a diagonal matrix
 diag :: [a] -> SPL a
@@ -139,51 +165,51 @@ backpermute :: Permutation -> SPL e
 backpermute = Pi . invert
 
 -- | Return the extent of an SPL transform.
-splExtent :: SPL a -> DIM2
-splExtent (E a)     = extent (unShowArray a)
-splExtent (I n)     = ix2 n n
-splExtent (Pi p)    = ix2 (dim p) (dim p)
-splExtent (Rot _)   = ix2 2 2
+extent :: SPL a -> DIM2
+extent (E a)     = A.extent (unShowArray a)
+extent (I n)     = ix2 n n
+extent (Pi p)    = ix2 (dim p) (dim p)
+extent (Rot _)   = ix2 2 2
 
-splExtent (Diag xs) = ix2 n n
+extent (Diag xs) = ix2 n n
   where
     n = length xs
 
-splExtent (KDiag n _) = ix2 n n
+extent (KDiag n _) = ix2 n n
 
-splExtent (Kron a b) = ix2 (m*p) (n*q)
+extent (Kron a b) = ix2 (m*p) (n*q)
   where
-    Z :. m :. n = splExtent a
-    Z :. p :. q = splExtent b
+    Z :. m :. n = extent a
+    Z :. p :. q = extent b
 
-splExtent (DSum a b) = ix2 (m+p) (n+q)
+extent (DSum a b) = ix2 (m+p) (n+q)
   where
-    Z :. m :. n = splExtent a
-    Z :. p :. q = splExtent b
+    Z :. m :. n = extent a
+    Z :. p :. q = extent b
 
-splExtent (Prod a b) = ix2 m q
+extent (Prod a b) = ix2 m q
   where
-    Z :. m  :. _n = splExtent a
-    Z :. _p :. q  = splExtent b
+    Z :. m  :. _n = extent a
+    Z :. _p :. q  = extent b
 
-splExtent (Circ xs) = ix2 n n
+extent (Circ xs) = ix2 n n
   where
     n = length xs
 
-splExtent (Toep xs) = ix2 n n
+extent (Toep xs) = ix2 n n
   where
     n = (length xs + 1) `quot` 2
 
-splExtent (Re a) = ix2 (2*m) (2*n)
+extent (Re a) = ix2 (2*m) (2*n)
   where
-    Z :. m  :. n = splExtent a
+    Z :. m  :. n = extent a
 
-splExtent F2 = ix2 2 2
+extent F2 = ix2 2 2
 
-splExtent (DFT n)  = ix2 n n
-splExtent (DFT' n) = ix2 n n
-splExtent (F n _)  = ix2 n n
-splExtent (F' n _) = ix2 n n
+extent (DFT n)  = ix2 n n
+extent (DFT' n) = ix2 n n
+extent (F n _)  = ix2 n n
+extent (F' n _) = ix2 n n
 
 -- | Convert an SPL transform to an explicit matrix.
 toMatrix :: forall e . Num e => SPL e -> Matrix M e
@@ -191,7 +217,7 @@ toMatrix (E a) =
     manifest (unShowArray a)
 
 toMatrix (Diag xs) =
-    manifest $ fromFunction (ix2 n n) f
+    manifest $ A.fromFunction (ix2 n n) f
   where
     n = length xs
 
@@ -199,7 +225,7 @@ toMatrix (Diag xs) =
                     | otherwise = 0
 
 toMatrix (KDiag n e) =
-    manifest $ fromFunction (ix2 n n) f
+    manifest $ A.fromFunction (ix2 n n) f
   where
     f (Z :. i :. j) | i == j    = e
                     | otherwise = 0
@@ -207,8 +233,8 @@ toMatrix (KDiag n e) =
 toMatrix (Kron a b) =
     M (ix2 (m*p) (n*q)) $ V.generate (m*p*n*q) f
   where
-    Z :. m :. n = extent a'
-    Z :. p :. q = extent b'
+    Z :. m :. n = A.extent a'
+    Z :. p :. q = A.extent b'
 
     a' = toMatrix a
     b' = toMatrix b
@@ -222,8 +248,8 @@ toMatrix (Kron a b) =
 toMatrix (DSum a b) =
     M (ix2 (m+p) (n+q)) $ V.generate ((m+p)*(n+q)) f
   where
-    Z :. m :. n = extent a'
-    Z :. p :. q = extent b'
+    Z :. m :. n = A.extent a'
+    Z :. p :. q = A.extent b'
 
     a' = toMatrix a
     b' = toMatrix b
@@ -238,8 +264,8 @@ toMatrix (DSum a b) =
 toMatrix (Prod a b) =
     M (ix2 m n) $ V.generate (m*n) f
   where
-    Z :. m  :. _p' = extent a'
-    Z :. _p :. n   = extent b'
+    Z :. m  :. _p' = A.extent a'
+    Z :. _p :. n   = A.extent b'
 
     a' = toMatrix a
     b' = toMatrix b
@@ -250,31 +276,31 @@ toMatrix (Prod a b) =
         (i, j) = k `quotRem` n
 
 toMatrix (Circ xs) =
-    manifest $ fromFunction (ix2 n n) f
+    manifest $ A.fromFunction (ix2 n n) f
   where
     n = length xs
 
     f (Z :. i :. j) = xs V.! ((i-j) `mod` n)
 
 toMatrix (Toep xs) =
-    manifest $ fromFunction (ix2 n n) f
+    manifest $ A.fromFunction (ix2 n n) f
   where
     n = (length xs + 1) `quot` 2
 
     f (Z :. i :. j) = xs V.! (i-j+n-1)
 
 toMatrix (I n) =
-    manifest $ fromFunction (ix2 n n) f
+    manifest $ A.fromFunction (ix2 n n) f
   where
     f (Z :. i :. j) | i == j    = 1
                     | otherwise = 0
 
 toMatrix (Rot alpha) =
-    matrix [[cos alpha, -(sin alpha)],
-            [sin alpha, cos alpha]]
+    A.matrix [[cos alpha, -(sin alpha)],
+              [sin alpha, cos alpha]]
 
 toMatrix (Pi p) =
-    manifest $ fromFunction (ix2 (dim p) (dim p)) f
+    manifest $ A.fromFunction (ix2 (dim p) (dim p)) f
   where
     f (Z :. i :. j) | g j == i  = 1
                     | otherwise = 0
@@ -284,13 +310,13 @@ toMatrix (Pi p) =
 toMatrix (Re a) = manifest (RE (toMatrix a))
 
 toMatrix F2 =
-    matrix [[1,  1],
-            [1, -1]]
+    A.matrix [[1,  1],
+              [1, -1]]
 
 toMatrix (DFT n)  = toMatrix (F n (omega n))
 toMatrix (DFT' n) = toMatrix (F' n (omega n))
 
-toMatrix (F n w) = manifest $ fromFunction (ix2 n n) f
+toMatrix (F n w) = manifest $ A.fromFunction (ix2 n n) f
   where
     f (Z :. i :. j) = w ^ (i*j)
 

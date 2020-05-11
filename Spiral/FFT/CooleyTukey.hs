@@ -20,7 +20,6 @@ module Spiral.FFT.CooleyTukey (
 
 import Data.List (foldr1)
 
-import Spiral.Array
 import Spiral.RootOfUnity
 import Spiral.SPL
 
@@ -187,7 +186,7 @@ improvedSplitRadix n w = f n w
 dit :: RootOfUnity a => Int -> SPL a
 dit = f
   where
-    f 1 = spl $ matrix [[1]]
+    f 1 = fromLists [[1]]
     f 2 = F2
 
     f n | even n =
@@ -202,7 +201,7 @@ dit = f
 dif :: RootOfUnity a => Int -> SPL a
 dif = f
   where
-    f 1 = spl $ matrix [[1]]
+    f 1 = fromLists [[1]]
     f 2 = F2
 
     f n | even n =
