@@ -35,7 +35,7 @@ import Spiral.Array (Computable,
                      forShapeP,
                      indexS,
                      write)
-import Spiral.Array.Operators.IndexSpace
+import Spiral.Array.Operators.Matrix
 import Spiral.Array.Operators.Permute
 import Spiral.Array.Repr.Complex
 import Spiral.Array.Repr.Compute
@@ -176,7 +176,7 @@ runSPL a x = do
     t <- gather x
     computeTransform a $ \y -> do
       comment $ ppr a
-      mvP (toMatrix a) t y
+      mXvP (toMatrix a) t y
   where
     shouldDefault :: SPL (Exp a) -> Bool
     shouldDefault E{}  = True

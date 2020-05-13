@@ -55,8 +55,8 @@ SRC = \
 	Spiral/Array/Base.hs \
 	Spiral/Array/Computable.hs \
 	Spiral/Array/Mutable.hs \
-	Spiral/Array/Operators/IndexSpace.hs \
 	Spiral/Array/Operators/Mapping.hs \
+	Spiral/Array/Operators/Matrix.hs \
 	Spiral/Array/Operators/Permute.hs \
 	Spiral/Array/Operators/Reduction.hs \
 	Spiral/Array/Repr/Complex.hs \

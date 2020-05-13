@@ -13,7 +13,7 @@ module Spiral.FFT.Rader (
   ) where
 
 import qualified Spiral.Array as A
-import Spiral.Array.Operators.IndexSpace
+import Spiral.Array.Operators.Matrix
 import Spiral.NumberTheory
 import Spiral.RootOfUnity
 import Spiral.SPL
@@ -41,4 +41,4 @@ rader p w = permute (R p a) × (one ⊕ f_pm1 (1/u)) × d_p × (one ⊕ f_pm1 u)
     deltas :: [a]
     deltas = A.toList $
         fmap (/ (fromIntegral p-1)) $
-        toMatrix (f_pm1 u) `mv` A.fromList [w^modExp a i p | i <- [0..p-2]]
+        toMatrix (f_pm1 u) #> A.fromList [w^modExp a i p | i <- [0..p-2]]

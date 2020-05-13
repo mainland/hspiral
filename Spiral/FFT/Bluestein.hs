@@ -12,7 +12,7 @@ module Spiral.FFT.Bluestein (
   ) where
 
 import qualified Spiral.Array as A
-import Spiral.Array.Operators.IndexSpace
+import Spiral.Array.Operators.Matrix
 import Spiral.RootOfUnity
 import Spiral.SPL hiding (R)
 
@@ -32,7 +32,7 @@ bluestein n m w = ws × t × ws
     c = DFT' m × diag deltas × DFT m
 
     deltas :: [a]
-    deltas = A.toList $ toMatrix (DFT m) `mv` A.fromList cs
+    deltas = A.toList $ toMatrix (DFT m) #> A.fromList cs
 
     cs :: [a]
     cs = [w^^(-j^2) | j <- [0..n-1]] ++

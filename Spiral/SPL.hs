@@ -58,8 +58,8 @@ import qualified Spiral.Array as A
 import Spiral.Array (IArray,
                      M,
                      Matrix,
-                     (!),
                      manifest)
+import qualified Spiral.Array.Operators.Matrix as A
 import Spiral.Array.Repr.Complex
 import Spiral.Array.Shape
 import Spiral.Exp
@@ -231,49 +231,13 @@ toMatrix (KDiag n e) =
                     | otherwise = 0
 
 toMatrix (Kron a b) =
-    M (ix2 (m*p) (n*q)) $ V.generate (m*p*n*q) f
-  where
-    Z :. m :. n = A.extent a'
-    Z :. p :. q = A.extent b'
-
-    a' = toMatrix a
-    b' = toMatrix b
-
-    f :: Int -> e
-    f k = a' ! ix2 (i `quot` p) (j `quot` q) *
-          b' ! ix2 (i `rem` p) (j `rem` q)
-      where
-        (i, j) = k `quotRem` (n*q)
+    A.manifest $ A.kronecker (toMatrix a) (toMatrix b)
 
 toMatrix (DSum a b) =
-    M (ix2 (m+p) (n+q)) $ V.generate ((m+p)*(n+q)) f
-  where
-    Z :. m :. n = A.extent a'
-    Z :. p :. q = A.extent b'
-
-    a' = toMatrix a
-    b' = toMatrix b
-
-    f :: Int -> e
-    f k | i < m  && j < n  = a' ! ix2 i j
-        | i >= m && j >= n = b' ! ix2 (i-m) (j-n)
-        | otherwise        = 0
-      where
-        (i, j) = k `quotRem` (n+q)
+    A.manifest $ A.directSum (toMatrix a) (toMatrix b)
 
 toMatrix (Prod a b) =
-    M (ix2 m n) $ V.generate (m*n) f
-  where
-    Z :. m  :. _p' = A.extent a'
-    Z :. _p :. n   = A.extent b'
-
-    a' = toMatrix a
-    b' = toMatrix b
-
-    f :: Int -> e
-    f k = V.sum $ V.zipWith (*) (row a' i) (col b' j)
-      where
-        (i, j) = k `quotRem` n
+    A.manifest $ A.mXm (toMatrix a) (toMatrix b)
 
 toMatrix (Circ xs) =
     manifest $ A.fromFunction (ix2 n n) f

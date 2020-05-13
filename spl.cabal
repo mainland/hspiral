@@ -29,8 +29,8 @@ library
     Spiral.Array.Base
     Spiral.Array.Computable
     Spiral.Array.Mutable
-    Spiral.Array.Operators.IndexSpace
     Spiral.Array.Operators.Mapping
+    Spiral.Array.Operators.Matrix
     Spiral.Array.Operators.Permute
     Spiral.Array.Operators.Reduction
     Spiral.Array.Repr.Complex
