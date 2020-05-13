@@ -20,12 +20,15 @@ module Test.SPL (
     colTest,
     rowTest,
     kroneckerTest,
-    directSumTest
+    directSumTest,
+    transposeTest
   ) where
 
+import Control.Monad (replicateM)
 import qualified Data.Vector as V
 import Test.HUnit ((@?=))
 import Test.Hspec
+import Test.QuickCheck
 
 import Spiral.Array (M,
                      Matrix)
@@ -141,32 +144,51 @@ directSumTest = it "Direct sum (⊕)" $
                   [0, 0, 0, 1, 6],
                   [0, 0, 0, 0, 1]]
 
+instance Arbitrary Permutation where
+    arbitrary = sized $ \n ->
+        oneof [ do m <- choose (1, n)
+                   pure $ L (m*n) n
+              , pure $ J n
+              ]
+
+instance (Num a, Arbitrary a) => Arbitrary (SPL a) where
+    arbitrary = sized $ \n0 -> do
+        let n = n0 + 1
+        oneof [ fromLists <$> replicateM n (replicateM n arbitrary)
+              , pure $ I n
+              , T <$> resize n arbitrary
+              , Diag . V.fromList <$> replicateM n arbitrary
+              , Circ . V.fromList <$> replicateM n arbitrary
+              , Skew . V.fromList <$> replicateM n arbitrary
+              , Toep . V.fromList <$> replicateM (2*n-1) arbitrary
+              ]
+
+    shrink (I n) = [I (n-1)]
+    shrink (T a) = a : map T (shrink a)
+    shrink (Diag xs)
+      | V.length xs > 0 = map (Diag . V.fromList) (shrink (V.toList xs))
+    shrink (Circ xs)
+      | V.length xs > 0 = map (Circ . V.fromList) (shrink (V.toList xs))
+    shrink (Skew xs)
+      | V.length xs > 0 = map (Skew . V.fromList) (shrink (V.toList xs))
+    shrink (Toep xs)
+      | V.length xs > 3 = map (Toep . V.fromList) (concatMap shrink (shrink (V.toList xs)))
+    shrink _     = []
+
 -- | Test group to verify matrix transposition of different matrix shapes
 transposeTest :: Spec
 transposeTest = describe "Matrix transpose (manifest)" $ do
-    it "Tall transpose" $
-        A.manifest (A.transpose tall) @?= tall_t
-    it "Wide transpose" $
-        A.manifest (A.transpose wide) @?= wide_t
-    it "Square transpose" $
-        A.manifest (A.transpose square) @?= square_t
     it "Permutation" $
         toMatrix (transpose $ permute (L 16 2)) @?= toMatrix (backpermute (L 16 2) :: SPL Double)
-    it "Double transpose" $
-        toMatrix (transpose $ transpose $ matrix square) @?= square
+    it "Transpose commutes" $
+        property (prop_transpose_commutes :: SPL Double -> Property)
+    it "Transpose is an involution" $
+        property (prop_transpose_involution :: SPL Double -> Property)
   where
-    tall, tall_t, wide, wide_t, square, square_t :: Matrix M Int
-    tall = A.matrix [[0, 1],
-                     [2, 3],
-                     [4, 5]]
-    tall_t = A.matrix [[0, 2, 4],
-                       [1, 3, 5]]
-    wide = A.matrix [[2, 1, 0],
-                     [3, 5, 6]]
-    wide_t = A.matrix [[2, 3],
-                       [1, 5],
-                       [0, 6]]
-    square = A.matrix [[1, 2],
-                       [3, 4]]
-    square_t = A.matrix [[1, 3],
-                         [2, 4]]
+    -- | Transpostion commutes with matrix conversion
+    prop_transpose_commutes :: (Eq a, Num a, Show a) => SPL a -> Property
+    prop_transpose_commutes a = toMatrix (transpose a) === A.manifest (A.transpose (toMatrix a))
+
+    -- | Transposition is an involution
+    prop_transpose_involution :: (Eq a, Num a, Show a) => SPL a -> Property
+    prop_transpose_involution a = toMatrix (transpose (transpose a)) === toMatrix a

@@ -179,22 +179,16 @@ backpermute = Pi . invert
 
 -- | Return the extent of an SPL transform.
 extent :: SPL a -> DIM2
-extent (E a) = A.extent (unShowArray a)
-
-extent (I n) = ix2 n n
-
-extent (T e) = ix2 n m
-  where
-    Z :. m :. n = extent e
-
-extent (Pi p) = ix2 (dim p) (dim p)
-
-extent (Rot _) = ix2 2 2
-
-extent (Diag xs) = ix2 n n
-  where
-    n = length xs
-
+extent (E a)       = A.extent (unShowArray a)
+extent (I n)       = ix2 n n
+extent (T e)       = ix2 n m
+                       where
+                         Z :. m :. n = extent e
+extent (Pi p)      = ix2 (dim p) (dim p)
+extent (Rot _)     = ix2 2 2
+extent (Diag xs)   = ix2 n n
+                       where
+                         n = length xs
 extent (KDiag n _) = ix2 n n
 
 extent (Kron a b) = ix2 (m*p) (n*q)
@@ -246,30 +240,18 @@ transpose a@KDiag{}   = a
 transpose (Kron a b)  = Kron (transpose a) (transpose b)
 transpose (DSum a b)  = DSum (transpose a) (transpose b)
 transpose (Prod a b)  = Prod (transpose b) (transpose a)
-
-transpose (Circ cs) = circ (x:reverse xs)
-  where
-    x:xs = V.toList cs
-
-transpose a@Skew{} = a
-
-transpose (Toep cs) = toep ys
-  where
-    xs = V.toList cs
-    n  = length xs
-    n2 = n `div` 2
-    fX = take n2 xs
-    sX = drop n2 xs
-    ys | even n    = sX ++ fX
-       | otherwise = tail sX ++ [head sX] ++ fX
-
-transpose (Re a)   = Re (transpose a)
-transpose F2       = F2
-transpose a@DFT{}  = a
-transpose a@DFT'{} = a
-transpose a@F{}    = a
-transpose a@F'{}   = a
-transpose a        = T a
+transpose (Circ cs)   = circ (x:reverse xs)
+                          where
+                            x:xs = V.toList cs
+transpose a@Skew{}    = a
+transpose (Toep cs)   = Toep (V.reverse cs)
+transpose (Re a)      = Re (transpose a)
+transpose F2          = F2
+transpose a@DFT{}     = a
+transpose a@DFT'{}    = a
+transpose a@F{}       = a
+transpose a@F'{}      = a
+transpose a           = T a
 
 -- | Convert an SPL transform to an explicit matrix.
 toMatrix :: forall e . Num e => SPL e -> Matrix M e
