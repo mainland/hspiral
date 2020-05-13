@@ -286,18 +286,21 @@ toMatrix (F n w) = manifest $ A.fromFunction (ix2 n n) f
 
 toMatrix (F' n w) = toMatrix (KDiag n (1/fromIntegral n) × F n (1/w))
 
+pprArgs :: Pretty a => [a] -> Doc
+pprArgs = parens . commasep . map ppr
+
 instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (E a)       = pprPrec p (manifest (unShowArray a))
     pprPrec _ (I n)       = text "I_" <> ppr n
     pprPrec _ (Pi p)      = ppr p
     pprPrec _ (Rot alpha) = text "R_" <> ppr alpha
-    pprPrec _ (Diag xs)   = text "diag" <> parens (commasep (map ppr (V.toList xs)))
+    pprPrec _ (Diag xs)   = text "diag" <> pprArgs (V.toList xs)
     pprPrec _ (KDiag n e) = text "kdiag" <> parens (commasep [ppr n, ppr e])
     pprPrec p (Kron a b)  = infixop p KOp a b
     pprPrec p (DSum a b)  = infixop p DSOp a b
     pprPrec p (Prod a b)  = infixop p POp a b
-    pprPrec _ (Circ xs)   = text "circ" <> parens (commasep (map ppr (V.toList xs)))
-    pprPrec _ (Toep xs)   = text "toep" <> parens (commasep (map ppr (V.toList xs)))
+    pprPrec _ (Circ xs)   = text "circ" <> pprArgs (V.toList xs)
+    pprPrec _ (Toep xs)   = text "toep" <> pprArgs (V.toList xs)
     pprPrec _ (Re a)      = text "Re" <> parens (ppr a)
     pprPrec _ F2          = text "F_2"
     pprPrec _ (DFT n)     = text "DFT_" <> ppr n
