@@ -320,6 +320,33 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
   pprPrec _ (Rot alpha) = operatorname "R" !: ppr alpha
   pprPrec _ (Diag xs)   = operatorname "diag" <> pprArgs (V.toList xs)
   pprPrec p (KDiag _ e) = pprPrec p e
+
+  pprPrec _ ((tl `Beside` tr) `Above` (bl `Beside` br)) =
+    bmatrix Nothing $ M.matrix 2 2 f
+      where
+        f :: (Int, Int) -> LaTeX
+        f (1, 1) = ppr tl
+        f (1, 2) = ppr tr
+        f (2, 1) = ppr bl
+        f (2, 2) = ppr br
+        f _      = error "can't happen"
+
+  pprPrec _ (Above a b) =
+    bmatrix Nothing $ M.matrix 2 1 f
+      where
+        f :: (Int, Int) -> LaTeX
+        f (1, 1) = ppr a
+        f (2, 1) = ppr b
+        f _      = error "can't happen"
+
+  pprPrec _ (Beside a b) =
+    bmatrix Nothing $ M.matrix 1 2 f
+      where
+        f :: (Int, Int) -> LaTeX
+        f (1, 1) = ppr a
+        f (1, 2) = ppr b
+        f _      = error "can't happen"
+
   pprPrec p (Kron a b)  = infixop p KOp a b
   pprPrec p (DSum a b)  = infixop p DSOp a b
   pprPrec _ (Prod a b)  = pprPrec 10 a <> pprPrec 10 b

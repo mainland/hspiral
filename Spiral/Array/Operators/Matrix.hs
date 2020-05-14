@@ -15,6 +15,13 @@ module Spiral.Array.Operators.Matrix (
     col,
     colS,
 
+    nrows,
+    ncols,
+
+    (<->),
+    (<|>),
+    block,
+
     mXv,
     (#>),
     mXvP,
@@ -28,7 +35,7 @@ module Spiral.Array.Operators.Matrix (
 import Prelude hiding ((!!))
 
 import Control.Monad (when)
-import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland hiding ((<|>))
 import Text.PrettyPrint.Mainland.Class
 
 import Spiral.Array
@@ -82,6 +89,64 @@ colS a j = fromSFunction (Z :. m) g
 
     g (Z :. i) = f (Z :. i :. j)
 
+-- | Number of rows
+nrows :: IsArray r DIM2 a => Matrix r a -> Int
+nrows a = m
+  where
+    Z :. m :. _n = extent a
+
+-- | Number of columns
+ncols :: IsArray r DIM2 a => Matrix r a -> Int
+ncols a = n
+  where
+    Z :. _m :. n = extent a
+
+-- | Vertical stacking of matrices
+(<->) :: ( IArray r1 DIM2 a
+         , IArray r2 DIM2 a
+         )
+      => Matrix r1 a
+      -> Matrix r2 a
+      -> Matrix D a
+a <-> b
+    | ncols b /= c = error "(<->): Incompatible matrix dimensions"
+    | otherwise    = fromFunction (ix2 (r + nrows b) c) f
+  where
+    Z :. r :. c = extent a
+
+    f (Z :. i :. j)
+      | i < r     = a ! (i,j)
+      | otherwise = b ! (i-r,j)
+
+-- | Horizontal stacking of matrices
+(<|>) :: ( IArray r1 DIM2 a
+         , IArray r2 DIM2 a
+         )
+      => Matrix r1 a
+      -> Matrix r2 a
+      -> Matrix D a
+a <|> b
+    | nrows b /= r = error "(<|>): Incompatible matrix dimensions"
+    | otherwise    = fromFunction (ix2 r (c + ncols b)) f
+  where
+    Z :. r :. c = extent a
+
+    f (Z :. i :. j)
+      | j < c     = a ! (i,j)
+      | otherwise = b ! (i,j-c)
+
+-- | Create a block matrix
+block:: ( IArray r1 DIM2 a
+        , IArray r2 DIM2 a
+        , IArray r3 DIM2 a
+        , IArray r4 DIM2 a
+        )
+     => Matrix r1 a
+     -> Matrix r2 a
+     -> Matrix r3 a
+     -> Matrix r4 a
+     -> Matrix D a
+block tl tr bl br = (tl <|> tr) <-> (bl <|> br)
 
 -- | Compute the matrix-vector product, @A x@.
 mXv :: forall r1 r2 a .

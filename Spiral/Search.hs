@@ -26,7 +26,7 @@ import Data.Typeable (Typeable)
 
 import Spiral.Exp
 import Spiral.Monad
-import Spiral.SPL
+import Spiral.SPL hiding  ((<|>))
 import Spiral.RootOfUnity
 import Spiral.Search.Monad
 

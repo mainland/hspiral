@@ -32,7 +32,7 @@ import Spiral.FFT.GoodThomas (goodThomas)
 import Spiral.FFT.Rader (rader)
 import Spiral.NumberTheory (primeFactorization)
 import Spiral.RootOfUnity
-import Spiral.SPL
+import Spiral.SPL hiding ((<|>))
 
 bruteForce :: (RootOfUnity (Exp a), MonadPlus m)
            => Int

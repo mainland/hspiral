@@ -151,17 +151,30 @@ instance Arbitrary Permutation where
               , pure $ J n
               ]
 
+matrixGen :: Arbitrary a => Int -> Int -> Gen (SPL a)
+matrixGen r c = fromLists <$> replicateM r (replicateM c arbitrary)
+
 instance (Num a, Arbitrary a) => Arbitrary (SPL a) where
     arbitrary = sized $ \n0 -> do
         let n = n0 + 1
-        oneof [ fromLists <$> replicateM n (replicateM n arbitrary)
+        oneof [ matrixGen n n
               , pure $ I n
               , T <$> resize n arbitrary
               , Diag . V.fromList <$> replicateM n arbitrary
               , Circ . V.fromList <$> replicateM n arbitrary
               , Skew . V.fromList <$> replicateM n arbitrary
               , Toep . V.fromList <$> replicateM (2*n-1) arbitrary
+              , aboveGen
+              , besideGen
               ]
+      where
+        aboveGen = sized $ \n ->
+            let (q, r) = quotRem (n+1) 2 in
+            Above <$> matrixGen q n <*> matrixGen (q + r) n
+
+        besideGen = sized $ \n ->
+            let (q, r) = quotRem (n+1) 2 in
+            Beside <$> matrixGen n q <*> matrixGen n (q + r)
 
     shrink (I n) = [I (n-1)]
     shrink (T a) = a : map T (shrink a)
@@ -181,9 +194,9 @@ transposeTest = describe "Matrix transpose (manifest)" $ do
     it "Permutation" $
         toMatrix (transpose $ permute (L 16 2)) @?= toMatrix (backpermute (L 16 2) :: SPL Double)
     it "Transpose commutes" $
-        property (prop_transpose_commutes :: SPL Double -> Property)
+        property (prop_transpose_commutes :: SPL Int -> Property)
     it "Transpose is an involution" $
-        property (prop_transpose_involution :: SPL Double -> Property)
+        property (prop_transpose_involution :: SPL Int -> Property)
   where
     -- | Transpostion commutes with matrix conversion
     prop_transpose_commutes :: (Eq a, Num a, Show a) => SPL a -> Property

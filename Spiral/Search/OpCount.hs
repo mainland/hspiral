@@ -36,7 +36,7 @@ import Spiral.Monad
 import Spiral.Search
 import Spiral.OpCount
 import Spiral.RootOfUnity
-import Spiral.SPL
+import Spiral.SPL hiding ((<|>))
 import Spiral.Search.FFTBreakdowns
 import Spiral.Util.Trace
 

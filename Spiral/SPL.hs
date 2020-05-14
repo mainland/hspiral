@@ -36,6 +36,10 @@ module Spiral.SPL (
 
     transpose,
 
+    (<->),
+    (<|>),
+    block,
+
     (⊗),
     (×),
     (⊕),
@@ -54,7 +58,7 @@ import Data.Complex
 import Data.Monoid ((<>))
 import Data.Typeable (Typeable)
 import qualified Data.Vector as V
-import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland hiding ((<|>))
 import Text.PrettyPrint.Mainland.Class
 
 import qualified Spiral.Array as A
@@ -99,6 +103,12 @@ data SPL a where
 
     -- | The $n \times n$ diagonal matrix with constant diagonal elements.
     KDiag :: Int -> e -> SPL e
+
+    -- | Vertical stacking of transforms
+    Above :: SPL e -> SPL e -> SPL e
+
+    -- | Horizontal stacking of transforms
+    Beside :: SPL e -> SPL e -> SPL e
 
     -- | Kronecker product
     Kron :: SPL e -> SPL e -> SPL e
@@ -191,6 +201,16 @@ extent (Diag xs)   = ix2 n n
                          n = length xs
 extent (KDiag n _) = ix2 n n
 
+extent (Above a b) = ix2 (ra+rb) c
+  where
+    Z :. ra :. c  = extent a
+    Z :. rb :. _c = extent b
+
+extent (Beside a b) = ix2 r (ca+cb)
+  where
+    Z :. r  :. ca  = extent a
+    Z :. _r :. cb = extent b
+
 extent (Kron a b) = ix2 (m*p) (n*q)
   where
     Z :. m :. n = extent a
@@ -231,27 +251,30 @@ extent (F' n _) = ix2 n n
 
 -- | Transpose an SPL expression
 transpose :: forall a . (Show a, Num a) => SPL a -> SPL a
-transpose a@I{}       = a
-transpose (T a)       = a
-transpose (Pi p)      = backpermute p
-transpose (Rot alpha) = Rot (-alpha)
-transpose a@Diag{}    = a
-transpose a@KDiag{}   = a
-transpose (Kron a b)  = Kron (transpose a) (transpose b)
-transpose (DSum a b)  = DSum (transpose a) (transpose b)
-transpose (Prod a b)  = Prod (transpose b) (transpose a)
-transpose (Circ cs)   = circ (x:reverse xs)
-                          where
-                            x:xs = V.toList cs
-transpose a@Skew{}    = a
-transpose (Toep cs)   = Toep (V.reverse cs)
-transpose (Re a)      = Re (transpose a)
-transpose F2          = F2
-transpose a@DFT{}     = a
-transpose a@DFT'{}    = a
-transpose a@F{}       = a
-transpose a@F'{}      = a
-transpose a           = T a
+-- transpose (E m)        = (matrix . A.transpose . unShowArray) m
+transpose a@I{}        = a
+transpose (T a)        = a
+transpose (Pi p)       = backpermute p
+transpose (Rot alpha)  = Rot (-alpha)
+transpose a@Diag{}     = a
+transpose a@KDiag{}    = a
+transpose (Above a b)  = Beside (transpose a) (transpose b)
+transpose (Beside a b) = Above (transpose a) (transpose b)
+transpose (Kron a b)   = Kron (transpose a) (transpose b)
+transpose (DSum a b)   = DSum (transpose a) (transpose b)
+transpose (Prod a b)   = Prod (transpose b) (transpose a)
+transpose (Circ cs)    = circ (x:reverse xs)
+                           where
+                             x:xs = V.toList cs
+transpose a@Skew{}     = a
+transpose (Toep cs)    = Toep (V.reverse cs)
+transpose (Re a)       = Re (transpose a)
+transpose F2           = F2
+transpose a@DFT{}      = a
+transpose a@DFT'{}     = a
+transpose a@F{}        = a
+transpose a@F'{}       = a
+transpose a            = T a
 
 -- | Convert an SPL transform to an explicit matrix.
 toMatrix :: forall e . Num e => SPL e -> Matrix M e
@@ -273,6 +296,12 @@ toMatrix (KDiag n e) =
   where
     f (Z :. i :. j) | i == j    = e
                     | otherwise = 0
+
+toMatrix (Above a b) =
+    A.manifest $ toMatrix a A.<-> toMatrix b
+
+toMatrix (Beside a b) =
+    A.manifest $ toMatrix a A.<|> toMatrix b
 
 toMatrix (Kron a b) =
     A.manifest $ A.kronecker (toMatrix a) (toMatrix b)
@@ -341,40 +370,48 @@ pprArgs :: Pretty a => [a] -> Doc
 pprArgs = parens . commasep . map ppr
 
 instance (Num e, Pretty e) => Pretty (SPL e) where
-    pprPrec p (E a)       = pprPrec p (manifest (unShowArray a))
-    pprPrec _ (I n)       = text "I_" <> ppr n
-    pprPrec _ (T e)       = pprPrec 10 e <> text "^T"
-    pprPrec _ (Pi p)      = ppr p
-    pprPrec _ (Rot alpha) = text "R_" <> ppr alpha
-    pprPrec _ (Diag xs)   = text "diag" <> pprArgs (V.toList xs)
-    pprPrec _ (KDiag n e) = text "kdiag" <> parens (commasep [ppr n, ppr e])
-    pprPrec p (Kron a b)  = infixop p KOp a b
-    pprPrec p (DSum a b)  = infixop p DSOp a b
-    pprPrec p (Prod a b)  = infixop p POp a b
-    pprPrec _ (Circ xs)   = text "circ" <> pprArgs (V.toList xs)
-    pprPrec _ (Skew xs)   = text "skew" <> pprArgs (V.toList xs)
-    pprPrec _ (Toep xs)   = text "toep" <> pprArgs (V.toList xs)
-    pprPrec _ (Re a)      = text "Re" <> parens (ppr a)
-    pprPrec _ F2          = text "F_2"
-    pprPrec _ (DFT n)     = text "DFT_" <> ppr n
-    pprPrec _ (DFT' n)    = text "DFT'_" <> ppr n
-    pprPrec _ (F n w)     = text "F_" <> ppr n <> parens (ppr w)
-    pprPrec _ (F' n w)    = text "F'_" <> ppr n <> parens (ppr w)
+    pprPrec p (E a)        = pprPrec p (manifest (unShowArray a))
+    pprPrec _ (I n)        = text "I_" <> ppr n
+    pprPrec _ (T e)        = pprPrec 10 e <> text "^T"
+    pprPrec _ (Pi p)       = ppr p
+    pprPrec _ (Rot alpha)  = text "R_" <> ppr alpha
+    pprPrec _ (Diag xs)    = text "diag" <> pprArgs (V.toList xs)
+    pprPrec _ (KDiag n e)  = text "kdiag" <> parens (commasep [ppr n, ppr e])
+    pprPrec p (Above a b)  = infixop p AboveOp a b
+    pprPrec p (Beside a b) = infixop p BesideOp a b
+    pprPrec p (Kron a b)   = infixop p KOp a b
+    pprPrec p (DSum a b)   = infixop p DSOp a b
+    pprPrec p (Prod a b)   = infixop p POp a b
+    pprPrec _ (Circ xs)    = text "circ" <> pprArgs (V.toList xs)
+    pprPrec _ (Skew xs)    = text "skew" <> pprArgs (V.toList xs)
+    pprPrec _ (Toep xs)    = text "toep" <> pprArgs (V.toList xs)
+    pprPrec _ (Re a)       = text "Re" <> parens (ppr a)
+    pprPrec _ F2           = text "F_2"
+    pprPrec _ (DFT n)      = text "DFT_" <> ppr n
+    pprPrec _ (DFT' n)     = text "DFT'_" <> ppr n
+    pprPrec _ (F n w)      = text "F_" <> ppr n <> parens (ppr w)
+    pprPrec _ (F' n w)     = text "F'_" <> ppr n <> parens (ppr w)
 
-data MatrixBinop = KOp
+data MatrixBinop = AboveOp
+                 | BesideOp
+                 | KOp
                  | DSOp
                  | POp
   deriving (Eq, Ord, Show)
 
 instance HasFixity MatrixBinop where
-    fixity KOp  = infixl_ 7
-    fixity DSOp = infixl_ 6
-    fixity POp  = infixl_ 7
+    fixity AboveOp  = infixl_ 7
+    fixity BesideOp = infixl_ 7
+    fixity KOp      = infixl_ 7
+    fixity DSOp     = infixl_ 6
+    fixity POp      = infixl_ 7
 
 instance Pretty MatrixBinop where
-    ppr KOp  = char '⊗'
-    ppr DSOp = char '⊕'
-    ppr POp  = char '×'
+    ppr AboveOp  = text "<->"
+    ppr BesideOp = text "<|>"
+    ppr KOp      = char '⊗'
+    ppr DSOp     = char '⊕'
+    ppr POp      = char '×'
 
 -- | Extract a row of a matrix
 row :: Matrix M e -> Int -> V.Vector e
@@ -390,6 +427,20 @@ col e j = V.generate m f
 
     f :: Int -> e
     f i = xs V.! (i*n + j)
+
+-- | Vertical stacking of transforms
+infixr 7 <->
+(<->) :: SPL e -> SPL e -> SPL e
+(<->) = Above
+
+-- | Horizontal stacking of transforms
+infixr 7 <|>
+(<|>) :: SPL e -> SPL e -> SPL e
+(<|>) = Beside
+
+-- | Create a block matrix
+block :: SPL e -> SPL e -> SPL e -> SPL e -> SPL e
+block tl tr bl br = (tl <|> tr) <-> (bl <|> br)
 
 -- | Alias for Kronecker product.
 infixl 7 ⊗
