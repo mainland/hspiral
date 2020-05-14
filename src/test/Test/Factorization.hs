@@ -68,9 +68,8 @@ complexFactorizationTests = do
         cooleyTukeyDIFTest p 5 7
     describe "Good-Thomas" $
         goodThomasTest p 5 7
-    describe "Rader" $ do
-        raderTest p 7
-        raderTest p 23
+    describe "Rader" $
+        mapM_ (raderTest p "Rader" rader) [7, 23]
     describe "Bluestein" $ do
         bluesteinTest p 3 6
         bluesteinTest p 4 8
@@ -184,9 +183,11 @@ goodThomasTest _ r s =
 -- Test Rader for given prime
 raderTest :: forall p . RootOfUnity (Exp p)
           => Proxy p
+          -> String
+          -> (Int -> Exp p -> SPL (Exp p))
           -> Int
           -> Spec
-raderTest _ n = it ("Rader(" ++ show n ++ ")") $
+raderTest _ desc rader n = it (desc ++ "(" ++ show n ++ ")") $
     toMatrix (rader (fromIntegral n) w) @?= toMatrix (F n w)
   where
     w :: Exp p
