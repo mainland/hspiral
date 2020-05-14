@@ -68,8 +68,9 @@ complexFactorizationTests = do
         cooleyTukeyDIFTest p 5 7
     describe "Good-Thomas" $
         goodThomasTest p 5 7
-    describe "Rader" $
+    describe "Rader" $ do
         mapM_ (raderTest p "Rader" rader) [7, 23]
+        mapM_ (raderTest p "RaderII" raderII) [7, 17, 23]
     describe "Bluestein" $ do
         bluesteinTest p 3 6
         bluesteinTest p 4 8
