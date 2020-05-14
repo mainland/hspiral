@@ -74,11 +74,8 @@ complexFactorizationTests = do
         mapM_ (raderTest p "RaderIII" raderIII) [7, 17, 23]
         mapM_ (raderTest p "RaderIV" raderIV) [7, 17, 23]
         mapM_ (raderTest p "raderLuIII" raderLuIII) [7, 17, 23]
-    describe "Bluestein" $ do
-        bluesteinTest p 3 6
-        bluesteinTest p 4 8
-        bluesteinTest p 4 9
-        bluesteinTest p 9 18
+    describe "Bluestein" $
+        mapM_ (bluesteinTest p "Bluestein" bluestein) [(3, 6), (4, 8), (4, 9), (9, 18)]
     describe "DIT" $
         sequence_ [ditTest p n | n <- [1..7]]
     describe "DIF" $
@@ -200,10 +197,11 @@ raderTest _ desc rader n = it (desc ++ "(" ++ show n ++ ")") $
 -- Test Bluestein for given n and m
 bluesteinTest :: forall p . RootOfUnity (Exp p)
               => Proxy p
-              -> Int
-              -> Int
+              -> String
+              -> (Int -> Int -> Exp p -> SPL (Exp p))
+              -> (Int, Int)
               -> Spec
-bluesteinTest _ n m = it ("Bluestein(" ++ show n ++ "," ++ show m ++ ")") $
+bluesteinTest _ desc bluestein (n, m) = it (desc ++ "(" ++ show n ++ "," ++ show m ++ ")") $
     toMatrix (bluestein n m w) @?= toMatrix (DFT n)
   where
     w :: Exp p
