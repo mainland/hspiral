@@ -161,14 +161,17 @@ mXv a x
   | n' /= n   = errordoc $ text "mXv: mismatched dimensions in input. Expected" <+> ppr n <+> text "but got" <+> ppr n'
   | otherwise = fromFunction (Z :. m) f
   where
-    Z :. n'     = extent x
+    Z :. n'     = extent x'
     Z :. m :. n = extent a
+
+    x' :: Vector M a
+    x' = manifest x
 
     f :: DIM1 -> a
     f (Z :. i) = sum (map (t !) [0..n-1])
       where
         t :: Vector D a
-        t = x .* row a i
+        t = x' .* row a i
 
 -- | Compute the matrix-vector product, @A x@.
 infixr 8 #>
