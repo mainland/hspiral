@@ -32,7 +32,8 @@ import Language.C.Quote.C
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
-import Spiral.Array hiding (toList)
+import Spiral.Array hiding (concat,
+                            toList)
 import Spiral.Array.Repr.Concrete
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Monad

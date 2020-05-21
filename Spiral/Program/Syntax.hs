@@ -26,7 +26,8 @@ import qualified Data.Sequence as Seq
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
-import Spiral.Array.Base hiding (toList)
+import Spiral.Array.Base hiding ((++),
+                                 toList)
 import Spiral.Array.Repr.Concrete
 import Spiral.Array.Shape
 import Spiral.Exp

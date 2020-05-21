@@ -95,7 +95,8 @@ import System.IO.Unsafe (unsafePerformIO)
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
-import Spiral.Array hiding (toList)
+import Spiral.Array hiding ((++),
+                            toList)
 import Spiral.Backend.C.CExp
 import Spiral.Backend.C.Code
 import Spiral.Config

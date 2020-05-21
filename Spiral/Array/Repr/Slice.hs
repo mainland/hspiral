@@ -23,7 +23,7 @@ import Prelude hiding (read)
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
-import Spiral.Array
+import Spiral.Array hiding (slice)
 import Spiral.Exp
 
 -- | Type tag for a vector slice.

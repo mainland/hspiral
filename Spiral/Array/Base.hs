@@ -29,6 +29,11 @@ module Spiral.Array.Base (
     fromLists,
     toLists,
     matrix,
+    fromVector,
+    toVector,
+    (++),
+    concat,
+    slice,
 
     D,
     fromFunction,
@@ -42,6 +47,9 @@ module Spiral.Array.Base (
 
     coerceSymbolic
   ) where
+
+import Prelude hiding ((++), concat)
+import qualified Prelude
 
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
@@ -159,7 +167,7 @@ fromLists [] =
     M (ix2 0 0) V.empty
 
 fromLists (r:rs) | all ((== n) . length) rs =
-    M (ix2 m n) (V.fromList (concat (r:rs)))
+    M (ix2 m n) (V.fromList (Prelude.concat (r:rs)))
   where
     m = 1 + length rs
     n = length r
@@ -169,6 +177,50 @@ fromLists _ = error "matrix: rows have differing lengths"
 -- | Alias for fromLists.
 matrix :: [[e]] -> Matrix M e
 matrix = fromLists
+
+-- | Create a vector from a V.Vector
+fromVector :: V.Vector e -> Vector M e
+fromVector v = M (ix1 (V.length v)) v
+
+-- | Convert a Vector to a V.Vector
+toVector :: IArray r DIM1 a
+         => Vector r a
+         -> V.Vector a
+toVector x = v
+  where
+    M _ v = manifest x
+
+-- | Append two Vectors
+infixr 5 ++
+(++) :: ( IArray r1 DIM1 a
+        , IArray r2 DIM1 a
+        )
+     => Vector r1 a
+     -> Vector r2 a
+     -> Vector M a
+x ++ y = M (ix1 (V.length v1 + V.length v2)) (v1 V.++ v2)
+  where
+    v1 = toVector x
+    v2 = toVector y
+
+-- | Concatenate Vectors
+concat :: IArray r DIM1 a
+      => [Vector r a]
+      -> Vector M a
+concat vs = M (ix1 (sum (map V.length vs'))) (V.concat vs')
+  where
+    vs' = map toVector vs
+
+-- | Slice a Vector
+slice :: IArray r DIM1 a
+      => Int -- ^ Initial element
+      -> Int -- ^ Stride
+      -> Int -- ^ Length
+      -> Vector r a
+      -> Vector D a
+slice b s l v = fromFunction (ix1 l) f
+  where
+    f (Z :. i) = v ! (b + i * s)
 
 -- | Convert a matrix to a list of rows, where each row is a list of elements.
 toLists :: IArray r DIM2 e
