@@ -11,6 +11,9 @@
 
 module Spiral.NumberTheory (
     primeFactorization,
+    factors,
+    coprimeFactors,
+
     modExp,
     zstar,
     eulerPhi,
@@ -39,6 +42,45 @@ import Test.QuickCheck
 -- | Compute prime factorization,
 primeFactorization :: Int -> [(Int, Int)]
 primeFactorization x = [(fromInteger (unPrime p), fromIntegral n) | (p,n) <- factorise (fromIntegral x)]
+
+-- | Return all possible ways to factor a number into two factors, neither of
+-- which is one.
+factors :: Int -> [(Int,Int)]
+factors n =
+    filter (not . dumbFactor) $
+    factorSplits $ primeFactorization n
+
+-- | Return all possible ways to factor a number into two coprime factors,
+-- neither of which is one.
+coprimeFactors :: Int -> [(Int,Int)]
+coprimeFactors n =
+    filter (not . dumbFactor)
+    [(unfactor fs1, unfactor fs2) | (fs1, fs2) <- splits $ primeFactorization n]
+
+-- | A prime factor we don't want.
+dumbFactor :: (Int,Int) -> Bool
+dumbFactor (1,_) = True
+dumbFactor (_,1) = True
+dumbFactor _     = False
+
+-- | Generate all possible splittings of a list, avoiding empty lists.
+splits :: [a] -> [([a], [a])]
+splits []     = []
+splits [x]    = [([x], []), ([], [x])]
+splits (x:xs) = [(x:ys, zs) | (ys, zs) <- ss] ++ [(ys, x:zs) | (ys, zs) <- ss]
+  where
+    ss = splits xs
+
+-- | Given a prime factorization, return all possible ways to split the original
+-- number into two factors.
+factorSplits :: [(Int,Int)] -> [(Int,Int)]
+factorSplits []         = [(1, 1)]
+factorSplits ((p,n):fs) = [(p^i*x, p^(n-i)*y) | (x,y) <- factorSplits fs, i <- [0..n]]
+
+-- | Convert a prime fatorization back into a number.
+unfactor :: [(Int,Int)] -> Int
+unfactor []         = 1
+unfactor ((p,n):fs) = p^n*unfactor fs
 
 -- | Fast modular exponentiation
 modExp :: forall a b . (Integral a, Integral b) => a -> b -> a -> a
