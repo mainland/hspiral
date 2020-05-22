@@ -21,6 +21,7 @@ module Test.SPL (
     rowTest,
     kroneckerTest,
     directSumTest,
+    smartConstructorTests,
     transposeTest
   ) where
 
@@ -46,6 +47,7 @@ splTests = describe "SPL operations" $ do
     rowTest
     kroneckerTest
     directSumTest
+    smartConstructorTests
     transposeTest
 
 -- See:
@@ -254,6 +256,46 @@ instance (Num a, Arbitrary a) => Arbitrary (SPL a) where
         Z :. m :. n = extent a
 
     shrink _ = []
+
+smartConstructorTests :: Spec
+smartConstructorTests = describe "Smart constructor tests" $ do
+    smartKroneckerTest
+    smartDSumTest
+    smartProdTest
+
+data KronTest a = KronTest (SPL a) (SPL a)
+  deriving (Show)
+
+instance (Num a, Arbitrary a) => Arbitrary (KronTest a) where
+    arbitrary = sized $ \k ->
+        if k == 0
+          then return $ KronTest (I 1) (I 1)
+          else do (m, n) <- elements $ (1,k) : factors k
+                  KronTest <$> resize m arbitrary <*> resize n arbitrary
+
+smartKroneckerTest :: Spec
+smartKroneckerTest = it "Kronecker" $
+    property (prop_kronecker_smart :: KronTest Int -> Property)
+  where
+    prop_kronecker_smart :: (Eq a, Num a, Show a) => KronTest a -> Property
+    prop_kronecker_smart (KronTest a b) =
+      toMatrix (a ⊗ b) === toMatrix (Kron a b)
+
+smartDSumTest :: Spec
+smartDSumTest = it "Direct sum" $
+    property (prop_dsum_smart :: SPL Int -> SPL Int -> Property)
+  where
+    prop_dsum_smart :: (Eq a, Num a, Show a) => SPL a -> SPL a -> Property
+    prop_dsum_smart a b =
+      toMatrix (a ⊕ b) === toMatrix (DSum a b)
+
+smartProdTest :: Spec
+smartProdTest = it "Product" $
+    property (prop_prod_smart :: SPL Int -> SPL Int -> Property)
+  where
+    prop_prod_smart :: (Eq a, Num a, Show a) => SPL a -> SPL a -> Property
+    prop_prod_smart a b =
+      toMatrix (a × b) === toMatrix (Prod a b)
 
 -- | Test group to verify matrix transposition of different matrix shapes
 transposeTest :: Spec
