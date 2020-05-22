@@ -23,6 +23,8 @@ module Spiral.Array.Base (
     SArray(..),
     SIndex(..),
 
+    identity,
+
     M,
     fromList,
     toList,
@@ -119,6 +121,15 @@ instance SArray r DIM1 e => SIndex r DIM1 (Exp Int) e where
 
 instance SArray r DIM2 e => SIndex r DIM2 (Exp Int, Exp Int) e where
     a !! (i, j) = indexS a (Z :. i :. j)
+
+
+-- | The n x n identity matrix
+identity :: Num a => Int -> Matrix D a
+identity n = fromFunction (ix2 n n) f
+  where
+    f (Z :. i :. j)
+      | i == j    = 1
+      | otherwise = 0
 
 -- | Type tag for a matrix whose entries are manifest.
 data M
