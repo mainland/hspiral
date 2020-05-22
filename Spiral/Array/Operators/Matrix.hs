@@ -21,6 +21,7 @@ module Spiral.Array.Operators.Matrix (
     (<->),
     (<|>),
     block,
+    submatrix,
 
     mXv,
     (#>),
@@ -147,6 +148,19 @@ block:: ( IArray r1 DIM2 a
      -> Matrix r4 a
      -> Matrix D a
 block tl tr bl br = (tl <|> tr) <-> (bl <|> br)
+
+-- | Extract submatrix
+submatrix :: IArray r DIM2 a
+          => Int -- ^ Starting row
+          -> Int -- ^ Number of rows
+          -> Int -- ^ Starting column
+          -> Int -- ^ Number columns
+          -> Matrix r a
+          -> Matrix D a
+submatrix r rn c cn a =
+    fromFunction (ix2 rn cn) f
+  where
+    f (Z :. i :. j) = a ! (r + i, c + j)
 
 -- | Compute the matrix-vector product, @A x@.
 mXv :: forall r1 r2 a .
