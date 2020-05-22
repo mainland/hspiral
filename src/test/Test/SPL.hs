@@ -22,7 +22,8 @@ module Test.SPL (
     kroneckerTest,
     directSumTest,
     smartConstructorTests,
-    transposeTest
+    transposeTest,
+    mXvTest
   ) where
 
 import Control.Monad (replicateM)
@@ -49,6 +50,7 @@ splTests = describe "SPL operations" $ do
     directSumTest
     smartConstructorTests
     transposeTest
+    mXvTest
 
 -- See:
 --   https://en.wikipedia.org/wiki/Kronecker_product
@@ -318,3 +320,31 @@ transposeTest = describe "Matrix transpose" $ do
     -- | Transposition is an involution
     prop_transpose_involution :: (Eq a, Num a, Show a) => SPL a -> Property
     prop_transpose_involution a = toMatrix (transpose (transpose a)) === toMatrix a
+
+data MXV a = MXV (SPL a) (A.Vector M a)
+  deriving (Show)
+
+instance (Num a, Show a, Arbitrary a) => Arbitrary (MXV a) where
+    arbitrary = sized $ \n -> do
+        a <- resize n arbitrary
+        let Z :. _ :. m' = extent a
+        x <- resize m' arbitrary
+        return $ MXV a x
+
+    shrink (MXV a (A.M _ xs))
+      | m > 1 && n > 1 = do a' <- shrink a
+                            let Z :. _ :. n' = extent a'
+                            return $ MXV a' (A.M (ix1 n') (V.take n' xs))
+      | otherwise = []
+      where
+        Z :. m :. n = extent a
+
+-- | Test matrix-vector product
+mXvTest :: Spec
+mXvTest = describe "Matrix-vector product" $
+    it "mXv commutes" $
+        property (prop_mXv_commutes :: MXV Int -> Property)
+  where
+    -- | mXv commutes with matrix conversion
+    prop_mXv_commutes :: (Eq a, Num a, Show a) => MXV a -> Property
+    prop_mXv_commutes (MXV a x) = A.manifest (a #> x) === A.manifest (toMatrix a A.#> x)

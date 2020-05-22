@@ -15,7 +15,8 @@ module Spiral.FFT.Bluestein (
 import qualified Spiral.Array as A
 import Spiral.Array.Operators.Matrix
 import Spiral.RootOfUnity
-import Spiral.SPL hiding (R)
+import Spiral.SPL hiding ((#>),
+                          R)
 
 default (Int)
 

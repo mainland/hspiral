@@ -30,6 +30,9 @@ module Spiral.SPL (
 
     extent,
 
+    mXv,
+    (#>),
+
     toMatrix,
     col,
     row,
@@ -62,10 +65,13 @@ import Text.PrettyPrint.Mainland hiding ((<|>))
 import Text.PrettyPrint.Mainland.Class
 
 import qualified Spiral.Array as A
-import Spiral.Array (IArray,
+import Spiral.Array (D,
+                     IArray,
                      M,
                      Matrix,
+                     Vector,
                      manifest)
+import qualified Spiral.Array.Operators.Mapping as A
 import qualified Spiral.Array.Operators.Matrix as A
 import Spiral.Array.Repr.Complex
 import Spiral.Array.Shape
@@ -275,6 +281,75 @@ transpose a@DFT'{}     = a
 transpose a@F{}        = a
 transpose a@F'{}       = a
 transpose a            = T a
+
+-- | Compute the product, @A x@.
+mXv :: forall r a .
+       ( Num a
+       , IArray r DIM1 a
+       )
+    => SPL a      -- ^ The SPL transform, @A@
+    -> Vector r a -- ^ The vector, @x@
+    -> Vector D a
+mXv I{} x =
+    A.delay x
+
+mXv (Pi p) x =
+    A.fromFunction (ix1 n) f
+  where
+    Z :. n = A.extent x
+
+    f (Z :. i) = x A.! reindex i
+      where
+        reindex = toIdxMapping (invert p)
+
+mXv (Diag d) x =
+    A.fromVector d A..* x
+
+mXv (KDiag n k) x =
+    A.fromFunction (ix1 n) f
+  where
+    f (Z :. i) = k * x A.! i
+
+mXv (Kron (I m) a) x =
+    A.delay $
+    A.concat [a #> A.slice (i*n') 1 n' x | i <- [0..m-1]]
+  where
+    Z :. _n :. n' = extent a
+
+mXv (Kron a (I n)) x =
+    permute (L (m*n) m) #> Kron (I n) a #> permute (L (m'*n) n) #> x
+  where
+    Z :. m :. m' = extent a
+
+mXv (Kron a b) x =
+    (I m ⊗ b) #> (a ⊗ I n') #> x
+  where
+    Z :. m :. _  = extent a
+    Z :. _ :. n' = extent b
+
+mXv (DSum a b) x =
+    A.delay $
+    (a #> A.slice 0 1 m x) A.++ (b #> A.slice m 1 n x)
+  where
+    Z :. _ :. m = extent a
+    Z :. _ :. n = extent b
+
+mXv (Prod a b) x =
+    a #> b #> x
+
+mXv a x =
+    toMatrix a `A.mXv` x
+
+-- | Compute the matrix-vector product, @A x@.
+infixr 8 #>
+(#>) :: forall r a .
+        ( Num a
+        , IArray r DIM1 a
+        )
+     => SPL a
+     -> Vector r a
+     -> Vector D a
+(#>) = mXv
 
 -- | Convert an SPL transform to an explicit matrix.
 toMatrix :: forall e . Num e => SPL e -> Matrix M e
