@@ -34,6 +34,7 @@ import Spiral.Array (M,
                      Matrix)
 import qualified Spiral.Array as A
 import qualified Spiral.Array.Operators.Matrix as A
+import Spiral.NumberTheory (factors)
 import Spiral.SPL
 
 splTests :: Spec
@@ -145,48 +146,114 @@ directSumTest = it "Direct sum (⊕)" $
                   [0, 0, 0, 0, 1]]
 
 instance Arbitrary Permutation where
-    arbitrary = sized $ \n ->
-        oneof [ do m <- choose (1, n)
-                   pure $ L (m*n) n
-              , pure $ J n
-              ]
+    arbitrary = sized $ \k ->
+        if k == 0
+          then pure $ J 1
+          else oneof [ do (m, n) <- elements $ (1,k) : factors k
+                          pure $ L (m*n) n
+                     , pure $ J k
+                     ]
 
-matrixGen :: Arbitrary a => Int -> Int -> Gen (SPL a)
-matrixGen r c = fromLists <$> replicateM r (replicateM c arbitrary)
+instance (Num a, Arbitrary a) => Arbitrary (A.Vector A.M a) where
+    arbitrary = sized $ \n -> do
+        xs <- replicateM n arbitrary
+        return $ A.M (ix1 n) (V.fromList xs)
+
+    shrink (A.M _ v)
+      | n > 1     = [A.M (ix1 (n-1)) (V.init v), A.M (ix1 (n-1)) (V.tail v)]
+      | otherwise = []
+      where
+        n = V.length v
 
 instance (Num a, Arbitrary a) => Arbitrary (SPL a) where
-    arbitrary = sized $ \n0 -> do
-        let n = n0 + 1
+    arbitrary = sized $ \n ->
         oneof [ matrixGen n n
-              , pure $ I n
+              , requireSize 1 $ pure $ I n
+              , piGen
               , T <$> resize n arbitrary
-              , Diag . V.fromList <$> replicateM n arbitrary
-              , Circ . V.fromList <$> replicateM n arbitrary
-              , Skew . V.fromList <$> replicateM n arbitrary
-              , Toep . V.fromList <$> replicateM (2*n-1) arbitrary
+              , requireSize 1 $ Diag . V.fromList <$> replicateM n arbitrary
+              , requireSize 1 $ Circ . V.fromList <$> replicateM n arbitrary
+              , requireSize 1 $ Skew . V.fromList <$> replicateM n arbitrary
+              , requireSize 1 $ Toep . V.fromList <$> replicateM (2*n-1) arbitrary
               , aboveGen
               , besideGen
+              , kronGen
+              , dsumGen
               ]
       where
-        aboveGen = sized $ \n ->
-            let (q, r) = quotRem (n+1) 2 in
-            Above <$> matrixGen q n <*> matrixGen (q + r) n
+        emptyMatrix :: SPL a
+        emptyMatrix = matrix $ A.M (ix2 0 0) V.empty
 
-        besideGen = sized $ \n ->
-            let (q, r) = quotRem (n+1) 2 in
-            Beside <$> matrixGen n q <*> matrixGen n (q + r)
+        matrixGen :: Arbitrary a => Int -> Int -> Gen (SPL a)
+        matrixGen r c
+          | r == 0 || c == 0 = pure emptyMatrix
+          | otherwise        = fromLists <$> replicateM r (replicateM c arbitrary)
+
+        requireSize :: Int -> Gen (SPL a) -> Gen (SPL a)
+        requireSize n g = sized $ \n' -> if n >= n' then matrixGen n' n' else g
+
+        piGen :: Gen (SPL a)
+        piGen = requireSize 1 $ Pi <$> arbitrary
+
+        aboveGen :: Gen (SPL a)
+        aboveGen = requireSize 2 $ sized $ \n ->
+            let (q, r) = quotRem n 2
+            in
+              Above <$> matrixGen q n <*> matrixGen (q + r) n
+
+        besideGen :: Gen (SPL a)
+        besideGen = requireSize 2 $ sized $ \n ->
+            let (q, r) = quotRem n 2
+            in
+              Beside <$> matrixGen n q <*> matrixGen n (q + r)
+
+        kronGen :: Gen (SPL a)
+        kronGen = requireSize 2 $ sized $ \k -> do
+            (m, n) <- elements $ (1,k) : factors k
+            oneof [ Kron <$> pure (I m) <*> resize n arbitrary
+                  , Kron <$> resize m arbitrary <*> pure (I n)
+                  , Kron <$> resize m arbitrary <*> resize n arbitrary
+                  ]
+
+        dsumGen :: Gen (SPL a)
+        dsumGen = requireSize 2 $ sized $ \k -> do
+            m     <- elements [1..k-1]
+            let n =  k-m
+            DSum <$> resize m arbitrary <*> resize n arbitrary
+
+    shrink a0@E{}
+        | m > 1 && n > 1 = [ matrix $ A.submatrix 0 (m-1) 0 (n-1) a
+                           , matrix $ A.submatrix 0 (m-1) 1 (n-1) a
+                           , matrix $ A.submatrix 1 (m-1) 0 (n-1) a
+                           , matrix $ A.submatrix 1 (m-1) 1 (n-1) a
+                           ]
+      where
+        a = toMatrix a0
+
+        Z :. m :. n = extent a0
 
     shrink (I n) = [I (n-1)]
-    shrink (T a) = a : map T (shrink a)
+
+    shrink (T a) = map T (shrink a)
+
     shrink (Diag xs)
-      | V.length xs > 0 = map (Diag . V.fromList) (shrink (V.toList xs))
+      | V.length xs > 2 = map (Diag . V.fromList) (shrink (V.toList xs))
+
     shrink (Circ xs)
-      | V.length xs > 0 = map (Circ . V.fromList) (shrink (V.toList xs))
+      | V.length xs > 2 = map (Circ . V.fromList) (shrink (V.toList xs))
+
     shrink (Skew xs)
-      | V.length xs > 0 = map (Skew . V.fromList) (shrink (V.toList xs))
+      | V.length xs > 2 = map (Skew . V.fromList) (shrink (V.toList xs))
+
     shrink (Toep xs)
       | V.length xs > 3 = map (Toep . V.fromList) (concatMap shrink (shrink (V.toList xs)))
-    shrink _     = []
+
+    shrink a
+        | m > 1 && n > 1 = shrink (matrix (toMatrix a))
+      where
+        Z :. m :. n = extent a
+
+    shrink _ = []
 
 -- | Test group to verify matrix transposition of different matrix shapes
 transposeTest :: Spec
