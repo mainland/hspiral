@@ -445,7 +445,7 @@ block tl tr bl br = (tl <|> tr) <-> (bl <|> br)
 -- | Alias for Kronecker product.
 infixl 7 ⊗
 (⊗) :: SPL e -> SPL e -> SPL e
-I m ⊗ (Kron (I n) y) = I (m+n) ⊗ y
+I m ⊗ (Kron (I n) y) = I (m*n) ⊗ y
 I 1 ⊗ y              = y
 x   ⊗ I 1            = x
 x   ⊗ y              = Kron x y
