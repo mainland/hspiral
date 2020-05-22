@@ -257,14 +257,18 @@ instance (Num a, Arbitrary a) => Arbitrary (SPL a) where
 
 -- | Test group to verify matrix transposition of different matrix shapes
 transposeTest :: Spec
-transposeTest = describe "Matrix transpose (manifest)" $ do
-    it "Permutation" $
-        toMatrix (transpose $ permute (L 16 2)) @?= toMatrix (backpermute (L 16 2) :: SPL Double)
+transposeTest = describe "Matrix transpose" $ do
+    it "Transpose of a permutation is inverse of permutation" $
+        property prop_transpose_permutation
     it "Transpose commutes" $
         property (prop_transpose_commutes :: SPL Int -> Property)
     it "Transpose is an involution" $
         property (prop_transpose_involution :: SPL Int -> Property)
   where
+    -- | Transpostion of a permutation is the inverse of the permutation
+    prop_transpose_permutation :: Permutation -> Property
+    prop_transpose_permutation p = toMatrix (transpose (permute p :: SPL Int)) === toMatrix (backpermute p)
+
     -- | Transpostion commutes with matrix conversion
     prop_transpose_commutes :: (Eq a, Num a, Show a) => SPL a -> Property
     prop_transpose_commutes a = toMatrix (transpose a) === A.manifest (A.transpose (toMatrix a))
