@@ -39,6 +39,8 @@ module Spiral.SPL (
 
     transpose,
 
+    inverse,
+
     (<->),
     (<|>),
     block,
@@ -76,7 +78,7 @@ import qualified Spiral.Array.Operators.Matrix as A
 import Spiral.Array.Repr.Complex
 import Spiral.Array.Shape
 import Spiral.Exp
-import Spiral.Permutation
+import Spiral.Permutation hiding (Inv)
 import Spiral.RootOfUnity
 import Spiral.Util.Pretty
 
@@ -97,6 +99,9 @@ data SPL a where
 
     -- | Transpose
     T :: SPL e -> SPL e
+
+    -- | Inverse
+    Inv :: (Eq e, Fractional e) => SPL e -> SPL e
 
     -- | A permutation
     Pi :: Permutation -> SPL e
@@ -200,6 +205,9 @@ extent (I n)       = ix2 n n
 extent (T e)       = ix2 n m
                        where
                          Z :. m :. n = extent e
+extent (Inv e)     = ix2 n n
+                       where
+                         Z :. n :. _ = extent e
 extent (Pi p)      = ix2 (dim p) (dim p)
 extent (Rot _)     = ix2 2 2
 extent (Diag xs)   = ix2 n n
@@ -260,6 +268,7 @@ transpose :: forall a . (Show a, Num a) => SPL a -> SPL a
 -- transpose (E m)        = (matrix . A.transpose . unShowArray) m
 transpose a@I{}        = a
 transpose (T a)        = a
+transpose (Inv a)      = Inv (transpose a)
 transpose (Pi p)       = backpermute p
 transpose (Rot alpha)  = Rot (-alpha)
 transpose a@Diag{}     = a
@@ -281,6 +290,25 @@ transpose a@DFT'{}     = a
 transpose a@F{}        = a
 transpose a@F'{}       = a
 transpose a            = T a
+
+-- | Inverse of an SPL expression
+inverse :: forall a . (Eq a, Fractional a) => SPL a -> SPL a
+inverse a@I{}       = a
+inverse (T a)       = T (inverse a)
+inverse (Inv a)     = a
+inverse (Pi p)      = backpermute p
+inverse (Rot alpha) = Rot (-alpha)
+inverse (Diag xs)   = Diag (fmap (1/) xs)
+inverse (KDiag n k) = KDiag n (1/k)
+inverse (Kron a b)  = Kron (inverse a) (inverse b)
+inverse (Prod a b)  = Prod (inverse b) (inverse a)
+inverse (Re a)      = Re (inverse a)
+inverse F2          = F2
+inverse (DFT n)     = DFT' n
+inverse (DFT' n)    = DFT n
+inverse (F n w)     = F' n w
+inverse (F' n w)    = F n w
+inverse a           = Inv a
 
 -- | Compute the product, @A x@.
 mXv :: forall r a .
@@ -357,6 +385,11 @@ toMatrix (E a) =
     manifest (unShowArray a)
 
 toMatrix (T e) = manifest $ A.transpose $ toMatrix e
+
+toMatrix (Inv e) =
+    case A.inverse $ toMatrix e of
+      Nothing -> error "Matrix has no inverse"
+      Just a  -> A.manifest a
 
 toMatrix (Diag xs) =
     manifest $ A.fromFunction (ix2 n n) f
@@ -448,6 +481,7 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec p (E a)        = pprPrec p (manifest (unShowArray a))
     pprPrec _ (I n)        = text "I_" <> ppr n
     pprPrec _ (T e)        = pprPrec 10 e <> text "^T"
+    pprPrec _ (Inv e)      = pprPrec 10 e <> text "^-1"
     pprPrec _ (Pi p)       = ppr p
     pprPrec _ (Rot alpha)  = text "R_" <> ppr alpha
     pprPrec _ (Diag xs)    = text "diag" <> pprArgs (V.toList xs)

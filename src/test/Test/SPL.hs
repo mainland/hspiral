@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -23,10 +24,12 @@ module Test.SPL (
     directSumTest,
     smartConstructorTests,
     transposeTest,
+    inverseTest,
     mXvTest
   ) where
 
 import Control.Monad (replicateM)
+import Data.Ratio
 import qualified Data.Vector as V
 import Test.HUnit ((@?=))
 import Test.Hspec
@@ -50,6 +53,7 @@ splTests = describe "SPL operations" $ do
     directSumTest
     smartConstructorTests
     transposeTest
+    inverseTest
     mXvTest
 
 -- See:
@@ -320,6 +324,41 @@ transposeTest = describe "Matrix transpose" $ do
     -- | Transposition is an involution
     prop_transpose_involution :: (Eq a, Num a, Show a) => SPL a -> Property
     prop_transpose_involution a = toMatrix (transpose (transpose a)) === toMatrix a
+
+newtype SmallRational = SR Rational
+  deriving (Eq, Ord, Show, Num, Fractional)
+
+instance Arbitrary SmallRational where
+    arbitrary = do n :: Integer <- arbitrary
+                   return $ SR $ (n `mod` 20) % 1
+
+-- | Test group to verify matrix inversion
+inverseTest :: Spec
+inverseTest = describe "Matrix inverse" $ do
+    it "Inverse of a permutation is inverse of permutation" $
+        property prop_inverse_permutation
+    it "Inverse commutes" $
+        property (prop_inverse_commutes :: SPL SmallRational -> Property)
+    it "Inverse is an involution" $
+        property (prop_inverse_involution :: SPL SmallRational -> Property)
+  where
+    -- | Inverse of a permutation is the inverse of the permutation
+    prop_inverse_permutation :: Permutation -> Property
+    prop_inverse_permutation p = toMatrix (inverse (permute p :: SPL Rational)) === toMatrix (backpermute p)
+
+    -- | Inverse commutes with matrix conversion
+    prop_inverse_commutes :: (Eq a, Fractional a, Show a) => SPL a -> Property
+    prop_inverse_commutes a =
+        case A.inverse (toMatrix a) of
+          Just a' -> toMatrix (inverse a) === A.manifest a'
+          Nothing -> property True
+
+    -- | Inverse is an involution
+    prop_inverse_involution :: (Eq a, Fractional a, Show a) => SPL a -> Property
+    prop_inverse_involution a =
+        case A.inverse (toMatrix a) of
+          Just _  -> toMatrix (inverse (inverse a)) === toMatrix a
+          Nothing -> property True
 
 data MXV a = MXV (SPL a) (A.Vector M a)
   deriving (Show)
