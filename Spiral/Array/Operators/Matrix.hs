@@ -28,6 +28,7 @@ module Spiral.Array.Operators.Matrix (
     mXvP,
 
     transpose,
+    inverse,
     mXm,
     kronecker,
     directSum
@@ -35,7 +36,15 @@ module Spiral.Array.Operators.Matrix (
 
 import Prelude hiding ((!!))
 
-import Control.Monad (when)
+import Control.Monad (forM_,
+                      when)
+import Control.Monad.Fail (MonadFail)
+import Control.Monad.Trans.Maybe
+import Control.Monad.Primitive (PrimMonad,
+                                PrimState)
+import Control.Monad.ST (runST)
+import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as MV
 import Text.PrettyPrint.Mainland hiding ((<|>))
 import Text.PrettyPrint.Mainland.Class
 
@@ -208,6 +217,113 @@ transpose a = D (ix2 n m) f
     Z :. m :. n = extent a
 
     f (Z :. i :. j) = index a (Z :. j :. i)
+
+-- | A mutable matrix
+data MMatrix s a = MMatrix DIM2 (MV.MVector s a)
+
+-- | Read entry of MMatrix
+readM :: PrimMonad m
+      => MMatrix (PrimState m) a -- ^ Matrix
+      -> (Int, Int)              -- ^ Index
+      -> m a
+readM (MMatrix sh mv) (i, j) = MV.read mv (toIndex sh (Z :. i :. j))
+
+-- | Swap rows of a MMatrix
+swapM :: PrimMonad m
+      => MMatrix (PrimState m) a -- ^ Matrix
+      -> Int                     -- ^ First row
+      -> Int                     -- ^ Second row
+      -> m ()
+swapM (MMatrix sh@(Z :. _ :. n) mv) i j
+  | i == j    = return ()
+  | otherwise = forM_ [0..n-1] $ \k ->
+                MV.swap mv (toIndex sh (Z :. i :. k)) (toIndex sh (Z :. j :. k))
+
+-- | Multiply MMatrix row by a constant
+multiplyM :: (Num a, PrimMonad m)
+          => MMatrix (PrimState m) a -- ^ Matrix
+          -> Int                     -- ^ Row
+          -> a                       -- ^ Constant
+          -> m ()
+multiplyM (MMatrix sh@(Z :. _ :. n) mv) i k =
+    forM_ [0..n-1] $ \j -> MV.modify mv (* k) (toIndex sh (Z :. i :. j))
+
+-- | Add multiple of one MMatrix row to another
+addM ::(Num a, PrimMonad m)
+     => MMatrix (PrimState m) a -- ^ Matrix
+     -> Int                     -- ^ Source row
+     -> a                       -- ^ Multiplier
+     -> Int                     -- ^ Destination row
+     -> m ()
+addM m@(MMatrix sh@(Z :. _ :. n) mv) i k i' =
+    forM_ [0..n-1] $ \j -> do
+        y <- (*) <$> pure k <*> readM m (i, j)
+        MV.modify mv (+ y) (toIndex sh (Z :. i' :. j))
+
+-- | Find row to serve as pivot for given column
+pivotM :: (Eq a, Num a, PrimMonad m)
+       => MMatrix (PrimState m) a -- ^ Matrix
+       -> Int                     -- ^ Column to pivot on
+       -> m Int
+pivotM a@(MMatrix (Z :. m :. _) _) j = go j
+  where
+    go i | i == m = fail $ "Cannot find pivot: " Prelude.++ show i
+
+    go i = do
+        x <- readM a (i, j)
+        if x /= 0
+           then return i
+           else go (i+1)
+
+gaussianM :: forall a m . (Eq a, Fractional a, PrimMonad m)
+          => MMatrix (PrimState m) a
+          -> m ()
+gaussianM a@(MMatrix (Z :. m :. _) _) =
+    go 0
+  where
+    go :: Int -> m ()
+    go i | i == m = return ()
+
+    go i = do
+        -- Find pivot row
+        i' <- pivotM a i
+        swapM a i i'
+        -- Ensure leading constant is 1
+        k <- readM a (i, i)
+        multiplyM a i (recip k)
+
+        -- Subtract
+        forM_ [0..m-1] $ \i' ->
+          if i == i'
+          then return ()
+          else do k <- readM a (i', i)
+                  addM a i (- k) i'
+        go (i+1)
+
+gaussian :: forall a r m . (Eq a, Fractional a, MonadFail m, IArray r DIM2 a)
+         => Matrix r a
+         -> m (Matrix M a)
+gaussian a =
+    case go of
+      Nothing -> fail "Non-invertable matrix"
+      Just a' -> return a'
+  where
+    M sh v = manifest a
+
+    go :: Maybe (Matrix M a)
+    go = runST $ runMaybeT $ do
+        mv <- V.thaw v
+        gaussianM $ MMatrix sh mv
+        M sh <$> V.unsafeFreeze mv
+
+inverse :: forall a r m . (Eq a, Fractional a, MonadFail m, IArray r DIM2 a)
+        => Matrix r a
+        -> m (Matrix D a)
+inverse a = do
+    r <- gaussian (a <|> identity n)
+    return $ submatrix 0 n n n r
+  where
+    Z :. n :. _ = extent a
 
 -- | Compute the matrix-vector product, @y = A x@.
 mXvP :: forall r1 r2 r3 a m .
