@@ -129,7 +129,7 @@ TESTSRC = \
 #
 .PHONY : clean
 clean :
-	$(_QUIET)rm -rf $(TARGETS) dft*.c dft*.so moddft_*.c moddft_*.so
+	$(_QUIET)rm -rf $(TARGETS) obj
 
 .PHONY : distclean
 distclean : clean
