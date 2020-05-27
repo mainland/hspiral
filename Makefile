@@ -75,6 +75,13 @@ SRC = \
 	Spiral/Backend/C/Monad.hs \
 	Spiral/Backend/C/Util.hs \
 	Spiral/Config.hs \
+	Spiral/Convolution.hs \
+	Spiral/Convolution/ConvolutionTheorem.hs \
+	Spiral/Convolution/Core.hs \
+	Spiral/Convolution/Standard.hs \
+	Spiral/Convolution/Tensor.hs \
+	Spiral/Convolution/ToomCook.hs \
+	Spiral/Convolution/Winograd.hs \
 	Spiral/Driver.hs \
 	Spiral/Driver/Monad.hs \
 	Spiral/Driver/Opts.hs \
@@ -83,6 +90,7 @@ SRC = \
 	Spiral/FFT/CooleyTukey.hs \
 	Spiral/FFT/GoodThomas.hs \
 	Spiral/FFT/Rader.hs \
+	Spiral/FFT/Winograd.hs \
 	Spiral/Globals.hs \
 	Spiral/Monad.hs \
 	Spiral/NumberTheory.hs \
@@ -107,13 +115,14 @@ SRC = \
 	Spiral/Util/Uniq.hs
 
 TESTSRC = \
-  src/test/Test/Codegen.hs \
-  src/test/Test/FFTW.hs \
-  src/test/Test/Factorization.hs \
-  src/test/Test/Gen.hs \
-  src/test/Test/Instances.hs \
-  src/test/Test/Opcount.hs \
-  src/test/Test/SPL.hs
+	src/test/Test/Codegen.hs \
+	src/test/Test/Convolution.hs \
+	src/test/Test/FFTW.hs \
+	src/test/Test/Factorization.hs \
+	src/test/Test/Gen.hs \
+	src/test/Test/Instances.hs \
+	src/test/Test/Opcount.hs \
+	src/test/Test/SPL.hs
 
 #
 # all, clean, and distclean targets
