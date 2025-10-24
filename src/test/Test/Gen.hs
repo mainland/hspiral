@@ -12,25 +12,19 @@
 
 module Test.Gen (
     withComplexTransform,
-    withModularTransform,
-
-    withLibltdl,
-    withDL
+    withModularTransform
   ) where
 
 import Data.Complex
 import Data.Modular
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as MV
-import Control.Exception (bracket,
-                          bracket_)
 import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString.Lazy as B
 import Data.Foldable (toList)
 import qualified Data.Text.Lazy.Encoding as E
 import Foreign.ForeignPtr (withForeignPtr)
-import Foreign.LibLTDL
 import Foreign.Ptr (FunPtr,
                     Ptr)
 import Foreign.Storable (Storable)
@@ -42,6 +36,7 @@ import System.IO (IOMode(..),
                   openFile)
 import System.IO.Temp (withTempDirectory)
 import System.IO.Unsafe (unsafePerformIO)
+import System.Posix.DynamicLinker (dlsym, withDL, RTLDFlags(RTLD_NOW))
 import System.Process (callProcess)
 import Text.PrettyPrint.Mainland (prettyLazyText,
                                   prettyPragmaLazyText)
@@ -118,13 +113,7 @@ withCompiledTransform conf fname e k = do
             c <- C.evalCg $ C.cgProgram t
             when True $ writeOutput dotc (toList c)
         callProcess "gcc" ["-o", dotso, "-fPIC", "-shared", dotc]
-        withLibltdl ["."] $ withDL dotso $ \h -> dlSym h fname >>= k
-
-withLibltdl :: SearchPath -> IO a -> IO a
-withLibltdl path k = bracket_ dlInit dlExit (dlSetSearchPath path >> k)
-
-withDL :: String -> (DLHandle -> IO a) -> IO a
-withDL lib = bracket (dlOpen (Just lib)) dlClose
+        withDL dotso [RTLD_NOW] $ \h -> dlsym h fname >>= k
 
 writeOutput :: Pretty a
             => FilePath

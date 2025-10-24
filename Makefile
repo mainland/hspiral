@@ -23,7 +23,6 @@ GHCFLAGS += \
 	-package hspec \
 	-package hspec-core \
 	-package language-c-quote \
-	-package libltdl \
 	-package logict \
 	-package mainland-pretty \
 	-package modular-arithmetic \
@@ -39,6 +38,7 @@ GHCFLAGS += \
 	-package temporary \
 	-package text \
 	-package transformers \
+	-package unix \
 	-package vector \
 	-package vector-fftw \
 	-package HUnit \
