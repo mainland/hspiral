@@ -216,7 +216,7 @@ dif = f
 
 
 -- | WHT Breakdown rule, WHT_2^n = (WHT_2 ⊗ I_2^(n-1)) × (I_2 ⊗ WHT_2^(n-1))
-wht :: Num a => Int -> SPL a
+wht :: Floating a => Int -> SPL a
 wht 0 = fromLists [[1]]
-wht 1 = F2
-wht n = (F2 ⊗ I (2^(n-1))) × (I 2 ⊗ wht (n-1))
+wht 1 = diag [1 / sqrt (2), 1 / sqrt (2)] × F2
+wht n = ((diag [1 / sqrt (2), 1 / sqrt (2)] × F2) ⊗ I (2^(n-1))) × (I 2 ⊗ wht (n-1))

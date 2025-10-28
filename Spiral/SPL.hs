@@ -489,7 +489,7 @@ toMatrix (WHT n) = manifest $ A.fromFunction (ix2 size size) f
   where
     size :: Int
     size = 2 ^ n
-    scale = 1
+    scale = 1 / sqrt (2^n)
     f (Z :. i :. j) = scale * ((-1) ^ popCount (i .&. j))
 
 toMatrix (WHT' n) = toMatrix (KDiag size (1/fromIntegral size) × WHT n)

@@ -136,13 +136,11 @@ f4Test = it "F_4" $ toMatrix (dit 4) @?= f4
         i = complexE (0 :+ 1)
 
 -- WHT factorization tests
--- whtTest :: Int -> Spec
 whtTest k = it ("WHT(2^" ++ show (k) ++ ")") $
-    toMatrix (wht n :: SPL Double) @?= toMatrix (WHT n)
+    toMatrix (wht n :: SPL(Exp Double)) @?= toMatrix (WHT n)
   where
     n       = k
     size    = 2 ^ n
-    
 -- $F_8$ calculated per "SPL: A Language and Compiler for DSP Algorithms"
 -- See also:
 --   https://en.wikipedia.org/wiki/DFT_matrix
