@@ -1,6 +1,6 @@
 TOP=.
 
-TARGETS = test quick dftgen voronenko maple opcount opcounts search moddftgen
+TARGETS = test quick dftgen voronenko maple opcount opcounts search moddftgen whtgen
 
 .PHONY : all
 all : $(TARGETS)
@@ -173,6 +173,10 @@ search : examples/Search.hs $(SRC)
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 
 moddftgen : examples/ModDFTGen.hs $(SRC)
+	@mkdir -p obj
+	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
+
+whtgen : examples/WHTGen.hs $(SRC)
 	@mkdir -p obj
 	$(_QUIET)$(GHC) $(GHCFLAGS) --make $< -odir obj -hidir obj -o $@
 

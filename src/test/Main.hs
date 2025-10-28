@@ -26,6 +26,7 @@ import Test.Convolution
 import Test.Factorization
 import Test.Opcount
 import Test.SPL
+import Test.WHT
 
 main :: IO ()
 main = do
@@ -36,6 +37,7 @@ main = do
 spec :: Spec
 spec = do
     splTests
+    whtTests
     convolutionTests
     describe "Factorization" $ do
         factorizationTests

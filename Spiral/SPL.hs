@@ -59,6 +59,7 @@ module Spiral.SPL (
     ix2
   ) where
 
+import Data.Bits
 import Data.Complex
 import Data.Monoid ((<>))
 import Data.Typeable (Typeable)
@@ -150,6 +151,12 @@ data SPL a where
 
     -- | The nxn Inverse DFT matrix
     DFT' :: RootOfUnity a => Int -> SPL a
+
+    -- | The nxn Walsh-Hadamard Transform
+    WHT :: Floating e => Int -> SPL e
+
+    -- | The nxn Inverse Walsh-Hadamard Transform
+    WHT' :: Floating e => Int -> SPL e
 
     -- | The nxn "rotated" DFT matrix
     F :: RootOfUnity a => Int -> a -> SPL a
@@ -262,6 +269,8 @@ extent (DFT n)  = ix2 n n
 extent (DFT' n) = ix2 n n
 extent (F n _)  = ix2 n n
 extent (F' n _) = ix2 n n
+extent (WHT n)  = ix2 (2^n) (2^n)
+extent (WHT' n) = ix2 (2^n) (2^n)
 
 -- | Transpose an SPL expression
 transpose :: forall a . (Show a, Num a) => SPL a -> SPL a
@@ -289,6 +298,8 @@ transpose a@DFT{}      = a
 transpose a@DFT'{}     = a
 transpose a@F{}        = a
 transpose a@F'{}       = a
+transpose a@WHT{}      = a
+transpose a@WHT'{}     = a
 transpose a            = T a
 
 -- | Inverse of an SPL expression
@@ -308,6 +319,8 @@ inverse (DFT n)     = DFT' n
 inverse (DFT' n)    = DFT n
 inverse (F n w)     = F' n w
 inverse (F' n w)    = F n w
+inverse (WHT n)     = WHT' n
+inverse (WHT' n)    = WHT n
 inverse a           = Inv a
 
 -- | Compute the product, @A x@.
@@ -467,12 +480,22 @@ toMatrix F2 =
 
 toMatrix (DFT n)  = toMatrix (F n (omega n))
 toMatrix (DFT' n) = toMatrix (F' n (omega n))
-
 toMatrix (F n w) = manifest $ A.fromFunction (ix2 n n) f
   where
     f (Z :. i :. j) = w ^ (i*j)
 
 toMatrix (F' n w) = toMatrix (KDiag n (1/fromIntegral n) × F n (1/w))
+toMatrix (WHT n) = manifest $ A.fromFunction (ix2 size size) f
+  where
+    size :: Int
+    size = 2 ^ n
+    scale = 1
+    f (Z :. i :. j) = scale * ((-1) ^ popCount (i .&. j))
+
+toMatrix (WHT' n) = toMatrix (KDiag size (1/fromIntegral size) × WHT n)
+   where
+    size :: Int
+    size = 2 ^ n
 
 pprArgs :: Pretty a => [a] -> Doc
 pprArgs = parens . commasep . map ppr
@@ -500,6 +523,8 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec _ (DFT' n)     = text "DFT'_" <> ppr n
     pprPrec _ (F n w)      = text "F_" <> ppr n <> parens (ppr w)
     pprPrec _ (F' n w)     = text "F'_" <> ppr n <> parens (ppr w)
+    pprPrec _ (WHT n)      = text "WHT_" <> ppr n
+    pprPrec _ (WHT' n)     = text "WHT'_" <> ppr n
 
 data MatrixBinop = AboveOp
                  | BesideOp

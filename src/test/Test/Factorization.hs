@@ -100,6 +100,8 @@ complexFactorizationTests = do
         sequence_ [ditTest p n | n <- [1..7]]
     describe "DIF" $
         sequence_ [difTest p n | n <- [1..7]]
+    describe "WHT" $
+      sequence_ [whtTest n | n <- [0..2]]
     describe "Split Radix" $
         sequence_ [splitRadixTest p n | n <- [1..3]]
     describe "Split Radix 8" $
@@ -133,6 +135,14 @@ f4Test = it "F_4" $ toMatrix (dit 4) @?= f4
         i :: Exp (Complex Double)
         i = complexE (0 :+ 1)
 
+-- WHT factorization tests
+-- whtTest :: Int -> Spec
+whtTest k = it ("WHT(2^" ++ show (k) ++ ")") $
+    toMatrix (wht n :: SPL Double) @?= toMatrix (WHT n)
+  where
+    n       = k
+    size    = 2 ^ n
+    
 -- $F_8$ calculated per "SPL: A Language and Compiler for DSP Algorithms"
 -- See also:
 --   https://en.wikipedia.org/wiki/DFT_matrix
