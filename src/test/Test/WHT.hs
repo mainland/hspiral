@@ -9,6 +9,8 @@ import qualified Spiral.Array as A
 import Spiral.Array (M, Matrix)
 import Spiral.SPL
 import Spiral.Exp
+import Data.Complex
+
 
 import qualified Spiral.Array.Operators.Mapping as A
 import qualified Spiral.Array.Operators.Matrix as A
@@ -27,13 +29,13 @@ hadamard n
 whtTests :: Spec
 whtTests = describe "WHT" $ do
     it "WHT matrix equals hadamard for n=1,2,3,4" $ do
-        toMatrix (WHT 1 :: SPL (Exp Double)) @?= hadamard 1
-        toMatrix (WHT 2 :: SPL (Exp Double)) @?= hadamard 2
-        toMatrix (WHT 3 :: SPL (Exp Double)) @?= hadamard 3
-        toMatrix (WHT 4 :: SPL (Exp Double)) @?= hadamard 4
+        toMatrix (WHT 1 :: SPL (Exp (Complex Double))) @?= hadamard 1
+        toMatrix (WHT 2 :: SPL (Exp (Complex Double))) @?= hadamard 2
+        toMatrix (WHT 3 :: SPL (Exp (Complex Double))) @?= hadamard 3
+        toMatrix (WHT 4 :: SPL (Exp (Complex Double))) @?= hadamard 4
 
     it "WHT' × WHT == I_n for n=1,2,3,4" $ do
-        toMatrix (WHT' 1 × WHT 1 :: SPL (Exp Double)) @?= toMatrix (I (2^1) :: SPL (Exp Double))
-        toMatrix (WHT' 2 × WHT 2 :: SPL (Exp Double)) @?= toMatrix (I (2^2) :: SPL (Exp Double))
-        toMatrix (WHT' 3 × WHT 3 :: SPL (Exp Double)) @?= toMatrix (I (2^3) :: SPL (Exp Double))
-        toMatrix (WHT' 4 × WHT 4 :: SPL (Exp Double)) @?= toMatrix (I (2^4) :: SPL (Exp Double))
+        toMatrix (WHT' 1 × WHT 1 :: SPL (Exp (Complex Double))) @?= toMatrix (I (2^1) :: SPL (Exp (Complex Double)))
+        toMatrix (WHT' 2 × WHT 2 :: SPL (Exp (Complex Double))) @?= toMatrix (I (2^2) :: SPL (Exp (Complex Double)))
+        toMatrix (WHT' 3 × WHT 3 :: SPL (Exp (Complex Double))) @?= toMatrix (I (2^3) :: SPL (Exp (Complex Double)))
+        toMatrix (WHT' 4 × WHT 4 :: SPL (Exp (Complex Double))) @?= toMatrix (I (2^4) :: SPL (Exp (Complex Double)))

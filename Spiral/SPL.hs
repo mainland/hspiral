@@ -491,11 +491,7 @@ toMatrix (WHT n) = manifest $ A.fromFunction (ix2 size size) f
     size = 2 ^ n
     scale = 1 / sqrt (2^n)
     f (Z :. i :. j) = scale * ((-1) ^ popCount (i .&. j))
-
-toMatrix (WHT' n) = toMatrix (KDiag size (1/fromIntegral size) × WHT n)
-   where
-    size :: Int
-    size = 2 ^ n
+toMatrix (WHT' n) = toMatrix (WHT n)
 
 pprArgs :: Pretty a => [a] -> Doc
 pprArgs = parens . commasep . map ppr

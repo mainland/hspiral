@@ -101,7 +101,7 @@ complexFactorizationTests = do
     describe "DIF" $
         sequence_ [difTest p n | n <- [1..7]]
     describe "WHT" $
-      sequence_ [whtTest n | n <- [0..2]]
+      sequence_ [whtTest n | n <- [0..6]]
     describe "Split Radix" $
         sequence_ [splitRadixTest p n | n <- [1..3]]
     describe "Split Radix 8" $
@@ -137,7 +137,7 @@ f4Test = it "F_4" $ toMatrix (dit 4) @?= f4
 
 -- WHT factorization tests
 whtTest k = it ("WHT(2^" ++ show (k) ++ ")") $
-    toMatrix (wht n :: SPL(Exp Double)) @?= toMatrix (WHT n)
+    toMatrix (wht n :: SPL (Exp (Complex Double))) @?= toMatrix (WHT n)
   where
     n       = k
     size    = 2 ^ n
