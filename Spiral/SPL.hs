@@ -485,10 +485,8 @@ toMatrix (F n w) = manifest $ A.fromFunction (ix2 n n) f
     f (Z :. i :. j) = w ^ (i*j)
 
 toMatrix (F' n w) = toMatrix (KDiag n (1/fromIntegral n) × F n (1/w))
-toMatrix (WHT n) = manifest $ A.fromFunction (ix2 size size) f
+toMatrix m@(WHT n) = manifest $ A.fromFunction (extent m) f
   where
-    size :: Int
-    size = 2 ^ n
     scale = 1 / sqrt (2^n)
     f (Z :. i :. j) = scale * ((-1) ^ popCount (i .&. j))
 toMatrix (WHT' n) = toMatrix (WHT n)
