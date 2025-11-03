@@ -792,7 +792,7 @@ instance (Typed a, Num (Const a), LiftNum (Const a), Num (Exp a)) => LiftNum (Ex
     -- 3-multiply/5-add complex multiplication
     liftNum2 Mul _ (ComplexE a b) (ComplexE c d) | threeMults =
           ComplexE (t1 - t2) (t1 + t3)
-      where
+      where
         t1 = a*(c+d)
         t2 = d*(b+a)
         t3 = c*(b-a)

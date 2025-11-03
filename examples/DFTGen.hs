@@ -66,19 +66,19 @@ formula fs n =
   where
     splitRadixSearch :: (Typeable a, Typed a, MonadSpiral m)
                      => SPL (Exp a)
-                     -> S s m (SPL (Exp a))
+                     -> S s m (SPL (Exp a))
     splitRadixSearch (F n w) = splitRadixBreakdown n w
     splitRadixSearch _       = mzero
 
     conjSplitRadixSearch :: (Typeable a, Typed a, MonadSpiral m)
                          => SPL (Exp a)
-                         -> S s m (SPL (Exp a))
+                         -> S s m (SPL (Exp a))
     conjSplitRadixSearch (F n w) = conjPairSplitRadixBreakdown n w
     conjSplitRadixSearch _       = mzero
 
     impSplitRadixSearch :: (Typeable a, Typed a, MonadSpiral m)
                         => SPL (Exp a)
-                        -> S s m (SPL (Exp a))
+                        -> S s m (SPL (Exp a))
     impSplitRadixSearch (F n w) = improvedSplitRadixBreakdown n w
     impSplitRadixSearch _       = mzero
 

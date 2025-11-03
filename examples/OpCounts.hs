@@ -64,12 +64,12 @@ radix2DitBreakdown _         = mzero
 
 splitRadixSearch :: (Typeable a, Typed a, MonadSpiral m)
                  => SPL (Exp a)
-                 -> S s m (SPL (Exp a))
+                 -> S s m (SPL (Exp a))
 splitRadixSearch (F n w) = splitRadixBreakdown n w
 splitRadixSearch _       = mzero
 
 impSplitRadixSearch :: (Typeable a, Typed a, MonadSpiral m)
                     => SPL (Exp a)
-                    -> S s m (SPL (Exp a))
+                    -> S s m (SPL (Exp a))
 impSplitRadixSearch (F n w) = improvedSplitRadixBreakdown n w
 impSplitRadixSearch _       = mzero

@@ -102,7 +102,7 @@ cacheDFT n w e m = do
 
 findDFT :: forall a m . (Typeable a, Typed a, MonadSpiral m)
         => SPL (Exp a)
-        -> SDFT m (SPL (Exp a))
+        -> SDFT m (SPL (Exp a))
 findDFT (F n w) = do
    maybe_e <- lookupDFT n w
    case maybe_e of
@@ -116,7 +116,7 @@ findDFT _ =
 bestBreakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
               => Int
               -> Exp a
-              -> SDFT m (SPL (Exp a))
+              -> SDFT m (SPL (Exp a))
 bestBreakdown n w = do
     useComplexType <- asksConfig $ testDynFlag UseComplex
     alts           <- observeAll (breakdown n w) >>= mapM (search findDFT)
@@ -142,7 +142,7 @@ bestBreakdown n w = do
 breakdown :: forall a m . (Typeable a, Typed a, RootOfUnity (Exp a), MonadSpiral m)
           => Int
           -> Exp a
-          -> SDFT m (SPL (Exp a))
+          -> SDFT m (SPL (Exp a))
 breakdown n w =
     bruteForce n w <|>
     cooleyTukeyBreakdowns n w <|>

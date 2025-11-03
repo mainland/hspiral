@@ -84,7 +84,7 @@ splitRadixOpcountTests =
 
     f :: (Typeable a, Typed a, MonadSpiral m)
       => SPL (Exp a)
-      -> S s m (SPL (Exp a))
+      -> S s m (SPL (Exp a))
     f (F n w) = splitRadixBreakdown n w
     f _       = mzero
 
