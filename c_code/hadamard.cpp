@@ -15,7 +15,7 @@ static void fwht_recursive(double* x, std::size_t n) {
     for (std::size_t i = 0; i < half; ++i) {
         double a = x[i];
         double b = x[i + half];
-        x[i]       = a + b;
+        x[i]        = a + b;
         x[i + half] = a - b;
     }
 }
