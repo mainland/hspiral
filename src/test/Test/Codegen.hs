@@ -19,7 +19,8 @@ module Test.Codegen (
     splitRadixCodegenTests,
     improvedSplitRadixCodegenTests,
     searchCodegenTests,
-    modCodegenTests
+    modCodegenTests,
+    whtCodegenTests
   ) where
 
 import Control.Monad (mzero,
@@ -54,6 +55,7 @@ import Spiral.Search.FFTBreakdowns
 import Spiral.Search.OpCount
 
 import qualified Test.FFTW as FFTW
+import qualified Test.FWHT as FWHT
 import Test.Gen
 import Test.Instances ()
 
@@ -61,11 +63,17 @@ codegenTests :: Config
              -> [Int]
              -> Spec
 codegenTests conf sizes = do
+    whtCodegenTests conf sizes
     ditCodegenTests conf sizes
     difCodegenTests conf sizes
     splitRadixCodegenTests conf sizes
     improvedSplitRadixCodegenTests conf sizes
     modCodegenTests conf
+
+whtCodegenTests :: Config -> [Int] -> Spec
+whtCodegenTests conf sizes =
+    describe "Generated WHT" $
+    mkCodegenWhtTests conf "WHT" (return . wht) sizes
 
 ditCodegenTests :: Config -> [Int] -> Spec
 ditCodegenTests conf sizes =
@@ -117,6 +125,20 @@ mkCodegenTests conf desc f = mapM_ dftTest
         withComplexTransform conf ("dft" ++ show n) e $ \dft ->
           k $ forAll (uniformVectorsOfSize n) $ \v -> epsDiff (dft v) (FFTW.fft n v)
 
+-- new make codegen needed to handle WHTs, since WHT is real only and handles sizes differently
+mkCodegenWhtTests :: Config
+               -> String
+               -> (Int -> Spiral (SPL (Exp Double)))
+               -> [Int]
+               -> Spec
+mkCodegenWhtTests conf desc f = mapM_ whtTest
+  where
+    whtTest :: Int -> Spec
+    whtTest n = it (desc ++ "(2^" ++ show (floor (logBase (2 :: Double) (fromIntegral n :: Double)) :: Int) ++ ")") $ \(k :: Property -> IO Result) -> do
+        e <- runSpiralWith mempty $ f (floor (logBase (2 :: Double) (fromIntegral n :: Double)))
+        withRealTransform conf ("wht" ++ show n) e $ \wht ->
+          k $ forAll (uniformVectorsOfSize n) $ \v -> epsDiffReal (wht v) (FWHT.wht n v)
+
 -- | Generate vectors of a given size with uniformly distributed elements.
 uniformVectorsOfSize :: (Arbitrary (Uniform01 a), VS.Storable a)
                      => Int
@@ -161,6 +183,21 @@ epsDiff v1 v2 =
   where
     maxDelta :: a
     maxDelta = VS.maximum $ VS.zipWith (\x y -> magnitude (x - y)) v1 v2
+
+    eps :: a
+    eps = 1e-12
+
+-- new epsDiff needed to handle Real-only vector compares
+epsDiffReal :: forall a. (Show a, RealFloat a, VS.Storable a)
+          => VS.Vector a
+          -> VS.Vector a
+          -> Property
+epsDiffReal v1 v2 =
+    counterexample ("Max delta: " ++ show maxDelta) $
+    maxDelta < eps
+  where
+    maxDelta :: a
+    maxDelta = VS.maximum $ VS.zipWith (\x y -> abs (x - y)) v1 v2
 
     eps :: a
     eps = 1e-12

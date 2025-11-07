@@ -226,6 +226,7 @@ test-suite full
     Test.WHT
     Test.Opcount
     Test.SPL
+    Test.FWHT
 
   build-depends:
     spl,
@@ -246,6 +247,9 @@ test-suite full
     vector-fftw                >= 0.1   && < 0.2,
     HUnit                      >= 1.3   && < 1.7,
     QuickCheck                 >= 2.8   && < 2.14
+
+  extra-libraries: stdc++
+  c-sources: c_code/hadamard.cpp
 
   ghc-options:
     -Wall -fno-warn-name-shadowing -O2
@@ -267,6 +271,7 @@ test-suite quick
     Test.WHT
     Test.Opcount
     Test.SPL
+    Test.FWHT
 
   build-depends:
     spl,
@@ -288,6 +293,9 @@ test-suite quick
     HUnit                      >= 1.3   && < 1.7,
     QuickCheck                 >= 2.8   && < 2.14
 
+  c-sources: c_code/hadamard.cpp
+  extra-libraries: stdc++
+  
   ghc-options:
     -Wall -fno-warn-name-shadowing -O2
 

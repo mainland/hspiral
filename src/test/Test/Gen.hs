@@ -12,6 +12,7 @@
 
 module Test.Gen (
     withComplexTransform,
+    withRealTransform,
     withModularTransform,
 
     withLibltdl,
@@ -64,6 +65,16 @@ withComplexTransform conf name e k =
     withCompiledTransform conf name (Re e) $ \fptr ->
     k $ mkTransform (dynComplexTransform fptr)
 
+-- new transform required for Reals
+withRealTransform :: Config
+                   -> String
+                   -> SPL (Exp Double)
+                   -> ((V.Vector Double -> V.Vector Double) -> IO a)
+                   -> IO a
+withRealTransform conf name e k =
+    withCompiledTransform conf name e $ \fptr ->
+    k $ mkTransform (dynRealTransform fptr)
+
 withModularTransform :: KnownNat p
                      => Config
                      -> String
@@ -79,6 +90,12 @@ foreign import ccall "dynamic"
                         -> Ptr (Complex Double)
                         -> Ptr (Complex Double)
                         -> IO ()
+
+foreign import ccall "dynamic"
+    dynRealTransform :: FunPtr (Ptr Double -> Ptr Double -> IO ())
+                     -> Ptr Double
+                     -> Ptr Double
+                     -> IO ()
 
 foreign import ccall "dynamic"
     dynModularTransform :: FunPtr (Ptr (ℤ/p) -> Ptr (ℤ/p) -> IO ())
