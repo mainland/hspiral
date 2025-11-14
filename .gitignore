@@ -2,3 +2,14 @@
 .stack-work
 cabal.sandbox.config
 dist/
+obj/
+dftgen
+maple
+moddftgen
+opcount
+opcounts
+quick
+search
+stack.yaml.lock
+voronenko
+/test

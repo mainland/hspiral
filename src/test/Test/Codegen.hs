@@ -64,6 +64,7 @@ codegenTests :: Config
              -> Spec
 codegenTests conf sizes = do
     whtCodegenTests conf sizes
+    whtIterCodegenTests conf sizes
     ditCodegenTests conf sizes
     difCodegenTests conf sizes
     splitRadixCodegenTests conf sizes
@@ -74,6 +75,11 @@ whtCodegenTests :: Config -> [Int] -> Spec
 whtCodegenTests conf sizes =
     describe "Generated WHT" $
     mkCodegenWhtTests conf "WHT" (return . wht) sizes
+
+whtIterCodegenTests :: Config -> [Int] -> Spec
+whtIterCodegenTests conf sizes =
+    describe "Generated iter WHT" $
+    mkCodegenWhtTests conf "ITER_WHT" (return . wht_iter) sizes
 
 ditCodegenTests :: Config -> [Int] -> Spec
 ditCodegenTests conf sizes =

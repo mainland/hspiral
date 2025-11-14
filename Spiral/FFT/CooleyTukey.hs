@@ -16,10 +16,11 @@ module Spiral.FFT.CooleyTukey (
     improvedSplitRadix,
     dit,
     dif,
-    wht
+    wht,
+    wht_iter
   ) where
 
-import Data.List (foldr1)
+import Data.List (foldr1, foldl1)
 
 import Spiral.RootOfUnity
 import Spiral.SPL
@@ -220,3 +221,11 @@ wht :: Floating a => Int -> SPL a
 wht 0 = fromLists [[1]]
 wht 1 = diag [1 / sqrt (2), 1 / sqrt (2)] × F2
 wht n = ((diag [1 / sqrt (2), 1 / sqrt (2)] × F2) ⊗ I (2^(n-1))) × (I 2 ⊗ wht (n-1))
+
+-- | Iterative WHT rule, WHT_2^n = ∏_{i=1}^{n} (I_(2^(i-1)) ⊗ WHT_2 ⊗ I_(2^(n-i)))
+wht_iter :: Floating a => Int -> SPL a
+wht_iter 0 = fromLists [[1]]
+wht_iter n = foldl1 (×) productTerms
+  where
+    wht2 = diag [1 / sqrt (2), 1 / sqrt (2)] × F2  -- 2x2 WHT
+    productTerms = [I (2^(i-1)) ⊗ wht2 ⊗ I (2^(n-i)) | i <- [1..n]]

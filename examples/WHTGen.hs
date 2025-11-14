@@ -58,12 +58,15 @@ formula :: MonadSpiral m => [Flag] -> Int -> m (SPL (Exp (Complex Double)))
 formula fs n =
   case fs of
     [Wht]                -> return $ wht n
+    [WhtIter]            -> return $ wht_iter n
     _                    -> fail "Must specify exactly on of --wht"
 
 data Flag = Wht
+          | WhtIter
   deriving (Eq, Ord, Show)
 
 options :: [OptDescr Flag]
 options =
     [ Option [] ["wht"] (NoArg Wht)                             "Use WHT"
+    , Option [] ["iterWht"] (NoArg WhtIter)                     "Use Iterative WHT"
     ]
