@@ -292,11 +292,9 @@ winogradSquareTest p = describe ("WinogradSquare(" ++ show p ++ "^2)") $
         | i  <- [1,p],
           f  <- take 1 $ winogradSquare p k (w^^i) getCycs]
   where
-    n, p', s, k :: Int
-    k  = 2
-    n  = p^k
-    p' = (p-1)
-    s  = p * p'
+    n, k :: Int
+    k = 2
+    n = p^k
 
     w :: Exp (Complex Double)
     w = omega n
