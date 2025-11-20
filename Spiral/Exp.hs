@@ -56,7 +56,8 @@ module Spiral.Exp (
   ) where
 
 import Data.Complex
-import Data.Complex.Cyclotomic
+import Data.Complex.Cyclotomic as Cyc
+import Data.Maybe (fromJust)
 import Data.Modular
 import Data.Modular.Instances ()
 import Data.Monoid ((<>))
@@ -188,9 +189,20 @@ fromConst (DoubleC x)    = x
 fromConst (RationalC x)  = fromRational x
 fromConst (ComplexC r i) = fromConst r :+ fromConst i
 fromConst (W _ _ x)      = fromConst x
-fromConst (CycC x)       = toComplex x
+fromConst (CycC x)       = fromCyclotomic x
 fromConst (PiC x)        = pi*fromRational x
 fromConst (ModularC x)   = x
+
+-- | Export a 'Cyclotomic' as an inexact complex number. This function avoids
+-- some error that `Data.Complex.Cyclotomic.toComplex` introduces.
+fromCyclotomic :: RealFloat a => Cyclotomic -> Complex a
+fromCyclotomic x = re :+ im
+  where
+    re = fromRealCyclotomic (Cyc.real x)
+    im = fromRealCyclotomic (Cyc.imag x)
+
+fromRealCyclotomic :: forall a . RealFloat a => Cyclotomic -> a
+fromRealCyclotomic x = fromJust (Cyc.toReal x :: Maybe a)
 
 lift :: ToConst a => (a -> a) -> Const a -> Const a
 lift f (IntC x)      = IntC (f x)
