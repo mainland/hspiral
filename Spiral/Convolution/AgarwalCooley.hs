@@ -14,11 +14,6 @@ import Spiral.NumberTheory (euclid)
 import Spiral.RootOfUnity
 import Spiral.SPL
 
-import Spiral.Convolution.Core (HPoly(..))
-import Spiral.Convolution.Winograd
-
-import Data.List (foldl1')
-
 agarwalCooleyA :: forall a . (RootOfUnity a, Show a, Eq a)
                => Int
                -> Int
