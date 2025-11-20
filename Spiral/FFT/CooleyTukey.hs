@@ -24,6 +24,7 @@ import Data.List (foldr1, foldl1)
 
 import Spiral.RootOfUnity
 import Spiral.SPL
+import Spiral.Exp
 
 -- For exponent in 'splitRadix'
 default (Int)
@@ -222,10 +223,28 @@ wht 0 = fromLists [[1]]
 wht 1 = diag [1 / sqrt (2), 1 / sqrt (2)] × F2
 wht n = ((diag [1 / sqrt (2), 1 / sqrt (2)] × F2) ⊗ I (2^(n-1))) × (I 2 ⊗ wht (n-1))
 
+-- JACK TODO: Remove (leaving as reference for now)
+-- | Iterative WHT rule, WHT_2^n = ∏_{i=1}^{n} (I_(2^(i-1)) ⊗ WHT_2 ⊗ I_(2^(n-i)))
+-- wht_iter :: Floating a => Int -> SPL a
+-- wht_iter 0 = fromLists [[1]]
+-- wht_iter n = iterProd n whtTerm
+--   where
+--     wht2 = diag [1 / sqrt (2), 1 / sqrt (2)] × F2  -- 2x2 WHT
+--     whtTerm i = I (2^(i-1)) ⊗ wht2 ⊗ I (2^(n-i))
+
+
+-- iterProd :: Num a => Int -> (Int -> SPL a) -> SPL a
+-- iterProd n f
+--   | n <= 0    = error "iterProd <= 0 is illegal"
+--   | otherwise = foldl1 (×) $ map f [1..n]
+
 -- | Iterative WHT rule, WHT_2^n = ∏_{i=1}^{n} (I_(2^(i-1)) ⊗ WHT_2 ⊗ I_(2^(n-i)))
 wht_iter :: Floating a => Int -> SPL a
 wht_iter 0 = fromLists [[1]]
-wht_iter n = foldl1 (×) productTerms
+wht_iter n = IterProd n whtTerm
   where
-    wht2 = diag [1 / sqrt (2), 1 / sqrt (2)] × F2  -- 2x2 WHT
-    productTerms = [I (2^(i-1)) ⊗ wht2 ⊗ I (2^(n-i)) | i <- [1..n]]
+    wht2 :: Floating a => SPL a
+    wht2 = diag [1 / sqrt 2, 1 / sqrt 2] × F2
+
+    whtTerm :: Floating a => Exp Int -> SPL a
+    whtTerm i = I (((2)^(i - intE 1))) ⊗ wht2 ⊗ I (((2)^(intE n - i)))

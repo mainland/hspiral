@@ -22,6 +22,7 @@ module Test.SPL (
     rowTest,
     kroneckerTest,
     directSumTest,
+    iterProdTest,
     smartConstructorTests,
     transposeTest,
     inverseTest,
@@ -41,6 +42,8 @@ import qualified Spiral.Array as A
 import qualified Spiral.Array.Operators.Matrix as A
 import Spiral.NumberTheory (factors)
 import Spiral.SPL
+import Spiral.Exp
+
 
 splTests :: Spec
 splTests = describe "SPL operations" $ do
@@ -51,6 +54,7 @@ splTests = describe "SPL operations" $ do
     rowTest
     kroneckerTest
     directSumTest
+    iterProdTest
     smartConstructorTests
     transposeTest
     inverseTest
@@ -152,6 +156,99 @@ directSumTest = it "Direct sum (⊕)" $
                   [2, 3, 1, 0, 0],
                   [0, 0, 0, 1, 6],
                   [0, 0, 0, 0, 1]]
+
+iterProdTest :: Spec
+iterProdTest = describe "IterProd" $ do 
+  it "IterProd (2x2)×(2x2)×(2x2)=(2x2)" $
+    toMatrix (IterProd 3 (\i -> f i)) @?= aOut
+  it "IterProd (3x3)×(3x3)=(3x3)" $
+    toMatrix (IterProd 2 (\i -> g i)) @?= bOut
+  it "IterProd (3x3)×(3x3)×(3x2)=(3x2)" $
+    toMatrix (IterProd 3 (\i -> h i)) @?= cOut
+  it "IterProd Transpose Test" $
+    toMatrix (transpose (IterProd 3 (\i -> f i))) @?= aOutTranspose
+  it "IterProd Inverse Test" $
+    toMatrix (inverse (IterProd 3 (\i -> fRational i))) @?= aOutInverse
+  where
+    f :: Exp Int -> SPL Int
+    f 1 = matrix a1
+    f 2 = matrix a2
+    f 3 = matrix a3
+    f _ = error "unexpected index"
+
+    fRational :: Exp Int -> SPL Rational
+    fRational 1 = matrix a1Rational
+    fRational 2 = matrix a2Rational
+    fRational 3 = matrix a3Rational
+    fRational _ = error "unexpected index"
+
+    -- 2×2 example matrices
+    a1, a2, a3, aOut, aOutTranspose :: Matrix M Int
+    a1 = A.matrix [[1, 2],
+                   [0, 1]]
+    a2 = A.matrix [[2, 0],
+                   [1, 3]]
+    a3 = A.matrix [[0, 1],
+                   [4, 2]]
+    -- aOut = a1 × a2 × a3
+    aOut = A.matrix [[24, 16],
+                     [12,  7]]
+
+    -- aOutTranspose = (a1 × a2 × a3)^T
+    aOutTranspose = A.matrix [[24, 12],
+                              [16,  7]]
+
+    -- copy of a1 matrices but with Rational entires for inverse test
+    a1Rational, a2Rational, a3Rational, aOutInverse :: Matrix M Rational
+    a1Rational = A.matrix [[1, 2],
+                   [0, 1]]
+    a2Rational = A.matrix [[2, 0],
+                   [1, 3]]
+    a3Rational = A.matrix [[0, 1],
+                   [4, 2]]
+    -- aOutInverse = (a1 × a2 × a3)^(-1)
+    aOutInverse = A.matrix [[ -7 % 24, 2 % 3],
+                            [ 1 % 2, -1]]
+
+    g :: Exp Int -> SPL Int
+    g 1 = matrix b1
+    g 2 = matrix b2
+    g _ = error "unexpected index"
+
+    -- 3×3 example matrices
+    b1, b2, bOut :: Matrix M Int
+    b1 = A.matrix [[1, 0, 2], 
+                    [0, 1, 1], 
+                    [1, 1, 0]] 
+    b2 = A.matrix [[2, 1, 0], 
+                   [0, 1, 1], 
+                   [1, 0, 1]] 
+    -- bOut = b1 × b2
+    bOut = A.matrix [[4, 1, 2], 
+                     [1, 1, 2], 
+                     [2, 2, 1]]
+    
+    h :: Exp Int -> SPL Int
+    h 1 = matrix c1
+    h 2 = matrix c2
+    h 3 = matrix c3
+    h _ = error "unexpected index"
+
+    -- 3x3, 3x3, 3x2 example matrices
+    c1, c2, c3, cOut :: Matrix M Int
+    c1 = A.matrix [[1, 0, 2], 
+                    [0, 1, 1], 
+                    [1, 1, 0]] 
+    c2 = A.matrix [[2, 1, 0], 
+                   [0, 1, 1], 
+                   [1, 0, 1]]
+    c3 = A.matrix [[1, 2], 
+                   [3, 4], 
+                   [5, 6]]
+    -- cOut = c1 × c2 × c3
+    cOut = A.matrix [[17, 24], 
+                     [14, 18], 
+                     [13, 18]]
 
 instance Arbitrary Permutation where
     arbitrary = sized $ \k ->

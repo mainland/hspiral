@@ -164,7 +164,15 @@ data SPL a where
     -- | The nxn "rotated" inverse DFT matrix
     F' :: RootOfUnity a => Int -> a -> SPL a
 
+    -- JACK TODO: Remove (left as reference for now)
+    -- IterProd :: [SPL a] -> SPL a
+
+    IterProd :: Num a => Int -> (Exp Int -> SPL a) -> SPL a
+
 deriving instance Show e => Show (SPL e)
+instance Show (Exp Int -> SPL e) where 
+    show _ = "<function>"
+
 deriving instance Typeable e => Typeable (SPL e)
 
 -- | Embed any 'Matrix' as an SPL term.
@@ -204,6 +212,13 @@ permute = Pi
 -- | Backpermute (gather).
 backpermute :: Permutation -> SPL e
 backpermute = Pi . invert
+
+-- | Expand an IterProd into an explicit left-associated product.
+expandIterProd :: Int -> (Exp Int -> SPL a) -> SPL a
+expandIterProd n f
+  | n <= 0    = error "IterProd: positive n required"
+  | otherwise = foldl1 Prod [ f (intE i) | i <- [1 .. n] ]
+
 
 -- | Return the extent of an SPL transform.
 extent :: SPL a -> DIM2
@@ -271,6 +286,16 @@ extent (F n _)  = ix2 n n
 extent (F' n _) = ix2 n n
 extent (WHT n)  = ix2 (2^n) (2^n)
 extent (WHT' n) = ix2 (2^n) (2^n)
+-- JACK TODO: Remove or fix after discussion
+-- extent (IterProd n f)
+--     | n <= 0    = error "IterProd: positive n required"
+--     | otherwise =
+--         let Z :. r1 :. _ = extent  (f (intE 1))
+--             Z :. _  :. cN = extent (f (intE n))
+--         in ix2 r1 cN
+extent (IterProd n f) =
+    extent (expandIterProd n f)
+
 
 -- | Transpose an SPL expression
 transpose :: forall a . (Show a, Num a) => SPL a -> SPL a
@@ -300,6 +325,10 @@ transpose a@F{}        = a
 transpose a@F'{}       = a
 transpose a@WHT{}      = a
 transpose a@WHT'{}     = a
+-- JACK TODO: Remove or fix after discussion
+-- transpose (IterProd n f) = IterProd n (\i -> transpose (f (intE (n+1) - i)))
+transpose (IterProd n f) =
+    transpose (expandIterProd n f)
 transpose a            = T a
 
 -- | Inverse of an SPL expression
@@ -321,6 +350,10 @@ inverse (F n w)     = F' n w
 inverse (F' n w)    = F n w
 inverse (WHT n)     = WHT' n
 inverse (WHT' n)    = WHT n
+-- JACK TODO: Remove or fix after discussion
+-- inverse (IterProd n f) = IterProd n (\i -> inverse (f (intE (n+1) - i)))
+inverse (IterProd n f) =
+    inverse (expandIterProd n f)
 inverse a           = Inv a
 
 -- | Compute the product, @A x@.
@@ -377,6 +410,14 @@ mXv (DSum a b) x =
 
 mXv (Prod a b) x =
     a #> b #> x
+-- JACK TODO: Remove or fix after discussion
+-- mXv (IterProd n f) x
+--     | n <= 0    = error "IterProd: positive n required"
+--     | otherwise =
+--         let x0 = A.delay x
+--         in foldr (\i acc -> mXv (f (intE i)) acc) x0 [1..n]
+mXv (IterProd n f) x =
+    mXv (expandIterProd n f) x
 
 mXv a x =
     toMatrix a `A.mXv` x
@@ -490,6 +531,14 @@ toMatrix m@(WHT n) = manifest $ A.fromFunction (extent m) f
     scale = 1 / sqrt (2^n)
     f (Z :. i :. j) = scale * ((-1) ^ popCount (i .&. j))
 toMatrix (WHT' n) = toMatrix (WHT n)
+toMatrix (IterProd n f) =
+    toMatrix (expandIterProd n f)
+-- JACK TODO: Remove or fix after discussion
+-- toMatrix (IterProd n f)
+--     | n <= 0    = error "IterProd: positive n required"
+--     | otherwise =
+--         let matsD = [ A.delay (toMatrix (f (intE i))) | i <- [1..n] ]
+--         in A.manifest $ foldl1 A.mXm matsD
 
 pprArgs :: Pretty a => [a] -> Doc
 pprArgs = parens . commasep . map ppr
@@ -519,6 +568,7 @@ instance (Num e, Pretty e) => Pretty (SPL e) where
     pprPrec _ (F' n w)     = text "F'_" <> ppr n <> parens (ppr w)
     pprPrec _ (WHT n)      = text "WHT_" <> ppr n
     pprPrec _ (WHT' n)     = text "WHT'_" <> ppr n
+    pprPrec _ (IterProd n _) = text "IterProd(" <> ppr n <> text ", <function>)"
 
 data MatrixBinop = AboveOp
                  | BesideOp
