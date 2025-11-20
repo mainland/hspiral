@@ -273,7 +273,7 @@ winogradPowerTest p k = describe ("WinogradPower(" ++ show p ++ "^" ++ show k ++
     sequence_
     [it ("w^" ++ show i ++ " -- p': " ++ show cP ++ " -- s: " ++ show cS) $
         toMatrix (winogradPower p k (w^^i) cP cS) @?= toMatrix (F n (w^^i))
-        | i  <- [1,8],
+        | i :: Int <- [1,8],
           cP <- take 2 $ getCycs p',
           cS <- take 2 $ getCycs s]
   where
