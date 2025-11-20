@@ -63,7 +63,7 @@ instance HPoly VPoly where
 
   mono p a = monomial (fromIntegral p) (fromFrac a)
 
-class (Eq a, Fractional a, Semi.Ring a, Euclid.Euclidean a, Euclid.GcdDomain a) => PolyField a where
+class (Eq a, Fractional a, Semi.Ring a, Euclid.Field a) => PolyField a where
   toFrac :: (Fractional b) => a -> b
   fromFrac :: (Real b) => b -> a
 
