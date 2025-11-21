@@ -28,7 +28,6 @@ import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.Ptr (FunPtr,
                     Ptr)
 import Foreign.Storable (Storable)
-import GHC.TypeLits (KnownNat)
 import System.Directory (getTemporaryDirectory)
 import System.FilePath ((</>))
 import System.IO (IOMode(..),
@@ -59,7 +58,7 @@ withComplexTransform conf name e k =
     withCompiledTransform conf name (Re e) $ \fptr ->
     k $ mkTransform (dynComplexTransform fptr)
 
-withModularTransform :: KnownNat p
+withModularTransform :: Modulus p
                      => Config
                      -> String
                      -> SPL (Exp (ℤ/p))

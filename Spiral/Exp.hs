@@ -71,8 +71,7 @@ import Data.Proxy (Proxy(..))
 import Data.Ratio
 import Data.String
 import Data.Symbol
-import GHC.TypeLits (KnownNat,
-                     natVal)
+import GHC.TypeLits (natVal)
 import Language.C.Quote (ToIdent(..))
 import Test.QuickCheck (Arbitrary(..))
 import Text.PrettyPrint.Mainland
@@ -117,7 +116,7 @@ data Const a where
     PiC :: (Floating a, ToConst a) => Rational -> Const a
 
     -- | Integers modulo a prime
-    ModularC :: KnownNat p => ℤ/p -> Const (ℤ/p)
+    ModularC :: Modulus p => ℤ/p -> Const (ℤ/p)
 
 deriving instance Show (Const a)
 
@@ -154,7 +153,7 @@ instance ToConst Rational where
 instance RealFloatConst a => ToConst (Complex a) where
     toConst (r :+ i) = ComplexC (toConst r) (toConst i)
 
-instance KnownNat p => ToConst (ℤ/p) where
+instance Modulus p => ToConst (ℤ/p) where
     toConst = ModularC
 
 class ( Fractional a
@@ -246,7 +245,7 @@ instance Arbitrary (Const Rational) where
 instance Arbitrary (Const (Complex Double)) where
     arbitrary = ComplexC <$> arbitrary <*> arbitrary
 
-instance KnownNat p => Arbitrary (Const (ℤ/p)) where
+instance Modulus p => Arbitrary (Const (ℤ/p)) where
     arbitrary = ModularC . toMod <$> arbitrary
 
 instance Pretty (Const a) where
@@ -278,7 +277,7 @@ instance RootOfUnity (Const (Complex Float)) where
 instance RootOfUnity (Const (Complex Double)) where
     rootOfUnity n k = mkW (k%n) (CycC (rootOfUnity n k))
 
-instance KnownNat p => RootOfUnity (Const (ℤ/p)) where
+instance Modulus p => RootOfUnity (Const (ℤ/p)) where
     rootOfUnity n k = ModularC (rootOfUnity n k)
 
 pprComplex :: (Eq a, Num a, Pretty a) => Int -> Complex a -> Doc
@@ -381,14 +380,14 @@ instance RootOfUnity (Exp (Complex Float)) where
 instance RootOfUnity (Exp (Complex Double)) where
     rootOfUnity n k = ConstE (rootOfUnity n k)
 
-instance KnownNat p => RootOfUnity (Exp (ℤ/p)) where
+instance Modulus p => RootOfUnity (Exp (ℤ/p)) where
     rootOfUnity n k = ConstE (rootOfUnity n k)
 
 --
 -- Heterogeneous quality and comparison
 --
 
-modPair :: forall p . KnownNat p => ℤ/p -> (Integer, Integer)
+modPair :: forall p . Modulus p => ℤ/p -> (Integer, Integer)
 modPair x = (unMod x, natVal (Proxy :: Proxy p))
 
 instance HEq Const where
@@ -632,7 +631,7 @@ data Type a where
     DoubleT   :: Type Double
     RationalT :: Type Rational
     ComplexT  :: RealFloatConst a => Type a -> Type (Complex a)
-    ModPT     :: KnownNat p => Integer -> Type (ℤ/p)
+    ModPT     :: Modulus p => Integer -> Type (ℤ/p)
 
 deriving instance Eq (Type a)
 deriving instance Show (Type a)
@@ -671,7 +670,7 @@ instance Typed Rational where
 instance RealFloatConst a => Typed (Complex a) where
     typeOf _ = ComplexT (typeOf (undefined :: a))
 
-instance KnownNat p => Typed (ℤ/p) where
+instance Modulus p => Typed (ℤ/p) where
     typeOf _ = ModPT (natVal (Proxy :: Proxy p))
 
 --------------------------------------------------------------------------------
@@ -912,7 +911,7 @@ instance Num (Const (Complex Double)) where
 
     fromInteger = RationalC . fromInteger
 
-instance KnownNat p => Num (Const (ℤ/p)) where
+instance Modulus p => Num (Const (ℤ/p)) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
     (*) = liftNum2 Mul (*)
@@ -1016,7 +1015,7 @@ instance Num (Exp (Complex Double)) where
 
     fromInteger = ConstE . fromInteger
 
-instance KnownNat p => Num (Exp (ℤ/p)) where
+instance Modulus p => Num (Exp (ℤ/p)) where
     (+) = liftNum2 Add (+)
     (-) = liftNum2 Sub (-)
     (*) = liftNum2 Mul (*)
@@ -1172,7 +1171,7 @@ instance Fractional (Const (Complex Double)) where
 
     fromRational = RationalC
 
-instance KnownNat p => Fractional (Const (ℤ/p)) where
+instance Modulus p => Fractional (Const (ℤ/p)) where
     (/) = liftFrac2 FDiv (/)
 
     fromRational = ModularC . fromRational
@@ -1197,7 +1196,7 @@ instance Fractional (Exp (Complex Double)) where
 
     fromRational = ConstE . fromRational
 
-instance KnownNat p => Fractional (Exp (ℤ/p)) where
+instance Modulus p => Fractional (Exp (ℤ/p)) where
     (/) = liftFrac2 FDiv (/)
 
     fromRational = ConstE . fromRational

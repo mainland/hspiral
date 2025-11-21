@@ -30,8 +30,7 @@ import Data.Proxy (Proxy(..))
 import Data.Typeable (Typeable)
 import qualified Data.Vector.Storable as VS
 import Data.Word (Word32)
-import GHC.TypeLits (KnownNat,
-                     natVal)
+import GHC.TypeLits (natVal)
 import Test.Hspec
 import Test.Hspec.Core.Spec (Result)
 import Test.QuickCheck ((===),
@@ -173,7 +172,7 @@ modCodegenTests conf =
     describe "ℤ/2013265921" $
         mkModCodegenTests (Proxy :: Proxy 2013265921) conf "DIT" (return . dit) [2^n | n <- [1..12::Int]]
 
-mkModCodegenTests :: forall p . KnownNat p
+mkModCodegenTests :: forall p . Modulus p
                   => Proxy p
                   -> Config
                   -> String
