@@ -28,7 +28,6 @@ import Test.Hspec
 
 import qualified Data.FlagSet as FS
 
-import Spiral (Config(..))
 import Spiral.Config
 import Spiral.Driver
 import Spiral.Exp

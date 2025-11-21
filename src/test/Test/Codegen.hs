@@ -42,7 +42,6 @@ import Test.QuickCheck ((===),
                         forAll)
 import Test.QuickCheck.Modifiers (Positive(..))
 
-import Spiral (Config(..))
 import Spiral.Driver
 import Spiral.Exp
 import Spiral.FFT.CooleyTukey
