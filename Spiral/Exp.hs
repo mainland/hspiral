@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -60,7 +61,12 @@ import Data.Complex.Cyclotomic as Cyc
 import Data.Maybe (fromJust)
 import Data.Modular
 import Data.Modular.Instances ()
+#if !MIN_VERSION_base(4,13,0)
+import Control.Monad.Fail (MonadFail)
+#endif /* !MIN_VERSION_base(4,13,0) */
+#if !MIN_VERSION_base(4,11,0)
 import Data.Monoid ((<>))
+#endif /* !MIN_VERSION_base(4,11,0) */
 import Data.Proxy (Proxy(..))
 import Data.Ratio
 import Data.String
@@ -289,7 +295,7 @@ fromComplex (r :+ i) = ComplexC (toConst r) (toConst i)
 
 -- | Convert a constant into the most general value that can be used for exact
 -- comparison.
-exact :: forall m a . Monad m => Const a -> m (Const a)
+exact :: forall m a . MonadFail m => Const a -> m (Const a)
 exact x@BoolC{}     = return x
 exact x@IntC{}      = return x
 exact x@IntegerC{}  = return x

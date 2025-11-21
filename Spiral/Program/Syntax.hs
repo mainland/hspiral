@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -19,8 +20,10 @@ module Spiral.Program.Syntax (
   ) where
 
 import Data.Foldable (toList)
+#if !(MIN_VERSION_base(4,11,0))
 import Data.Monoid (Monoid(..))
 import Data.Semigroup (Semigroup(..))
+#endif /* !(MIN_VERSION_base(4,11,0)) */
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Text.PrettyPrint.Mainland

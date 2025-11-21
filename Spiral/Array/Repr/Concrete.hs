@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -21,7 +22,9 @@ module Spiral.Array.Repr.Concrete (
 
 import Prelude hiding ((!!), read)
 
+#if !MIN_VERSION_base(4,11,0)
 import Data.Monoid ((<>))
+#endif /* !MIN_VERSION_base(4,11,0) */
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 

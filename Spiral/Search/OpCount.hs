@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -22,8 +23,10 @@ import Data.Dynamic (Dynamic,
 import Data.List (minimumBy)
 import Data.Map (Map)
 import qualified Data.Map as Map
+#if !(MIN_VERSION_base(4,11,0))
 import Data.Monoid (Monoid(..))
 import Data.Semigroup (Semigroup(..))
+#endif /* !(MIN_VERSION_base(4,11,0)) */
 import qualified Data.Typeable as T
 import Data.Typeable (Typeable,
                       TypeRep)

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -24,7 +25,9 @@ module Spiral.Search.Monad (
 
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus(..))
+#if !(MIN_VERSION_base(4,13,0))
 import Control.Monad.Fail (MonadFail)
+#endif /* !(MIN_VERSION_base(4,13,0)) */
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Logic (MonadLogic(..),)
 import Control.Monad.Primitive (PrimMonad(..))
@@ -36,8 +39,10 @@ import Control.Monad.State (MonadState(..),
                             modify)
 import Control.Monad.Trans (MonadTrans(..))
 import Data.IORef (IORef)
+#if !(MIN_VERSION_base(4,11,0))
 import Data.Monoid (Monoid(..))
 import Data.Semigroup (Semigroup(..))
+#endif /* !(MIN_VERSION_base(4,11,0)) */
 
 import Spiral.Config
 import Spiral.Monad

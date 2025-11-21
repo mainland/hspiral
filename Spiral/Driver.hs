@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 -- |
@@ -29,7 +30,9 @@ import Control.Monad.Exception (SomeException,
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString.Lazy as B
 import Data.Foldable (toList)
+#if !MIN_VERSION_base(4,11,0)
 import Data.Monoid ((<>))
+#endif /* !MIN_VERSION_base(4,11,0) */
 import qualified Data.Text.Lazy.Encoding as E
 import System.Console.GetOpt
 import System.Environment (getArgs)

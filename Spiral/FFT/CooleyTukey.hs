@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-type-defaults #-}
 
@@ -18,7 +19,9 @@ module Spiral.FFT.CooleyTukey (
     dif
   ) where
 
+#if !(MIN_VERSION_base(4,13,0))
 import Data.List (foldr1)
+#endif /* !(MIN_VERSION_base(4,13,0)) */
 
 import Spiral.RootOfUnity
 import Spiral.SPL

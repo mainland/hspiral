@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -20,7 +21,9 @@ import Data.List (intersperse)
 import qualified Data.Map as Map
 import qualified Data.Matrix as M
 import Data.Modular (Mod, unMod)
+#if !MIN_VERSION_base(4,11,0)
 import Data.Monoid ((<>))
+#endif /* !MIN_VERSION_base(4,11,0) */
 import Data.Ratio (Ratio, numerator, denominator)
 import Data.Set (Set)
 import qualified Data.Set as Set

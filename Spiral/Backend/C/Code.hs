@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- |
 -- Module      :  Spiral.Backend.C.Code
 -- Copyright   :  (c) 2016 Drexel University
@@ -9,8 +11,10 @@ module Spiral.Backend.C.Code (
   ) where
 
 import Data.Foldable (toList)
+#if !(MIN_VERSION_base(4,11,0))
 import Data.Monoid (Monoid(..))
 import Data.Semigroup (Semigroup(..))
+#endif /* !(MIN_VERSION_base(4,11,0)) */
 import Data.Sequence (Seq)
 import Language.C.Pretty ()
 import qualified Language.C.Syntax as C

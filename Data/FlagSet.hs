@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- |
 -- Module      :  Data.FlagSet
 -- Copyright   :  (c) 2016-2017 Drexel University
@@ -16,8 +18,10 @@ module Data.FlagSet (
 
 import Data.Bits
 import Data.List (foldl')
+#if !(MIN_VERSION_base(4,11,0))
 import Data.Monoid (Monoid(..))
 import Data.Semigroup (Semigroup(..))
+#endif /* !(MIN_VERSION_base(4,11,0)) */
 import Data.Word (Word32)
 
 -- | A set of flags.

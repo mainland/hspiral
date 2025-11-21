@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RankNTypes #-}
 
 -- |
@@ -8,7 +9,9 @@
 
 module Spiral.Util.Name where
 
+#if !MIN_VERSION_base(4,11,0)
 import Data.Monoid ((<>))
+#endif /* !MIN_VERSION_base(4,11,0) */
 import Data.String
 import Data.Symbol
 import Language.C.Quote (ToIdent(..))

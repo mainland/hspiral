@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -60,7 +61,9 @@ module Spiral.SPL (
   ) where
 
 import Data.Complex
+#if !MIN_VERSION_base(4,11,0)
 import Data.Monoid ((<>))
+#endif /* !MIN_VERSION_base(4,11,0) */
 import Data.Typeable (Typeable)
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland hiding ((<|>))

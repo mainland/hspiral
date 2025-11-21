@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -15,7 +16,9 @@ module Spiral.Driver.Monad (
   ) where
 
 import Control.Monad.Exception (MonadException(..))
+#if !(MIN_VERSION_base(4,13,0))
 import Control.Monad.Fail (MonadFail)
+#endif /* !(MIN_VERSION_base(4,13,0)) */
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Primitive (PrimMonad(..),
                                 RealWorld)

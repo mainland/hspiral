@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- |
 -- Module      :  Spiral.Util.Pretty
 -- Copyright   :  (c) 2016 Drexel University
@@ -24,7 +26,9 @@ module Spiral.Util.Pretty (
     mulPrec1
   ) where
 
+#if !MIN_VERSION_base(4,11,0)
 import Data.Monoid ((<>))
+#endif /* !MIN_VERSION_base(4,11,0) */
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 

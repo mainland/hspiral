@@ -1,8 +1,12 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Main (main) where
 
+#if !(MIN_VERSION_base(4,13,0))
+import Control.Monad.Fail (MonadFail)
+#endif /* !(MIN_VERSION_base(4,13,0)) */
 import Control.Monad.IO.Class (liftIO)
 import Data.Complex (Complex)
 import Data.Foldable (toList)
@@ -23,10 +27,10 @@ import Spiral.SPL
 import Spiral.SPL.Run
 import Spiral.Util.Uniq
 
-parseSizesArg :: Monad m => String -> m [Int]
+parseSizesArg :: MonadFail m => String -> m [Int]
 parseSizesArg = fmap concat . mapM parseRange . splitOn (== ',')
 
-parseRange :: Monad m => String -> m [Int]
+parseRange :: MonadFail m => String -> m [Int]
 parseRange s =
     case splitOn (== '-') s of
       [x]   -> do start <- parseInt x
@@ -36,7 +40,7 @@ parseRange s =
                   return [start..end]
       _     -> fail $ "Cannot parse range: " ++ s
 
-parseInt :: Monad m => String -> m Int
+parseInt :: MonadFail m => String -> m Int
 parseInt s = case readMaybe s of
                  Nothing -> fail $ "Cannot parse integer: " ++ s
                  Just n  -> return n

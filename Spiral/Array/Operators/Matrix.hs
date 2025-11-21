@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -38,7 +39,9 @@ import Prelude hiding ((!!))
 
 import Control.Monad (forM_,
                       when)
+#if !(MIN_VERSION_base(4,13,0))
 import Control.Monad.Fail (MonadFail)
+#endif /* !(MIN_VERSION_base(4,13,0)) */
 import Control.Monad.Trans.Maybe
 import Control.Monad.Primitive (PrimMonad,
                                 PrimState)
@@ -261,7 +264,7 @@ addM m@(MMatrix sh@(Z :. _ :. n) mv) i k i' =
         MV.modify mv (+ y) (toIndex sh (Z :. i' :. j))
 
 -- | Find row to serve as pivot for given column
-pivotM :: (Eq a, Num a, PrimMonad m)
+pivotM :: (Eq a, Num a, PrimMonad m, MonadFail m)
        => MMatrix (PrimState m) a -- ^ Matrix
        -> Int                     -- ^ Column to pivot on
        -> m Int
@@ -275,7 +278,7 @@ pivotM a@(MMatrix (Z :. m :. _) _) j = go j
            then return i
            else go (i+1)
 
-gaussianM :: forall a m . (Eq a, Fractional a, PrimMonad m)
+gaussianM :: forall a m . (Eq a, Fractional a, PrimMonad m, MonadFail m)
           => MMatrix (PrimState m) a
           -> m ()
 gaussianM a@(MMatrix (Z :. m :. _) _) =

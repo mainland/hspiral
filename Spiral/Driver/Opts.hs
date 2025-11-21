@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -15,13 +16,19 @@ module Spiral.Driver.Opts (
   ) where
 
 import Control.Monad ((>=>))
+#if !MIN_VERSION_base(4,13,0)
+import Control.Monad.Fail (MonadFail)
+#endif /* !MIN_VERSION_base(4,13,0) */
+#if !MIN_VERSION_base(4,11,0)
+import Data.Monoid ((<>))
+#endif /* !MIN_VERSION_base(4,11,0) */
 import System.Console.GetOpt
 import System.Environment (getProgName)
 
 import Spiral.Config
 import Spiral.Globals
 
-options :: forall m . Monad m => [OptDescr (Config -> m Config)]
+options :: forall m . MonadFail m => [OptDescr (Config -> m Config)]
 options =
     [ Option ['h', '?'] ["help"]    (NoArg (setModeM Help))              "Show help"
     , Option ['q']      ["quiet"]   (NoArg (setDynFlagM Quiet))          "Be quiet"
@@ -73,7 +80,7 @@ data FlagOpt = forall a . FlagOpt a String String (a -> Config -> Config) (Maybe
 
 data FlagOptDescr a = FlagOption String (ArgDescr a) String
 
-parseFlagOpts :: forall m . Monad m
+parseFlagOpts :: forall m . MonadFail m
               => String
               -> [FlagOpt]
               -> [FlagOptDescr (Config -> m Config)]
@@ -96,21 +103,21 @@ parseFlagOpts flagpfx fopts foptdescrs arg fs =
               -> [FlagOptDescr (Config -> m Config)]
               -> Config
               -> m Config
-    parseOpts _ _ [] = fail $ "unrecognized option `" ++ flagpfx ++ arg ++ "'"
+    parseOpts _ _ [] _ = fail $ "unrecognized option `" ++ flagpfx ++ arg ++ "'"
 
-    parseOpts flag flagArg (FlagOption flag' argOpt _:_) | flag' == flag =
+    parseOpts flag flagArg (FlagOption flag' argOpt _:_) config | flag' == flag =
         go argOpt
       where
-        go :: ArgDescr (Config -> m Config) -> Config -> m Config
-        go (NoArg g)    | null flagArg = g
+        go :: ArgDescr (Config -> m Config) -> m Config
+        go (NoArg g)    | null flagArg = g config
                         | otherwise    = fail $ "Argument specified:" ++ arg
-        go (OptArg g _) | null flagArg = g Nothing
-                        | otherwise    = g (Just flagArg)
+        go (OptArg g _) | null flagArg = g Nothing config
+                        | otherwise    = g (Just flagArg) config
         go (ReqArg g _) | null flagArg = fail $ "Argument required:" ++ arg
-                        | otherwise    = g flagArg
+                        | otherwise    = g flagArg config
 
-    parseOpts flag flagArg (_:opts) =
-        parseOpts flag flagArg opts
+    parseOpts flag flagArg (_:opts) config =
+        parseOpts flag flagArg opts config
 
 parseFlag :: forall m . Monad m
           => String
@@ -152,7 +159,7 @@ fFlags = [ (LinePragmas,       "line-pragmas",       "Print line pragmas in gene
          , (DifRewrite,        "dif-rewrite",        "Apply DIF rewrite rules")
          ]
 
-fOpts :: forall m . Monad m => [FlagOptDescr (Config -> m Config)]
+fOpts :: forall m . MonadFail m => [FlagOptDescr (Config -> m Config)]
 fOpts =
     [FlagOption "max-unroll" (ReqArg maxUnroll "INT") "Set maximum number of iterations to automatically unroll"]
   where
@@ -190,7 +197,7 @@ parseOpts' argv opts =
       (_,_,errs) -> do usageDesc <- usage' opts
                        ioError (userError (concat errs ++ usageDesc))
 
-mergeOpts :: Monad m => [OptDescr o] -> [OptDescr (Either (Config -> m Config) o)]
+mergeOpts :: MonadFail m => [OptDescr o] -> [OptDescr (Either (Config -> m Config) o)]
 mergeOpts opts = map (fmap Left) options ++ map (fmap Right) opts
 
 optsToConfig :: [Config -> IO Config] -> IO Config

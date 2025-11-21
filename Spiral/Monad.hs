@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -11,7 +12,9 @@ module Spiral.Monad (
     MonadSpiral
   ) where
 
+#if !MIN_VERSION_base(4,13,0)
 import Control.Monad.Fail (MonadFail)
+#endif /* !MIN_VERSION_base(4,13,0) */
 import Control.Monad.Primitive (PrimMonad(..),
                                 RealWorld)
 import Control.Monad.Ref (MonadRef(..))

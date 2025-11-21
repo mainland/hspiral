@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -23,6 +24,10 @@ module Spiral.Array.Shape (
     ix1,
     ix2
   ) where
+
+#if !MIN_VERSION_base(4,13,0)
+import Control.Monad.Fail (MonadFail)
+#endif /* !MIN_VERSION_base(4,13,0) */
 
 import Spiral.Exp
 
@@ -73,7 +78,7 @@ class (Eq sh, ExpShape (ExpShapeOf sh)) => Shape sh where
     toExpShape :: sh -> ExpShapeOf sh
 
     -- | Convert an expression shape to its corresponding shape.
-    fromExpShape :: Monad m => ExpShapeOf sh -> m sh
+    fromExpShape :: MonadFail m => ExpShapeOf sh -> m sh
 
 -- | An index of dimension zero
 data Z = Z

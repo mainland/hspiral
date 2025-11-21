@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
@@ -18,7 +19,9 @@ module Spiral.Permutation (
 
 import Prelude hiding (read)
 
+#if !(MIN_VERSION_base(4,11,0))
 import Data.Monoid ((<>))
+#endif /* !(MIN_VERSION_base(4,11,0)) */
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
