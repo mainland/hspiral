@@ -106,8 +106,10 @@ runSPL e@(Diag v) x = do
        -> Bool
        -> P m ()
     go x y True =
-        forP 0 n $ \ei@(ConstE (IntC i)) ->
-            write y (Z :. ei) (v V.! i * indexS x (Z :. ei))
+        forP 0 n $ \ei ->
+          case ei of
+            ConstE (IntC i) -> write y (Z :. ei) (v V.! i * indexS x (Z :. ei))
+            _ -> faildoc $ "Cannot unroll diag at index" <+> ppr ei
 
     go x y _ = do
         d <- cacheArray (A.fromFunction (ix1 n) f)

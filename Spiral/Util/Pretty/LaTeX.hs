@@ -148,14 +148,13 @@ instance (Eq a, Num a, Pretty a) => Pretty (Complex a) where
                       _ -> ppr r + pprIm i
 
 instance Pretty Cyclotomic where
-  pprPrec p (Cyclotomic n mp)
-    | Map.null mp = "0"
-    | null xs     = leadingTerm rat n ex
-    | otherwise   = parensIf (p > addPrec) $
-                    leadingTerm rat n ex <> mconcat (map (followingTerm n) xs)
+  pprPrec p (Cyclotomic n mp) =
+      case Map.toList mp of
+        []          -> "0"
+        [(ex, rat)] -> leadingTerm rat n ex
+        (ex,rat):xs -> parensIf (p > addPrec) $
+                       leadingTerm rat n ex <> mconcat (map (followingTerm n) xs)
     where
-      ((ex,rat):xs) = Map.toList mp
-
       pprBaseExp :: Integer -> Integer -> LaTeX
       pprBaseExp n 1  = omega !: ppr n
       pprBaseExp n ex = omega !^ (ppr n, ppr ex)

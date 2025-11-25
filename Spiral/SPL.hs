@@ -281,9 +281,9 @@ transpose (Beside a b) = Above (transpose a) (transpose b)
 transpose (Kron a b)   = Kron (transpose a) (transpose b)
 transpose (DSum a b)   = DSum (transpose a) (transpose b)
 transpose (Prod a b)   = Prod (transpose b) (transpose a)
-transpose (Circ cs)    = circ (x:reverse xs)
-                           where
-                             x:xs = V.toList cs
+transpose (Circ cs)    = case V.toList cs of
+                           []   -> error "transpose: empty circulant matrix"
+                           x:xs -> circ (x:reverse xs)
 transpose a@Skew{}     = a
 transpose (Toep cs)    = Toep (V.reverse cs)
 transpose (Re a)       = Re (transpose a)
