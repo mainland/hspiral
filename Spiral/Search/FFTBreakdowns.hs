@@ -30,7 +30,7 @@ import Control.Applicative ((<|>))
 import Control.Monad (MonadPlus,
                       guard,
                       msum)
-import Data.List
+import Data.List (foldl', nub, permutations, sort)
 import Data.Typeable (Typeable)
 import Math.NumberTheory.Primes.Testing (isPrime)
 
