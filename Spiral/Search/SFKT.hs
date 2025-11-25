@@ -160,7 +160,7 @@ instance MonadUnique m => MonadUnique (SFKT m) where
 
 instance MonadConfig m => MonadConfig (SFKT m) where
     askConfig   = lift askConfig
-    localConfig = liftLocal askConfig localConfig
+    localConfig = liftLocal askConfig (\x -> localConfig x)
 
 instance MonadTrace m => MonadTrace (SFKT m) where
     askTraceDepth       = lift askTraceDepth
