@@ -77,7 +77,7 @@ factorSplits :: [(Int,Int)] -> [(Int,Int)]
 factorSplits []         = [(1, 1)]
 factorSplits ((p,n):fs) = [(p^i*x, p^(n-i)*y) | (x,y) <- factorSplits fs, i <- [0..n]]
 
--- | Convert a prime fatorization back into a number.
+-- | Convert a prime factorization back into a number.
 unfactor :: [(Int,Int)] -> Int
 unfactor []         = 1
 unfactor ((p,n):fs) = p^n*unfactor fs
