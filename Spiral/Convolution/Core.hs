@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -50,7 +51,11 @@ class HPoly p where
   mono :: (PolyField a, Real b) => Int -> b -> p a
 
 instance HPoly VPoly where
+#if MIN_VERSION_poly(0,5,0)
+  degree p = Semi.fromNatural $ Euclid.degree p
+#elif /* !(MIN_VERSION_poly(0,5,0)) */
   degree p = (Semi.fromNatural $ Euclid.degree p) - 1
+#endif /* !(MIN_VERSION_poly(0,5,0)) */
   remainder a b = snd $ Euclid.quotRem a b
   quotient a b = fst $ Euclid.quotRem a b
   mult = (*)
