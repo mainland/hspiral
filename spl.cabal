@@ -14,7 +14,8 @@ tested-with:   GHC==8.6.5,
                GHC==8.8.4,
                GHC==8.10.7,
                GHC==9.0.2,
-               GHC==9.2.8
+               GHC==9.2.8,
+               GHC==9.4.8
 
 description:
   A Haskell implementation of the SPL language.
@@ -97,7 +98,7 @@ library
 
   build-depends:
     arithmoi               >= 0.5   && < 0.13,
-    base                   >= 4.9   && < 4.17,
+    base                   >= 4.9   && < 4.18,
     bytestring             >= 0.9   && < 0.12,
     containers             >= 0.5   && < 0.7,
     cyclotomic,
@@ -142,7 +143,7 @@ executable dftgen
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.17,
+    base            >= 4.9 && < 4.18,
     mainland-pretty >= 0.7 && < 0.8
 
 executable maple
@@ -153,7 +154,7 @@ executable maple
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.17,
+    base            >= 4.9 && < 4.18,
     mainland-pretty >= 0.7 && < 0.8
 
 executable opcount
@@ -164,7 +165,7 @@ executable opcount
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.17,
+    base            >= 4.9 && < 4.18,
     containers      >= 0.5 && < 0.7,
     mainland-pretty >= 0.7 && < 0.8
 
@@ -176,7 +177,7 @@ executable opcounts
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.17,
+    base            >= 4.9 && < 4.18,
     containers      >= 0.5 && < 0.7,
     mainland-pretty >= 0.7 && < 0.8
 
@@ -188,7 +189,7 @@ executable search
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.17,
+    base            >= 4.9 && < 4.18,
     containers      >= 0.5 && < 0.7,
     mainland-pretty >= 0.7 && < 0.8
 
@@ -200,7 +201,7 @@ executable voronenko
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.17,
+    base            >= 4.9 && < 4.18,
     mainland-pretty >= 0.7 && < 0.8,
     transformers    >= 0.2 && < 0.6
 
@@ -223,12 +224,12 @@ test-suite full
 
   build-depends:
     spl,
-    base                       >= 4.9   && < 4.17,
+    base                       >= 4.9   && < 4.18,
     bytestring                 >= 0.9   && < 0.12,
     directory                  >= 1.3   && < 1.4,
     filepath                   >= 1.4   && < 1.5,
-    hspec                      >= 2.5   && < 2.8,
-    hspec-core                 >= 2.5   && < 2.8,
+    hspec                      >= 2.5   && < 2.10,
+    hspec-core                 >= 2.5   && < 2.10,
     mainland-pretty            >= 0.7   && < 0.8,
     modular-arithmetic         >= 2.0   && < 2.1,
     process                    >= 1.4   && < 1.7,
@@ -263,12 +264,12 @@ test-suite quick
 
   build-depends:
     spl,
-    base                       >= 4.9   && < 4.17,
+    base                       >= 4.9   && < 4.18,
     bytestring                 >= 0.9   && < 0.12,
     directory                  >= 1.3   && < 1.4,
     filepath                   >= 1.4   && < 1.5,
-    hspec                      >= 2.5   && < 2.8,
-    hspec-core                 >= 2.5   && < 2.8,
+    hspec                      >= 2.5   && < 2.10,
+    hspec-core                 >= 2.5   && < 2.10,
     mainland-pretty            >= 0.7   && < 0.8,
     modular-arithmetic         >= 2.0   && < 2.1,
     process                    >= 1.4   && < 1.7,
