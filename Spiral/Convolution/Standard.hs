@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -13,7 +14,9 @@ module Spiral.Convolution.Standard (
 
 import Spiral.SPL
 
+#if !(MIN_VERSION_base(4,20,0))
 import Data.List (foldl')
+#endif /* !(MIN_VERSION_base(4,20,0)) */
 
 -- | A matrix of all zeros
 zeros :: (Num a, Show a) => Int -> Int -> SPL a

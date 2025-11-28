@@ -82,7 +82,9 @@ import Control.Monad.State (MonadState(..),
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.Foldable (toList)
 import Data.IORef (IORef)
+#if !(MIN_VERSION_base(4,20,0))
 import Data.List (foldl')
+#endif /* !(MIN_VERSION_base(4,20,0)) */
 import Data.Loc (noLoc)
 import Data.Map (Map)
 import qualified Data.Map as Map

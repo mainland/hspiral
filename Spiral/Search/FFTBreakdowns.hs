@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
@@ -30,7 +31,10 @@ import Control.Applicative ((<|>))
 import Control.Monad (MonadPlus,
                       guard,
                       msum)
-import Data.List (foldl', nub, permutations, sort)
+#if !(MIN_VERSION_base(4,20,0))
+import Data.List (foldl')
+#endif /* !(MIN_VERSION_base(4,20,0)) */
+import Data.List (nub, permutations, sort)
 import Data.Typeable (Typeable)
 import Math.NumberTheory.Primes.Testing (isPrime)
 

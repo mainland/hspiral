@@ -17,7 +17,9 @@ module Data.FlagSet (
   ) where
 
 import Data.Bits
+#if !(MIN_VERSION_base(4,20,0))
 import Data.List (foldl')
+#endif /* !(MIN_VERSION_base(4,20,0)) */
 #if !(MIN_VERSION_base(4,11,0))
 import Data.Monoid (Monoid(..))
 import Data.Semigroup (Semigroup(..))
