@@ -64,7 +64,6 @@ import Data.Complex
 #if !MIN_VERSION_base(4,11,0)
 import Data.Monoid ((<>))
 #endif /* !MIN_VERSION_base(4,11,0) */
-import Data.Typeable (Typeable)
 import qualified Data.Vector as V
 import Text.PrettyPrint.Mainland hiding ((<|>))
 import Text.PrettyPrint.Mainland.Class
@@ -161,7 +160,6 @@ data SPL a where
     F' :: RootOfUnity a => Int -> a -> SPL a
 
 deriving instance Show e => Show (SPL e)
-deriving instance Typeable e => Typeable (SPL e)
 
 -- | Embed any 'Matrix' as an SPL term.
 matrix :: IArray r DIM2 e
