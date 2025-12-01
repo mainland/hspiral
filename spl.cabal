@@ -15,7 +15,11 @@ tested-with:   GHC==8.6.5,
                GHC==8.10.7,
                GHC==9.0.2,
                GHC==9.2.8,
-               GHC==9.4.8
+               GHC==9.4.8,
+               GHC==9.6.7,
+               GHC==9.8.4,
+               GHC==9.10.3,
+               GHC==9.12.2
 
 description:
   A Haskell implementation of the SPL language.
@@ -97,32 +101,32 @@ library
     Spiral.Util.Trace
 
   build-depends:
-    arithmoi               >= 0.5   && < 0.13,
-    base                   >= 4.9   && < 4.18,
-    bytestring             >= 0.9   && < 0.12,
-    containers             >= 0.5   && < 0.7,
+    arithmoi               >= 0.5   && < 0.14,
+    base                   >= 4.9   && < 4.22,
+    bytestring             >= 0.9   && < 0.13,
+    containers             >= 0.5   && < 0.9,
     cyclotomic,
-    exception-mtl          >= 0.3   && < 0.5,
-    exception-transformers >= 0.3   && < 0.5,
-    ihaskell               >= 0.10  && < 0.11,
+    exception-mtl          >= 0.3   && < 0.6,
+    exception-transformers >= 0.3   && < 0.6,
+    ihaskell               >= 0.10  && < 0.14,
     language-c-quote       >= 0.12.2 && < 0.14,
-    logict                 >= 0.6   && < 0.8,
+    logict                 >= 0.6   && < 0.9,
     mainland-pretty        >= 0.7   && < 0.8,
     matrix                 >= 0.3   && < 0.4,
     modular-arithmetic     >= 2.0   && < 2.1,
     mtl                    >= 2.0   && < 3,
-    poly                   >= 0.4   && < 0.6,
-    primitive              >= 0.6   && < 0.8,
-    random                 >= 1.1   && < 1.2,
-    ref-fd                 >= 0.3   && < 0.5,
-    semirings              >= 0.5   && < 0.7,
-    srcloc                 >= 0.5   && < 0.6,
+    poly                   >= 0.5   && < 0.6,
+    primitive              >= 0.6   && < 0.10,
+    random                 >= 1.1   && < 1.4,
+    ref-fd                 >= 0.3   && < 0.6,
+    semirings              >= 0.5   && < 0.8,
+    srcloc                 >= 0.5   && < 0.7,
     symbol                 >= 0.2.4 && < 0.3,
-    text                   >= 1.1   && < 1.4,
-    transformers           >= 0.2   && < 0.6,
-    vector                 >= 0.11  && < 0.13,
+    text                   >= 1.1   && < 2.2,
+    transformers           >= 0.2   && < 0.7,
+    vector                 >= 0.11  && < 0.14,
     HaTeX                  >= 3.21  && < 3.24,
-    QuickCheck             >= 2.8   && < 2.15
+    QuickCheck             >= 2.8   && < 2.19
 
   ghc-options:
     -Wall -fno-warn-name-shadowing -O2
@@ -143,7 +147,7 @@ executable dftgen
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.18,
+    base            >= 4.9 && < 4.22,
     mainland-pretty >= 0.7 && < 0.8
 
 executable maple
@@ -154,7 +158,7 @@ executable maple
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.18,
+    base            >= 4.9 && < 4.22,
     mainland-pretty >= 0.7 && < 0.8
 
 executable opcount
@@ -165,8 +169,8 @@ executable opcount
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.18,
-    containers      >= 0.5 && < 0.7,
+    base            >= 4.9 && < 4.22,
+    containers      >= 0.5 && < 0.9,
     mainland-pretty >= 0.7 && < 0.8
 
 executable opcounts
@@ -177,8 +181,8 @@ executable opcounts
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.18,
-    containers      >= 0.5 && < 0.7,
+    base            >= 4.9 && < 4.22,
+    containers      >= 0.5 && < 0.9,
     mainland-pretty >= 0.7 && < 0.8
 
 executable search
@@ -189,8 +193,8 @@ executable search
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.18,
-    containers      >= 0.5 && < 0.7,
+    base            >= 4.9 && < 4.22,
+    containers      >= 0.5 && < 0.9,
     mainland-pretty >= 0.7 && < 0.8
 
 executable voronenko
@@ -201,9 +205,9 @@ executable voronenko
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.18,
+    base            >= 4.9 && < 4.22,
     mainland-pretty >= 0.7 && < 0.8,
-    transformers    >= 0.2 && < 0.6
+    transformers    >= 0.2 && < 0.7
 
 test-suite full
   type: exitcode-stdio-1.0
@@ -224,23 +228,23 @@ test-suite full
 
   build-depends:
     spl,
-    base                       >= 4.9   && < 4.18,
-    bytestring                 >= 0.9   && < 0.12,
+    base                       >= 4.9   && < 4.22,
+    bytestring                 >= 0.9   && < 0.13,
     directory                  >= 1.3   && < 1.4,
-    filepath                   >= 1.4   && < 1.5,
-    hspec                      >= 2.5   && < 2.10,
-    hspec-core                 >= 2.5   && < 2.10,
+    filepath                   >= 1.4   && < 1.7,
+    hspec                      >= 2.5   && < 2.12,
+    hspec-core                 >= 2.5   && < 2.12,
     mainland-pretty            >= 0.7   && < 0.8,
     modular-arithmetic         >= 2.0   && < 2.1,
     process                    >= 1.4   && < 1.7,
     temporary                  >= 1.3   && < 1.4,
-    text                       >= 1.1   && < 1.4,
-    transformers               >= 0.2   && < 0.6,
-    unix                       >= 2.7   && < 2.8,
-    vector                     >= 0.11  && < 0.13,
+    text                       >= 1.1   && < 2.2,
+    transformers               >= 0.2   && < 0.7,
+    unix                       >= 2.7   && < 2.9,
+    vector                     >= 0.11  && < 0.14,
     vector-fftw                >= 0.1   && < 0.2,
     HUnit                      >= 1.3   && < 1.7,
-    QuickCheck                 >= 2.8   && < 2.17
+    QuickCheck                 >= 2.8   && < 2.18
 
   ghc-options:
     -Wall -fno-warn-name-shadowing -O2
@@ -264,23 +268,23 @@ test-suite quick
 
   build-depends:
     spl,
-    base                       >= 4.9   && < 4.18,
-    bytestring                 >= 0.9   && < 0.12,
+    base                       >= 4.9   && < 4.22,
+    bytestring                 >= 0.9   && < 0.13,
     directory                  >= 1.3   && < 1.4,
-    filepath                   >= 1.4   && < 1.5,
-    hspec                      >= 2.5   && < 2.10,
-    hspec-core                 >= 2.5   && < 2.10,
+    filepath                   >= 1.4   && < 1.7,
+    hspec                      >= 2.5   && < 2.12,
+    hspec-core                 >= 2.5   && < 2.12,
     mainland-pretty            >= 0.7   && < 0.8,
     modular-arithmetic         >= 2.0   && < 2.1,
     process                    >= 1.4   && < 1.7,
     temporary                  >= 1.3   && < 1.4,
-    text                       >= 1.1   && < 1.4,
-    transformers               >= 0.2   && < 0.6,
-    unix                       >= 2.7   && < 2.8,
-    vector                     >= 0.11  && < 0.13,
+    text                       >= 1.1   && < 2.2,
+    transformers               >= 0.2   && < 0.7,
+    unix                       >= 2.7   && < 2.9,
+    vector                     >= 0.11  && < 0.14,
     vector-fftw                >= 0.1   && < 0.2,
     HUnit                      >= 1.3   && < 1.7,
-    QuickCheck                 >= 2.8   && < 2.17
+    QuickCheck                 >= 2.8   && < 2.18
 
   ghc-options:
     -Wall -fno-warn-name-shadowing -O2
