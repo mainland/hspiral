@@ -79,6 +79,7 @@ library
     Spiral.Search.FFTBreakdowns
     Spiral.Search.Monad
     Spiral.Search.OpCount
+    Spiral.Search.OpCountWHT
     Spiral.Search.SFKT
     Spiral.Util.Pretty
     Spiral.Util.Pretty.Maple

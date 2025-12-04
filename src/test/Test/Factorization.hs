@@ -18,6 +18,7 @@ module Test.Factorization (
     f8Test,
     cooleyTukeyDITTest,
     cooleyTukeyDIFTest,
+    whtBreakdownRuleTest,
     goodThomasTest,
     raderTest,
     bluesteinTest,
@@ -71,6 +72,8 @@ complexFactorizationTests = do
     describe "Cooley-Tukey" $ do
         cooleyTukeyDITTest p 5 7
         cooleyTukeyDIFTest p 5 7
+    describe "WHT Breakdown Rule" $
+        whtBreakdownRuleTest p 3 2
     describe "Good-Thomas" $
         goodThomasTest p 5 7
     describe "Rader" $ do
@@ -201,6 +204,17 @@ cooleyTukeyDIFTest _ r s =
 
     rs :: Int
     rs = r*s
+
+-- Test WHT breakdown rule
+whtBreakdownRuleTest :: forall p . Floating (Exp p)
+                     => Proxy p
+                     -> Int
+                     -> Int
+                     -> Spec
+whtBreakdownRuleTest _ r s =
+    it ("WHTBreakdownRule(" ++ show r ++ "," ++ show s ++ ")") $
+        toMatrix (wht_breakdown_rule r s) @?= toMatrix (WHT (r + s))
+
 
 -- Test Good-Thomas with factors 5 and 7
 goodThomasTest :: forall p . RootOfUnity (Exp p)

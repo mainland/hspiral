@@ -11,6 +11,7 @@
 
 module Spiral.Search.FFTBreakdowns (
     bruteForce,
+    whtBreakdowns,
     cooleyTukeyBreakdowns,
     splitRadixBreakdown,
     splitRadix8Breakdown,
@@ -43,7 +44,8 @@ import Spiral.FFT.Rader (rader, raderI, raderII, raderIII, raderIV, raderLuIII)
 import Spiral.FFT.Winograd
 import Spiral.NumberTheory (coprimeFactors,
                             factors,
-                            primeFactorization)
+                            primeFactorization,
+                            sumPairs)
 import Spiral.RootOfUnity
 import Spiral.SPL hiding ((<|>))
 
@@ -52,6 +54,15 @@ bruteForce :: (RootOfUnity (Exp a), MonadPlus m)
            -> Exp a
            -> m (SPL (Exp a))
 bruteForce n w = return $ (matrix . toMatrix) (F n w)
+
+whtBreakdowns :: (Floating (Exp a), MonadPlus m)
+              => Int
+              -> m (SPL (Exp a))
+whtBreakdowns n =
+    msum [ return (wht_breakdown_rule r s) | (r, s) <- rs ]
+  where
+    rs :: [(Int, Int)]
+    rs = sumPairs n
 
 cooleyTukeyBreakdowns :: (RootOfUnity (Exp a), MonadPlus m)
                       => Int

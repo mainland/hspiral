@@ -20,7 +20,10 @@ module Test.Codegen (
     improvedSplitRadixCodegenTests,
     searchCodegenTests,
     modCodegenTests,
-    whtCodegenTests
+    whtCodegenTests,
+    whtSearchCodegenTests,
+    whtIterCodegenTests,
+    whtBreakdownSearchCodegenTests
   ) where
 
 import Control.Monad (mzero,
@@ -53,6 +56,7 @@ import Spiral.SPL
 import Spiral.Search
 import Spiral.Search.FFTBreakdowns
 import Spiral.Search.OpCount
+import Spiral.Search.OpCountWHT
 
 import qualified Test.FFTW as FFTW
 import qualified Test.FWHT as FWHT
@@ -65,6 +69,8 @@ codegenTests :: Config
 codegenTests conf sizes = do
     whtCodegenTests conf sizes
     whtIterCodegenTests conf sizes
+    whtSearchCodegenTests conf sizes
+    whtBreakdownSearchCodegenTests conf sizes
     ditCodegenTests conf sizes
     difCodegenTests conf sizes
     splitRadixCodegenTests conf sizes
@@ -80,6 +86,22 @@ whtIterCodegenTests :: Config -> [Int] -> Spec
 whtIterCodegenTests conf sizes =
     describe "Generated iter WHT" $
     mkCodegenWhtTests conf "ITER_WHT" (return . wht_iter) sizes
+
+whtSearchCodegenTests :: Config -> [Int] -> Spec
+whtSearchCodegenTests conf sizes =
+    describe "Generated search WHT" $
+    mkCodegenWhtTests conf "SEARCH_WHT" (searchOpCountWHT . wht) sizes
+
+whtBreakdownSearchCodegenTests :: Config -> [Int] -> Spec
+whtBreakdownSearchCodegenTests conf sizes =
+    describe "Generated search WhtBreakdown WHT" $
+    mkCodegenWhtTests conf "WhtBreakdown" (runSearchWHT () f . WHT) sizes
+  where
+    f :: (Typeable a, Typed a, Floating (Exp a), MonadSpiral m)
+      => SPL (Exp a)
+      -> S s m (SPL (Exp a))
+    f (WHT n) = whtBreakdowns n
+    f _       = mzero
 
 ditCodegenTests :: Config -> [Int] -> Spec
 ditCodegenTests conf sizes =

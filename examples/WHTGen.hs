@@ -24,6 +24,7 @@ import Spiral.SPL
 import Spiral.SPL.Run
 import Spiral.Search
 import Spiral.Search.FFTBreakdowns
+import Spiral.Search.OpCountWHT
 import Spiral.Util.Uniq
 
 main :: IO ()
@@ -57,16 +58,26 @@ main = defaultMainWith' options mempty $ \fs args -> do
 formula :: MonadSpiral m => [Flag] -> Int -> m (SPL (Exp (Complex Double)))
 formula fs n =
   case fs of
-    [Wht]                -> return $ wht n
-    [WhtIter]            -> return $ wht_iter n
-    _                    -> fail "Must specify exactly on of --wht"
+    [Wht]         -> return $ wht n
+    [WhtIter]     -> return $ wht_iter n
+    -- [WhtSearch]   -> searchOpCountWHT (WHT n) -- Currently returns Prelude.foldl1: empty list
+    [WhtSearch]   -> runSearchWHT () whtBreakdown (WHT n)
+    _             -> fail "Must specify exactly one of --wht, --iterWht, or --searchWht"
+  where
+    whtBreakdown :: (Typeable a, Typed a, Floating (Exp a), MonadSpiral m)
+                     => SPL (Exp a)
+                     -> S s m (SPL (Exp a))
+    whtBreakdown (WHT n) = whtBreakdowns n
+    whtBreakdown _       = mzero
 
 data Flag = Wht
           | WhtIter
+          | WhtSearch
   deriving (Eq, Ord, Show)
 
 options :: [OptDescr Flag]
 options =
     [ Option [] ["wht"] (NoArg Wht)                             "Use WHT"
     , Option [] ["iterWht"] (NoArg WhtIter)                     "Use Iterative WHT"
+    , Option [] ["searchWht"] (NoArg WhtSearch)                 "Search WHT breakdowns and pick lowest opcount"
     ]

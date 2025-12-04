@@ -10,6 +10,7 @@
 module Spiral.FFT.CooleyTukey (
     cooleyTukeyDIT,
     cooleyTukeyDIF,
+    wht_breakdown_rule,
     splitRadix,
     splitRadix8,
     conjPairSplitRadix,
@@ -48,6 +49,11 @@ cooleyTukeyDIT r s w =
 cooleyTukeyDIF :: RootOfUnity a => Int -> Int -> a -> SPL a
 cooleyTukeyDIF r s w =
     Pi (L (r*s) s) × (I r ⊗ F s (w^r)) × twid (r*s) s w × (F r (w^s) ⊗ I s)
+
+-- | WHT Recursive Breakdown Rule, WHT_{r+s} = (WHT_r ⊗ I_(2^s)) × (I_(2^r) ⊗ WHT_s)
+wht_breakdown_rule :: Floating a => Int -> Int -> SPL a
+wht_breakdown_rule r s =
+    (WHT r ⊗ I (2^s)) × (I (2^r) ⊗ WHT s)
 
 -- | Split-radix DFT decomposition.
 splitRadix :: forall a . RootOfUnity a => Int -> a -> SPL a

@@ -10,6 +10,8 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Spiral.NumberTheory (
+    sumPairs,
+
     primeFactorization,
     factors,
     coprimeFactors,
@@ -38,6 +40,10 @@ import Math.NumberTheory.Primes (Prime, factorise, primes, unPrime)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random
 import Test.QuickCheck
+
+-- | Compute all possible pairs numbers that sum to n,
+sumPairs :: Int -> [(Int, Int)]
+sumPairs n = [(r, n - r) | r <- [1 .. n-1]]
 
 -- | Compute prime factorization,
 primeFactorization :: Int -> [(Int, Int)]
