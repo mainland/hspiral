@@ -18,7 +18,8 @@ module Spiral.SPL.Run (
 
 import Prelude hiding ((!!), read)
 
-import Control.Monad (unless,
+import Control.Monad (foldM,
+                      unless,
                       when)
 import Data.Complex
 import qualified Data.Vector as V
@@ -170,6 +171,23 @@ runSPL e@(Prod a b) x = do
   where
     Z :. _m :.  n = extent a
     Z :. n' :. _p = extent b
+
+runSPL e@(IterProd n f) x = do
+    when (n <= 0) $
+        faildoc $ "IterProd: positive n required" </> ppr e
+    unless compatible $
+        faildoc $ "Incompatible IterProd factors" </> ppr e
+    comment $ ppr e
+    foldM (\acc i -> runSPL (f (intE i)) acc) x [1..n]
+  where
+    extents :: [DIM2]
+    extents = [ extent (f (intE i)) | i <- [1..n] ]
+
+    compatible :: Bool
+    compatible = and $ zipWith match extents (tail extents)
+
+    match :: DIM2 -> DIM2 -> Bool
+    match (Z :. _ :. c1) (Z :. r2 :. _) = c1 == r2
 
 runSPL (Re a) x = do
     t <- gather x
