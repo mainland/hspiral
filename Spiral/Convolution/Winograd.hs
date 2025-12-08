@@ -71,7 +71,7 @@ winogradR' deg = if length (primeFactorization (deg+1)) == 1
     p' = fromIntegral p
 
     rpk' :: Int -> SPL a
-    rpk' 1  = if p == 2 then KDiag p (1/p') × F2 else KDiag p (1/p') × _Vp
+    rpk' 1  = if p == 2 then scale (1/p') F2 else scale (1/p') _Vp
     rpk' k' = (rpk' 1 ⊗ I (p^(k'-1))) × (rpk' (k' - 1) ⊕ I ((p-1)*(p^(k'-1))))
 
     _Vp :: SPL a

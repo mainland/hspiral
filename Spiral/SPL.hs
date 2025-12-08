@@ -46,6 +46,8 @@ module Spiral.SPL (
     (<|>),
     block,
 
+    scale,
+
     (⊗),
     (×),
     (⊕),
@@ -473,7 +475,7 @@ toMatrix (F n w) = manifest $ A.fromFunction (ix2 n n) f
   where
     f (Z :. i :. j) = w ^ (i*j)
 
-toMatrix (F' n w) = toMatrix (KDiag n (1/fromIntegral n) × F n (1/w))
+toMatrix (F' n w) = toMatrix $ scale (1/fromIntegral n) (F n (1/w))
 
 pprArgs :: Pretty a => [a] -> Doc
 pprArgs = parens . commasep . map ppr
@@ -551,6 +553,12 @@ infixr 7 <|>
 -- | Create a block matrix
 block :: SPL e -> SPL e -> SPL e -> SPL e -> SPL e
 block tl tr bl br = (tl <|> tr) <-> (bl <|> br)
+
+-- | Scale a matrix
+scale :: Num e => e -> SPL e -> SPL e
+scale k a = KDiag n k × a
+  where
+    Z :. n :. _ = extent a
 
 -- | Alias for Kronecker product.
 infixl 7 ⊗

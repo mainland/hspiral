@@ -92,7 +92,7 @@ search f = go
         go F2
 
     recurse (F' n w) =
-        go $ KDiag n (1/fromIntegral n) × F n (1/w)
+        go $ scale (1/fromIntegral n) (F n (1/w))
 
     recurse e =
         return e
