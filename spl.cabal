@@ -111,7 +111,6 @@ library
     bytestring             >= 0.9   && < 0.13,
     containers             >= 0.5   && < 0.9,
     cyclotomic,
-    exception-mtl          >= 0.3   && < 0.6,
     exception-transformers >= 0.3   && < 0.6,
     ihaskell               >= 0.10  && < 0.14,
     language-c-quote       >= 0.12.2 && < 0.14,
@@ -175,7 +174,6 @@ executable opcount
   build-depends:
     spl,
     base            >= 4.9 && < 4.22,
-    containers      >= 0.5 && < 0.9,
     mainland-pretty >= 0.7 && < 0.8
 
 executable opcounts
@@ -186,9 +184,7 @@ executable opcounts
 
   build-depends:
     spl,
-    base            >= 4.9 && < 4.22,
-    containers      >= 0.5 && < 0.9,
-    mainland-pretty >= 0.7 && < 0.8
+    base            >= 4.9 && < 4.22
 
 executable search
   main-is: Search.hs
@@ -199,7 +195,6 @@ executable search
   build-depends:
     spl,
     base            >= 4.9 && < 4.22,
-    containers      >= 0.5 && < 0.9,
     mainland-pretty >= 0.7 && < 0.8
 
 executable voronenko
@@ -211,8 +206,7 @@ executable voronenko
   build-depends:
     spl,
     base            >= 4.9 && < 4.22,
-    mainland-pretty >= 0.7 && < 0.8,
-    transformers    >= 0.2 && < 0.7
+    mainland-pretty >= 0.7 && < 0.8
 
 test-suite full
   type: exitcode-stdio-1.0
@@ -249,7 +243,6 @@ test-suite full
     process                    >= 1.4   && < 1.7,
     temporary                  >= 1.3   && < 1.4,
     text                       >= 1.1   && < 2.2,
-    transformers               >= 0.2   && < 0.7,
     unix                       >= 2.7   && < 2.9,
     vector                     >= 0.11  && < 0.14,
     vector-fftw                >= 0.1   && < 0.2,
@@ -289,7 +282,6 @@ test-suite quick
     process                    >= 1.4   && < 1.7,
     temporary                  >= 1.3   && < 1.4,
     text                       >= 1.1   && < 2.2,
-    transformers               >= 0.2   && < 0.7,
     unix                       >= 2.7   && < 2.9,
     vector                     >= 0.11  && < 0.14,
     vector-fftw                >= 0.1   && < 0.2,
