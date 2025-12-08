@@ -26,6 +26,9 @@ description:
 
 build-type: Simple
 
+data-files:
+  benchmark/data/search-opcount.csv
+
 flag full
     description: Build full test suite
     manual: True
@@ -221,6 +224,7 @@ test-suite full
       buildable: False
 
   other-modules:
+    Paths_spl
     Test.Codegen
     Test.Convolution
     Test.FFTW
@@ -260,6 +264,7 @@ test-suite quick
     src/test
 
   other-modules:
+    Paths_spl
     Test.Codegen
     Test.Convolution
     Test.FFTW

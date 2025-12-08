@@ -42,6 +42,8 @@ import Spiral.Search.OpCount
 
 import Test.Instances ()
 
+import Paths_spl (getDataFileName)
+
 opCountTests :: Spec
 opCountTests =
     describe "Opcount" $ do
@@ -126,7 +128,7 @@ withOpcountFlags fs =
 
 opcountRegressionTests :: Int -> Spec
 opcountRegressionTests max_size = do
-    text <- runIO $ readFile rEGRESSION_FILE
+    text <- runIO $ getDataFileName rEGRESSION_FILE
     let opcounts = (map parseCSV . drop 1 . lines) text
     mapM_ test [(n,totalOps,mulOps,addOps) | [n,totalOps,mulOps,addOps] <- opcounts, n <= max_size]
   where
