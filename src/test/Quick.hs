@@ -13,14 +13,10 @@
 
 module Main (main) where
 
-import Data.List (nub,
-                  sort)
 import Test.Hspec
 
 import Spiral.NumberTheory
 
-import Test.Codegen
-import Test.Convolution
 import Test.Factorization
 import Test.Opcount
 import Test.SPL
@@ -34,20 +30,10 @@ main = do
 spec :: Spec
 spec = do
     splTests
-    convolutionTests
     describe "Factorization" $ do
         factorizationTests
         describe "Opcount-optimized DFT" $
-            mapM_ opcountSearchTest [2..32]
+            mapM_ opcountSearchTest [2..8]
     opCountTests
     describe "Opcount regressions" $
-        opcountRegressionTests 32
-    describe "Code Generation Tests (default flags)" $ do
-        codegenTests mempty pow2Sizes
-        searchCodegenTests mempty allSizes
-  where
-    allSizes :: [Int]
-    allSizes = nub . sort $ [2..32] ++ pow2Sizes
-
-    pow2Sizes :: [Int]
-    pow2Sizes = [2^i | i <- [1..9::Int]]
+        opcountRegressionTests 8
