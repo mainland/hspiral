@@ -116,9 +116,8 @@ bestBreakdown :: forall a m . (Typeable a, Typed a, Floating (Exp a), MonadSpira
               => Int
               -> SWHT m (SPL (Exp a))
 bestBreakdown n = do
-    useComplexType <- asksConfig $ testDynFlag UseComplex
     alts           <- observeAll (breakdown n) >>= mapM (searchWHT findWHT)
-    opcs           <- mapM (countOps' useComplexType tau) alts
+    opcs           <- mapM countOps alts
     traceSearch $ text "WHT size" <+> ppr n <> text ":" <+> commasep [ppr (mulOps ops) <> char '/' <> ppr (addOps ops) | ops <- opcs]
     let (e, m) = minimumBy metricOrdering (alts `zip` opcs)
     cacheIfBetter n e m
@@ -126,15 +125,6 @@ bestBreakdown n = do
     tau :: Type a
     tau = typeOf (undefined :: a)
 
-    -- If we aren't using native complex numbers, we need to count operations on
-    -- the version of the transform that takes a size-2n vector as input.
-    countOps' :: (Typed b, Floating (Exp b))
-              => Bool
-              -> Type b
-              -> SPL (Exp b)
-              -> SWHT m (OpCount Int)
-    countOps' False ComplexT{} = countOps . Re
-    countOps' _     _          = countOps
 
 -- | Generate WHT breakdowns.
 breakdown :: forall a m . (Typeable a, Typed a, Floating (Exp a), MonadSpiral m)

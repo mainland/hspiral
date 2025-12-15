@@ -29,15 +29,12 @@ import Spiral.Util.Uniq
 
 main :: IO ()
 main = defaultMainWith' options mempty $ \fs args -> do
-    useComplexType <- asksConfig $ testDynFlag UseComplex
     n <- case args of
            [s] -> return (read s)
            _   -> return 4
     f <- formula fs n
     pprint f
-    if useComplexType
-      then toProgram ("hspiral_wht_" ++ show n) f >>= go
-      else toProgram ("hspiral_wht_" ++ show n) (Re f) >>= go
+    toProgram ("hspiral_wht_" ++ show n) f >>= go
   where
     go :: (Typed a, Num (Exp a)) => Program a -> Spiral ()
     go prog = do
@@ -55,7 +52,7 @@ main = defaultMainWith' options mempty $ \fs args -> do
           text "          Total:" <+> ppr (allOps ops)
 
 -- The SPL formula for which we generate code and count operations.
-formula :: MonadSpiral m => [Flag] -> Int -> m (SPL (Exp (Complex Double)))
+formula :: MonadSpiral m => [Flag] -> Int -> m (SPL (Exp (Double)))
 formula fs n =
   case fs of
     [Wht]         -> return $ wht n
